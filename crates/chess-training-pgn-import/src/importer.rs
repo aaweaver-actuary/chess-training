@@ -65,6 +65,25 @@ pub enum ImportError {
     IllegalSan { san: String, game: usize },
 }
 
+/// Imports PGN data into a storage backend.
+///
+/// The `Importer` struct provides methods to ingest PGN strings and store the resulting
+/// positions, edges, and tactics into a backend implementing the [`Storage`] trait.
+///
+/// # Type Parameters
+///
+/// * `S` - A type that implements the [`Storage`] trait, used as the backend for storing imported data.
+///
+/// # Basic usage
+///
+/// ```
+/// use chess_training_pgn_import::{Importer, InMemoryStore, IngestConfig};
+/// let config = IngestConfig::default();
+/// let store = InMemoryStore::new();
+/// let mut importer = Importer::new(config, store);
+/// importer.ingest_pgn_str("owner", "repertoire", pgn_str)?;
+/// let (store, metrics) = importer.finalize();
+/// ```
 pub struct Importer<S: Storage> {
     config: IngestConfig,
     store: S,
