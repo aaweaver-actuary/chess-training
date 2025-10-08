@@ -201,3 +201,48 @@
     align-self: flex-end;
   }
 }
+}
+
+.review-controls {
+  margin-top: var(--space-gap-large);
+  background: var(--color-surface);
+  border-radius: var(--radius-large);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.review-controls h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.grade-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.grade-buttons button {
+  border: none;
+  border-radius: var(--radius-medium);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--color-accent-primary);
+  color: var(--color-surface);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.grade-buttons button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-elevated);
+}
+
+.grade-buttons button:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
