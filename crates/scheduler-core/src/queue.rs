@@ -1,0 +1,161 @@
+//! Daily queue construction that merges due reviews with newly unlocked cards.
+
+use std::collections::BTreeSet;
+
+use chrono::NaiveDate;
+use uuid::Uuid;
+
+use crate::config::SchedulerConfig;
+use crate::domain::{Card, CardKind, CardState, UnlockRecord};
+use crate::store::CardStore;
+
+pub fn build_queue_for_day<S: CardStore>(
+    store: &mut S,
+    config: &SchedulerConfig,
+    owner_id: Uuid,
+    today: NaiveDate,
+) -> Vec<Card> {
+    let mut queue = store.due_cards(owner_id, today);
+    let prior_unlocks = store.unlocked_on(owner_id, today);
+    let mut unlocked = ExistingUnlocks::from_records(&prior_unlocks);
+    extend_queue_with_unlocks(store, config, owner_id, today, &mut queue, &mut unlocked);
+    queue.sort_by(|a, b| (a.due, a.id).cmp(&(b.due, b.id)));
+    queue
+}
+
+struct ExistingUnlocks {
+    prefixes: BTreeSet<String>,
+    ids: BTreeSet<Uuid>,
+}
+
+impl ExistingUnlocks {
+    fn from_records(records: &[UnlockRecord]) -> Self {
+        let prefixes = records
+            .iter()
+            .filter_map(|record| record.parent_prefix.clone())
+            .collect();
+        let ids = records.iter().map(|record| record.card_id).collect();
+        Self { prefixes, ids }
+    }
+
+    fn contains_prefix(&self, prefix: &str) -> bool {
+        self.prefixes.contains(prefix)
+    }
+
+    fn contains_card(&self, id: &Uuid) -> bool {
+        self.ids.contains(id)
+    }
+
+    fn track_new_unlock(&mut self, prefix: Option<String>, id: Uuid) {
+        if let Some(prefix) = prefix {
+            self.prefixes.insert(prefix);
+        }
+        self.ids.insert(id);
+    }
+}
+
+fn extend_queue_with_unlocks<S: CardStore>(
+    store: &mut S,
+    config: &SchedulerConfig,
+    owner_id: Uuid,
+    today: NaiveDate,
+    queue: &mut Vec<Card>,
+    unlocked: &mut ExistingUnlocks,
+) {
+    for mut candidate in store.unlock_candidates(owner_id) {
+        if skip_candidate(&candidate, unlocked) {
+            continue;
+        }
+        let parent_prefix = extract_prefix(&candidate);
+        unlock_card(&mut candidate, config, today);
+        store.record_unlock(UnlockRecord {
+            card_id: candidate.id,
+            owner_id,
+            parent_prefix: parent_prefix.clone(),
+            day: today,
+        });
+        unlocked.track_new_unlock(parent_prefix, candidate.id);
+        store.upsert_card(candidate.clone());
+        queue.push(candidate);
+    }
+}
+
+fn skip_candidate(candidate: &Card, unlocked: &ExistingUnlocks) -> bool {
+    if unlocked.contains_card(&candidate.id) {
+        return true;
+    }
+    match &candidate.kind {
+        CardKind::Opening { parent_prefix } => unlocked.contains_prefix(parent_prefix),
+        _ => true,
+    }
+}
+
+fn unlock_card(card: &mut Card, config: &SchedulerConfig, today: NaiveDate) {
+    card.state = CardState::Learning;
+    card.interval_days = 0;
+    card.due = today;
+    card.ease_factor = config.initial_ease_factor;
+}
+
+fn extract_prefix(card: &Card) -> Option<String> {
+    match &card.kind {
+        CardKind::Opening { parent_prefix } => Some(parent_prefix.clone()),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::CardKind;
+    use crate::store::InMemoryStore;
+
+    fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
+    }
+
+    fn sample_opening(owner: Uuid, prefix: &str) -> Card {
+        let config = SchedulerConfig::default();
+        Card::new(
+            owner,
+            CardKind::Opening {
+                parent_prefix: prefix.into(),
+            },
+            naive_date(2023, 1, 1),
+            &config,
+        )
+    }
+
+    #[test]
+    fn build_queue_skips_already_unlocked_prefixes() {
+        let mut store = InMemoryStore::new();
+        let config = SchedulerConfig::default();
+        let owner = Uuid::new_v4();
+        let existing = sample_opening(owner, "e4");
+        store.upsert_card(existing.clone());
+        store.record_unlock(UnlockRecord {
+            card_id: existing.id,
+            owner_id: owner,
+            parent_prefix: Some("e4".into()),
+            day: naive_date(2023, 1, 1),
+        });
+        let new_candidate = sample_opening(owner, "e4");
+        store.upsert_card(new_candidate.clone());
+
+        let queue = build_queue_for_day(&mut store, &config, owner, naive_date(2023, 1, 1));
+        assert_eq!(queue.len(), 0);
+    }
+
+    #[test]
+    fn build_queue_unlocks_new_opening() {
+        let mut store = InMemoryStore::new();
+        let config = SchedulerConfig::default();
+        let owner = Uuid::new_v4();
+        let candidate = sample_opening(owner, "c4");
+        store.upsert_card(candidate.clone());
+
+        let queue = build_queue_for_day(&mut store, &config, owner, naive_date(2023, 1, 1));
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue[0].state, CardState::Learning);
+    }
+}
