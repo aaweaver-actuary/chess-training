@@ -31,7 +31,7 @@ fn cli_parses_inputs_with_default_config() {
 
 #[test]
 fn cli_requires_at_least_one_input() {
-    let cli = CliArgs::try_parse_from(["pgn-import"]) 
+    let cli = CliArgs::try_parse_from(["pgn-import"])
         .expect("parsing should succeed to allow config-file usage");
 
     let err = cli

@@ -62,7 +62,10 @@ pub enum ConfigError {
     /// The requested configuration file could not be read.
     Io { path: PathBuf, source: io::Error },
     /// The configuration file contained invalid TOML.
-    Parse { path: PathBuf, source: toml::de::Error },
+    Parse {
+        path: PathBuf,
+        source: toml::de::Error,
+    },
     /// Neither the CLI nor configuration file provided any PGN inputs.
     NoInputs,
 }
@@ -71,10 +74,20 @@ impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Io { path, source } => {
-                write!(f, "failed to read config file {}: {}", path.display(), source)
+                write!(
+                    f,
+                    "failed to read config file {}: {}",
+                    path.display(),
+                    source
+                )
             }
             Self::Parse { path, source } => {
-                write!(f, "failed to parse config file {}: {}", path.display(), source)
+                write!(
+                    f,
+                    "failed to parse config file {}: {}",
+                    path.display(),
+                    source
+                )
             }
             Self::NoInputs => write!(f, "no PGN inputs were provided via CLI or config file"),
         }
@@ -106,11 +119,15 @@ struct FileConfig {
 
 impl FileConfig {
     fn from_path(path: &Path) -> ConfigResult<Self> {
-        let contents = fs::read_to_string(path)
-            .map_err(|source| ConfigError::Io { path: path.to_path_buf(), source })?;
+        let contents = fs::read_to_string(path).map_err(|source| ConfigError::Io {
+            path: path.to_path_buf(),
+            source,
+        })?;
 
-        toml::from_str(&contents)
-            .map_err(|source| ConfigError::Parse { path: path.to_path_buf(), source })
+        toml::from_str(&contents).map_err(|source| ConfigError::Parse {
+            path: path.to_path_buf(),
+            source,
+        })
     }
 }
 

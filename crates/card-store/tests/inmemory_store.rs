@@ -38,21 +38,30 @@ fn position_creation_fails_with_missing_fields() {
 #[test]
 fn position_creation_fails_with_invalid_characters() {
     // Invalid character 'X' in FEN
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
 #[test]
 fn position_creation_fails_with_extra_whitespace() {
     // Extra whitespace between fields
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w KQkq - 0 1", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w KQkq - 0 1",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
 #[test]
 fn position_creation_fails_with_too_many_fields() {
     // Too many fields in FEN
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
@@ -140,6 +149,58 @@ fn unlock_records_are_unique_per_day() {
     let second = store.record_unlock(record);
     assert!(
         matches!(second, Err(StoreError::DuplicateUnlock { edge, day }) if edge == edge_id && day == date)
+    );
+}
+
+#[test]
+fn unlock_same_edge_on_different_days() {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let edge_id = 42;
+    let day1 = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
+    let day2 = NaiveDate::from_ymd_opt(2024, 1, 3).unwrap();
+
+    let record1 = UnlockRecord {
+        owner_id: "andy".to_string(),
+        edge_id,
+        unlocked_on: day1,
+    };
+    let record2 = UnlockRecord {
+        owner_id: "andy".to_string(),
+        edge_id,
+        unlocked_on: day2,
+    };
+
+    store.record_unlock(record1).unwrap();
+    let result = store.record_unlock(record2);
+    assert!(
+        result.is_ok(),
+        "Same edge should be unlockable on different days"
+    );
+}
+
+#[test]
+fn unlock_different_edges_on_same_day() {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let date = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
+    let edge_id1 = 42;
+    let edge_id2 = 43;
+
+    let record1 = UnlockRecord {
+        owner_id: "andy".to_string(),
+        edge_id: edge_id1,
+        unlocked_on: date,
+    };
+    let record2 = UnlockRecord {
+        owner_id: "andy".to_string(),
+        edge_id: edge_id2,
+        unlocked_on: date,
+    };
+
+    store.record_unlock(record1).unwrap();
+    let result = store.record_unlock(record2);
+    assert!(
+        result.is_ok(),
+        "Different edges should be unlockable on the same day"
     );
 }
 
