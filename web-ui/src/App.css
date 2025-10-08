@@ -1,42 +1,203 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  background: var(--color-app-shell-background);
+  padding: var(--space-page) 1rem;
+  font-family: var(--font-family-base);
+  color: var(--color-text-primary);
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.app-shell {
+  width: min(960px, 100%);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+.dashboard {
+  background: var(--color-surface);
+  border-radius: var(--radius-large);
+  padding: var(--space-section);
+  box-shadow: var(--shadow-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-large);
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-gap-small);
+}
+
+.dashboard-subtitle {
+  text-transform: uppercase;
+  letter-spacing: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--color-text-soft);
+  margin: 0 0 0.5rem;
+}
+
+.dashboard h1 {
+  font-size: 2rem;
+  margin: 0;
+}
+
+.badge {
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.badge-cleared {
+  background: var(--badge-cleared-bg);
+  color: var(--badge-cleared-fg);
+}
+
+.badge-low {
+  background: var(--badge-low-bg);
+  color: var(--badge-low-fg);
+}
+
+.badge-moderate {
+  background: var(--badge-moderate-bg);
+  color: var(--badge-moderate-fg);
+}
+
+.badge-high {
+  background: var(--badge-high-bg);
+  color: var(--badge-high-fg);
+}
+
+.badge-stable {
+  background: var(--badge-stable-bg);
+  color: var(--badge-stable-fg);
+}
+
+.badge-watch {
+  background: var(--badge-watch-bg);
+  color: var(--badge-watch-fg);
+}
+
+.badge-critical {
+  background: var(--badge-critical-bg);
+  color: var(--badge-critical-fg);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-gap-medium);
+}
+
+.metric-card {
+  background: var(--color-surface-subtle);
+  border-radius: var(--radius-medium);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-inset);
+}
+
+.metric-title {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-soft);
+}
+
+.metric-value {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+
+.metric-description {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+.recommendation h2,
+.upcoming h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+}
+
+.primary-action {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.secondary-action {
+  margin: 0.75rem 0 0;
+  color: var(--color-text-muted);
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-gap-small);
+}
+
+.upcoming ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-small);
+}
+
+.unlock-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-gap-small);
+  background: var(--color-surface-subtle);
+  border-radius: var(--radius-compact);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow-inset);
+}
+
+.unlock-move {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.unlock-idea {
+  margin: 0.25rem 0 0;
+  color: var(--color-text-muted);
+  max-width: 460px;
+}
+
+.unlock-date {
+  font-size: 0.9rem;
+  color: var(--color-text-soft);
+}
+
+@media (max-width: 720px) {
+  .dashboard {
+    padding: 1.75rem;
   }
-  to {
-    transform: rotate(360deg);
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
-}
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+  .unlock-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
-}
 
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+  .unlock-date {
+    align-self: flex-end;
+  }
 }
