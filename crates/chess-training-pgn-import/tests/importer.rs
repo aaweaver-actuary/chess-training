@@ -75,8 +75,10 @@ fn importer_builds_opening_trie_and_tactics() {
 
 #[test]
 fn importer_respects_require_setup_flag() {
-    let mut config = IngestConfig::default();
-    config.require_setup_for_fen = true;
+    let config = IngestConfig {
+        require_setup_for_fen: true,
+        ..IngestConfig::default()
+    };
 
     let store = InMemoryStore::default();
     let mut importer = Importer::new(config, store);
@@ -100,8 +102,10 @@ fn importer_respects_require_setup_flag() {
 
 #[test]
 fn importer_skips_malformed_fens_when_configured() {
-    let mut config = IngestConfig::default();
-    config.skip_malformed_fen = true;
+    let config = IngestConfig {
+        skip_malformed_fen: true,
+        ..IngestConfig::default()
+    };
 
     let mut importer = Importer::new_in_memory(config);
 
@@ -176,9 +180,11 @@ fn importer_reports_contextual_illegal_san() {
 
 #[test]
 fn importer_does_not_emit_tactics_when_disabled() {
-    let mut config = IngestConfig::default();
-    config.tactic_from_fen = false;
-    config.include_fen_in_trie = true;
+    let config = IngestConfig {
+        tactic_from_fen: false,
+        include_fen_in_trie: true,
+        ..IngestConfig::default()
+    };
 
     let mut importer = Importer::new_in_memory(config);
 

@@ -234,7 +234,7 @@ mod tests {
         assert!(is_parse(&parse_config));
         assert!(!is_parse(&ConfigError::Io(IoError {
             path: PathBuf::from("/other"),
-            source: io::Error::new(io::ErrorKind::Other, "other"),
+            source: io::Error::other("other"),
         })));
 
         let no_inputs = ConfigError::NoInputs;

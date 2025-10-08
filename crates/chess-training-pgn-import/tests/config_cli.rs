@@ -44,7 +44,7 @@ fn cli_requires_at_least_one_input() {
     assert!(!is_no_inputs(&ConfigError::Io(
         chess_training_pgn_import::errors::IoError {
             path: PathBuf::from("/tmp/missing"),
-            source: std::io::Error::new(std::io::ErrorKind::Other, "other"),
+            source: std::io::Error::other("other"),
         }
     )));
     assert_eq!(

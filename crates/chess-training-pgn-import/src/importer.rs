@@ -107,7 +107,7 @@ impl<S: Storage> Importer<S> {
         repertoire: &str,
         pgn: &str,
     ) -> Result<(), ImportError> {
-        for (game_index, game) in parse_games(pgn).enumerate() {
+        for (game_index, game) in parse_games(pgn).into_iter().enumerate() {
             self.metrics.games_total += 1;
             process_game(
                 &self.config,
@@ -254,10 +254,7 @@ fn parse_games(input: &str) -> Vec<RawGame> {
 }
 
 fn parse_tag(line: &str) -> Option<(String, String)> {
-    let trimmed = match line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
-        Some(inner) => inner,
-        None => return None,
-    };
+    let trimmed = line.strip_prefix('[').and_then(|s| s.strip_suffix(']'))?;
     let (key, raw_value) = trimmed.split_once(' ')?;
     let value = raw_value.trim().strip_prefix('"')?.strip_suffix('"')?;
     Some((key.to_string(), value.to_string()))
