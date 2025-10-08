@@ -10,6 +10,7 @@ This crate forms the cognitive backbone of **chess-trainer**, handling all learn
 ## Table of Contents
 
 - [Overview](#overview)
+- [Quickstart](#quickstart)
 - [Responsibilities](#responsibilities)
 - [Key Concepts](#key-concepts)
 - [Feature Summary](#feature-summary)
@@ -43,6 +44,79 @@ It produces:
 - optional next-day unlocks for new opening moves.
 
 It is deterministic: given the same review history, the same future queue is produced every time.
+
+---
+
+## Quickstart
+
+Here's a minimal working example showing how to wire up the scheduler, build a queue, and review cards:
+
+```rust
+use scheduler_core::{
+    Card, CardKind, CardState, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig,
+};
+use chrono::NaiveDate;
+use uuid::Uuid;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Create a configuration (or use defaults)
+    let config = SchedulerConfig::default();
+    
+    // 2. Initialize an in-memory store
+    let mut store = InMemoryStore::new();
+    
+    // 3. Add some sample cards to the store
+    let owner_id = Uuid::new_v4();
+    let today = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
+    
+    // Create a new opening card
+    let card1 = Card::new(
+        owner_id,
+        CardKind::Opening {
+            parent_prefix: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string(),
+        },
+        today,
+        &config,
+    );
+    store.upsert_card(card1.clone());
+    
+    // Create a tactic card
+    let card2 = Card::new(
+        owner_id,
+        CardKind::Tactic,
+        today,
+        &config,
+    );
+    store.upsert_card(card2.clone());
+    
+    // 4. Build the scheduler
+    let mut scheduler = Scheduler::new(store, config);
+    
+    // 5. Build today's queue (includes due reviews + new unlocks)
+    let queue = scheduler.build_queue(owner_id, today);
+    println!("Cards in today's queue: {}", queue.len());
+    
+    // 6. Review a card
+    let outcome = scheduler.review(card1.id, ReviewGrade::Good, today)?;
+    println!("Reviewed card {}: next due on {}", outcome.card.id, outcome.card.due);
+    
+    Ok(())
+}
+```
+
+This example demonstrates the core workflow:
+- **Configure** the scheduler with `SchedulerConfig`
+- **Store** cards using `InMemoryStore` (for testing/examples)
+- **Schedule** reviews with the `Scheduler`
+- **Build queues** to get today's cards
+- **Process reviews** and update card states
+
+For production use, replace `InMemoryStore` with a persistent backend implementing the `CardStore` trait (see [Persistence](#persistence)).
+
+You can also run this example directly:
+```bash
+cargo run -p scheduler-core --example quickstart
+```
 
 ---
 
@@ -286,6 +360,34 @@ pub trait Storage {
 **Provided implementations:**
 - `InMemoryStore` (for testing and CLI)
 - `PostgresStore` (via `sqlx`, optional feature)
+
+### Understanding the Two In-Memory Stores
+
+You may notice **two separate in-memory store implementations** in this codebase:
+
+1. **`scheduler-core::InMemoryStore`** (this crate)
+   - **Purpose:** Lightweight test/example store for the scheduler
+   - **Scope:** Cards, unlock records, and basic scheduling state
+   - **Use when:** Writing unit tests for scheduler logic, creating minimal examples, or running CLI demos
+   - **Thread-safety:** Single-threaded (uses `BTreeMap`)
+   - **Location:** `crates/scheduler-core/src/lib.rs`
+
+2. **`card-store::InMemoryCardStore`** (sibling crate)
+   - **Purpose:** Full-featured reference implementation of the `CardStore` trait
+   - **Scope:** Positions, edges, tactics, cards, reviews, and unlock ledgers
+   - **Use when:** Testing the complete storage layer, integrating with PGN import, or needing thread-safe operations
+   - **Thread-safety:** Multi-threaded (uses `RwLock<HashMap>`)
+   - **Location:** `crates/card-store/src/memory.rs`
+
+**Why two implementations?**
+- **Separation of concerns:** `scheduler-core` focuses purely on scheduling algorithms and doesn't need the full domain model (positions, edges, tactics)
+- **Minimal dependencies:** `scheduler-core::InMemoryStore` has no external dependencies, making it ideal for simple examples
+- **Different use cases:** The scheduler's store is for quick tests/demos; `card-store`'s is for complete system integration
+
+**Which should you use?**
+- **For learning/examples:** Use `scheduler-core::InMemoryStore` (as shown in [Quickstart](#quickstart))
+- **For production:** Use `card-store::InMemoryCardStore` or a persistent backend (Postgres/SQLite)
+- **For integration tests:** Use `card-store::InMemoryCardStore` to test the full stack
 
 ---
 
