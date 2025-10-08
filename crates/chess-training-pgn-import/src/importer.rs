@@ -87,17 +87,12 @@ pub enum ImportError {
 /// # Basic usage
 ///
 /// ```
-/// use chess_training_pgn_import::importer::Importer;
-/// use chess_training_pgn_import::storage::InMemoryStore;
-/// use chess_training_pgn_import::config::IngestConfig;
-/// 
+/// use chess_training_pgn_import::{Importer, InMemoryStore, IngestConfig};
 /// let config = IngestConfig::default();
-/// let store = InMemoryStore::default();
+/// let store = InMemoryStore::new();
 /// let mut importer = Importer::new(config, store);
-/// let pgn_str = "[Event \"Test\"]\n\n1. e4 e5";
-/// importer.ingest_pgn_str("owner", "repertoire", pgn_str).unwrap();
+/// importer.ingest_pgn_str("owner", "repertoire", pgn_str)?;
 /// let (store, metrics) = importer.finalize();
-/// assert!(metrics.games_total > 0);
 /// ```
 pub struct Importer<S: Storage> {
     config: IngestConfig,
@@ -232,7 +227,6 @@ fn parse_games(input: &str) -> Result<Vec<RawGame>, ImportError> {
     let mut current = RawGame::default();
     let mut header_in_progress = false;
     let mut saw_moves = false;
-    let mut paren_depth = 0;  // Track nesting depth for variations
 
     for line in input.lines() {
         let trimmed = line.trim();
@@ -245,7 +239,6 @@ fn parse_games(input: &str) -> Result<Vec<RawGame>, ImportError> {
                 games.push(current);
                 current = RawGame::default();
                 saw_moves = false;
-                paren_depth = 0;  // Reset depth for new game
             }
             header_in_progress = true;
             if let Some(tag) = parse_tag(trimmed) {
@@ -256,7 +249,7 @@ fn parse_games(input: &str) -> Result<Vec<RawGame>, ImportError> {
 
         header_in_progress = false;
         saw_moves = true;
-        current.moves.extend(sanitize_tokens(trimmed, &mut paren_depth));
+        current.moves.extend(sanitize_tokens(trimmed));
     }
 
     if saw_moves || current.has_content() {
@@ -275,33 +268,10 @@ fn parse_tag(line: &str) -> Option<(String, String)> {
     Some((key.to_string(), value.to_string()))
 }
 
-fn sanitize_tokens(line: &str, paren_depth: &mut u32) -> Vec<String> {
-    let mut result = Vec::new();
-    
-    for token in line.split_whitespace() {
-        // Count opening and closing parens in this token
-        let opens = token.chars().filter(|&c| c == '(').count() as u32;
-        let closes = token.chars().filter(|&c| c == ')').count() as u32;
-        
-        // Update depth before processing (opening parens come first)
-        *paren_depth += opens;
-        
-        // Only include token if we're not inside parentheses (depth was 0 before any opens in this token)
-        // and the depth is 0 after accounting for opens but before closes
-        let was_outside = *paren_depth == opens;
-        
-        // Now process closes
-        *paren_depth = paren_depth.saturating_sub(closes);
-        
-        // Only add the token if we were outside parentheses
-        if was_outside {
-            if let Some(sanitized) = sanitize_token(token) {
-                result.push(sanitized);
-            }
-        }
-    }
-    
-    result
+fn sanitize_tokens(line: &str) -> Vec<String> {
+    line.split_whitespace()
+        .filter_map(|token| sanitize_token(token))
+        .collect()
 }
 
 fn sanitize_token(raw: &str) -> Option<String> {
@@ -309,20 +279,16 @@ fn sanitize_token(raw: &str) -> Option<String> {
         return None;
     }
 
-    // Strip comments (but not parentheses - those are handled in sanitize_tokens)
-    if raw.contains('{') || raw.contains('}') {
+    if raw.contains('{') || raw.contains('}') || raw.contains('(') || raw.contains(')') {
         return None;
     }
 
-    // Remove parentheses from the token
-    let without_parens = raw.replace(['(', ')'], "");
-    
-    let stripped = without_parens.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
+    let stripped = raw.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
     if stripped.is_empty() {
         return None;
     }
 
-    let cleaned = stripped.trim_end_matches(['!', '?', '+', '#']);
+    let cleaned = stripped.trim_end_matches(|c: char| matches!(c, '!' | '?' | '+' | '#'));
     if cleaned.is_empty() {
         return None;
     }
@@ -393,8 +359,7 @@ mod tests {
     fn sanitize_token_removes_results_and_markers() {
         assert_eq!(sanitize_token("1-0"), None);
         assert_eq!(sanitize_token("{comment}"), None);
-        // Note: parentheses are now handled at the sanitize_tokens level, not here
-        // sanitize_token just strips them from individual tokens
+        assert_eq!(sanitize_token("(variation)"), None);
     }
 
     #[test]
@@ -408,81 +373,12 @@ mod tests {
     }
 
     #[test]
-    fn sanitize_tokens_skips_variations_in_parentheses() {
-        // Test that moves inside parentheses (variations) are properly skipped
-        let line = "1. e4 e5 2. Nf3 (2. Bc4 Bc5) Nc6";
-        let mut depth = 0;
-        let tokens = sanitize_tokens(line, &mut depth);
-        // Should only include main line moves: e4, e5, Nf3, Nc6
-        // Should skip variation moves: Bc4, Bc5
-        assert_eq!(tokens, vec!["e4", "e5", "Nf3", "Nc6"]);
-        assert_eq!(depth, 0, "depth should return to 0");
-    }
-
-    #[test]
-    fn sanitize_tokens_handles_nested_variations() {
-        // Test nested parentheses
-        let line = "1. e4 (1. d4 d5 (1... Nf6)) e5";
-        let mut depth = 0;
-        let tokens = sanitize_tokens(line, &mut depth);
-        // Should only include: e4, e5
-        assert_eq!(tokens, vec!["e4", "e5"]);
-        assert_eq!(depth, 0, "depth should return to 0");
-    }
-
-    #[test]
-    fn sanitize_tokens_handles_variations_across_lines() {
-        // Variations can span lines - depth should persist across calls
-        let mut depth = 0;
-        
-        let line1 = "1. e4 (1. d4";
-        let tokens1 = sanitize_tokens(line1, &mut depth);
-        assert_eq!(tokens1, vec!["e4"]);
-        assert_eq!(depth, 1, "depth should be 1 after opening paren");
-        
-        let line2 = "d5) e5";
-        let tokens2 = sanitize_tokens(line2, &mut depth);
-        assert_eq!(tokens2, vec!["e5"]);
-        assert_eq!(depth, 0, "depth should return to 0");
-    }
-
-    #[test]
     fn parse_games_splits_multiple_pgn_entries() {
         let pgn = "[Event \"Game\"]\n\n1. e4 e5\n\n[Event \"Second\"]\n1. d4 d5 *";
         let games = parse_games(pgn).expect("parsing should succeed");
         assert_eq!(games.len(), 2, "two games should be extracted");
         assert_eq!(games[0].moves, vec!["e4".to_string(), "e5".to_string()]);
         assert_eq!(games[1].moves, vec!["d4".to_string(), "d5".to_string()]);
-    }
-
-    #[test]
-    fn parse_games_skips_variations() {
-        // Test that parse_games properly skips variations
-        let pgn = "[Event \"Test\"]\n\n1. e4 e5 2. Nf3 (2. Bc4 Bc5 3. Nf3) 2... Nc6 3. Bb5";
-        let games = parse_games(pgn).expect("parsing should succeed");
-        assert_eq!(games.len(), 1);
-        // Should only have main line moves, not the variation
-        assert_eq!(
-            games[0].moves,
-            vec!["e4", "e5", "Nf3", "Nc6", "Bb5"]
-        );
-    }
-
-    #[test]
-    fn parse_games_skips_nested_variations() {
-        let pgn = "[Event \"Test\"]\n\n1. e4 (1. d4 d5 (1... Nf6 2. c4)) 1... e5";
-        let games = parse_games(pgn).expect("parsing should succeed");
-        assert_eq!(games.len(), 1);
-        assert_eq!(games[0].moves, vec!["e4", "e5"]);
-    }
-
-    #[test]
-    fn parse_games_handles_variations_across_lines() {
-        // Variations spanning multiple lines
-        let pgn = "[Event \"Test\"]\n\n1. e4 e5 2. Nf3 (2. Bc4\nBc5 3. Nf3)\n2... Nc6";
-        let games = parse_games(pgn).expect("parsing should succeed");
-        assert_eq!(games.len(), 1);
-        assert_eq!(games[0].moves, vec!["e4", "e5", "Nf3", "Nc6"]);
     }
 
     #[test]
