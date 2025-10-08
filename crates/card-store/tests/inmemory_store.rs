@@ -38,21 +38,30 @@ fn position_creation_fails_with_missing_fields() {
 #[test]
 fn position_creation_fails_with_invalid_characters() {
     // Invalid character 'X' in FEN
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
 #[test]
 fn position_creation_fails_with_extra_whitespace() {
     // Extra whitespace between fields
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w KQkq - 0 1", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w KQkq - 0 1",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
 #[test]
 fn position_creation_fails_with_too_many_fields() {
     // Too many fields in FEN
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
@@ -86,6 +95,23 @@ fn inserting_edge_requires_parent_position() {
     assert!(
         matches!(result, Err(StoreError::MissingPosition { id }) if id == edge_input.parent_id)
     );
+}
+
+#[test]
+fn inserting_edge_requires_child_position() {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let parent = sample_position();
+    store.upsert_position(parent.clone()).unwrap();
+
+    let edge_input = EdgeInput {
+        parent_id: parent.id,
+        move_uci: "e2e4".to_string(),
+        move_san: "e4".to_string(),
+        child_id: sample_child_position().id,
+    };
+
+    let result = store.upsert_edge(edge_input.clone());
+    assert!(matches!(result, Err(StoreError::MissingPosition { id }) if id == edge_input.child_id));
 }
 
 #[test]
