@@ -72,10 +72,14 @@ export const createGatewayServer = (deps: GatewayDependencies) => {
           latencyMs: parsed.data.latency_ms,
         });
         res.json({ next_card: nextCard, stats });
-      } catch {
-        res
-          .status(400)
-          .json(jsonError('INVALID_SESSION', 'Session not found or mismatched card'));
+      } catch (err) {
+        if (err instanceof Error && err.message === 'invalid-session') {
+          res
+            .status(400)
+            .json(jsonError('INVALID_SESSION', 'Session not found or mismatched card'));
+          return;
+        }
+        throw err;
       }
     }),
   );

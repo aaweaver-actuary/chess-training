@@ -104,7 +104,11 @@ export const createSessionService = (
       const updated = await sessionStore.update(sessionId, (state) =>
         applyGrade(state, nextCard, grade, latencyMs),
       );
-      broadcaster.broadcast(sessionId, { type: 'UPDATE', card: nextCard, stats: updated.stats });
+      broadcaster.broadcast(sessionId, {
+        type: 'UPDATE',
+        card: nextCard,
+        stats: updated.stats,
+      });
       return { nextCard, stats: updated.stats };
     },
     async stats(sessionId) {
