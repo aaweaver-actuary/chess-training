@@ -198,6 +198,21 @@ describe('session gateway', () => {
     expect(gradeResponse.body.stats.accuracy).toBeCloseTo(1);
   });
 
+  it('returns null when grading a card and the scheduler queue is empty', async () => {
+    ({ server, baseUrl } = await startGateway());
+    const startResponse = await startSession(baseUrl);
+    const sessionId = startResponse.body.session_id;
+
+    // Grade first card (c123)
+    const firstGrade = await gradeCard(baseUrl, sessionId, 'c123', 'Good');
+    expect(firstGrade.body.next_card.card_id).toBe('c456');
+
+    // Grade second card (c456) - this should return null as queue is empty
+    const secondGrade = await gradeCard(baseUrl, sessionId, 'c456', 'Good');
+    expect(secondGrade.body.next_card).toBeNull();
+    expect(secondGrade.body.stats.reviews_today).toBe(2);
+  });
+
   it('rejects grading with an invalid card id for an existing session', async () => {
     ({ server, baseUrl } = await startGateway());
     const startResponse = await startSession(baseUrl);
