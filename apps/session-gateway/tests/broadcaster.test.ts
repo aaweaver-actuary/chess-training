@@ -59,4 +59,26 @@ describe('broadcaster', () => {
       broadcaster.unregister('missing', socket as unknown as WebSocket),
     ).not.toThrow();
   });
+
+  it('handles socket send errors gracefully', () => {
+    class ErrorSocket extends FakeSocket {
+      send(payload: string) {
+        throw new Error('Network error');
+      }
+    }
+    const errorSocket = new ErrorSocket();
+    const normalSocket = new FakeSocket();
+    const broadcaster = createBroadcaster();
+    broadcaster.register('session', errorSocket as unknown as WebSocket);
+    broadcaster.register('session', normalSocket as unknown as WebSocket);
+
+    expect(() => {
+      broadcaster.broadcast('session', { test: 'error' });
+    }).not.toThrow();
+
+    // The errorSocket should not have received the message
+    expect(errorSocket.messages).toHaveLength(0);
+    // The normalSocket should have received the message
+    expect(normalSocket.messages).toHaveLength(1);
+  });
 });

@@ -6,7 +6,12 @@ const toJson = (payload: Message) => JSON.stringify(payload);
 
 const sendSafe = (socket: WebSocket, payload: Message) => {
   if (socket.readyState === socket.OPEN) {
-    socket.send(toJson(payload));
+    try {
+      socket.send(toJson(payload));
+    } catch (error) {
+      // Silently ignore send errors to prevent one failing socket
+      // from affecting others in the same broadcast
+    }
   }
 };
 
