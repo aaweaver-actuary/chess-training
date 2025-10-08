@@ -38,21 +38,30 @@ fn position_creation_fails_with_missing_fields() {
 #[test]
 fn position_creation_fails_with_invalid_characters() {
     // Invalid character 'X' in FEN
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
 #[test]
 fn position_creation_fails_with_extra_whitespace() {
     // Extra whitespace between fields
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w KQkq - 0 1", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w KQkq - 0 1",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
 #[test]
 fn position_creation_fails_with_too_many_fields() {
     // Too many fields in FEN
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
