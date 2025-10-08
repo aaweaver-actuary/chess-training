@@ -203,13 +203,11 @@ describe('session gateway', () => {
     const startResponse = await startSession(baseUrl);
 
     const invalidCardId = 'invalid_card_id';
-    const response = await request(baseUrl)
-      .post('/api/session/grade')
-      .send({
-        session_id: startResponse.body.session_id,
-        card_id: invalidCardId,
-        grade: 'Good',
-      });
+    const response = await request(baseUrl).post('/api/session/grade').send({
+      session_id: startResponse.body.session_id,
+      card_id: invalidCardId,
+      grade: 'Good',
+    });
 
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(response.body).toHaveProperty('error');
@@ -401,5 +399,58 @@ describe('session gateway', () => {
     ({ server, baseUrl } = await startGateway());
     const response = await request(baseUrl).get('/api/health').expect(200);
     expect(response.body).toEqual({ status: 'ok' });
+  });
+
+  it('returns 400 for invalid session errors but rethrows other errors as 500', async () => {
+    // Test invalid session returns 400
+    ({ server, baseUrl } = await startGateway());
+    const response = await request(baseUrl)
+      .post('/api/session/grade')
+      .send({ session_id: 'nonexistent', card_id: 'c1', grade: 'Good', latency_ms: 1000 })
+      .expect(400);
+    expect(response.body.error.code).toBe('INVALID_SESSION');
+
+    // Test other errors are not caught and return 500
+    // Create a scheduler that throws a non-session error
+    const failingScheduler: SchedulerClient = {
+      async fetchQueue() {
+        return italianCards;
+      },
+      async gradeCard() {
+        throw new Error('Database connection failed');
+      },
+    };
+
+    const failingStore = new InMemorySessionStore();
+    const { app: failingApp, wsServer: failingWsServer } = createGatewayServer({
+      schedulerClient: failingScheduler,
+      sessionStore: failingStore,
+    });
+
+    const failingServer = http.createServer(failingApp);
+    failingWsServer.attach(failingServer);
+    await new Promise<void>((resolve) => {
+      failingServer.listen(0, resolve);
+    });
+    const address = failingServer.address() as AddressInfo;
+    const failingBaseUrl = `http://127.0.0.1:${address.port}`;
+
+    const failingStartResponse = await request(failingBaseUrl)
+      .post('/api/session/start')
+      .send({ user_id: 'test' })
+      .expect(200);
+
+    // This should result in a 500 error, not a 400
+    await request(failingBaseUrl)
+      .post('/api/session/grade')
+      .send({
+        session_id: failingStartResponse.body.session_id,
+        card_id: 'c123',
+        grade: 'Good',
+        latency_ms: 1000,
+      })
+      .expect(500);
+
+    await new Promise<void>((resolve) => failingServer.close(() => resolve()));
   });
 });
