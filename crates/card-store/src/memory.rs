@@ -336,6 +336,11 @@ impl InMemoryCardStore {
     }
 }
 
+/// Intermediate representation of review state changes before they are committed to a card's state.
+///
+/// This struct encapsulates the computed scheduling parameters (interval, ease factor, streak, and due date)
+/// derived from a review. It separates the calculation logic from the mutation of the card's state,
+/// allowing the transition to be validated or inspected before being applied.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct ReviewTransition {
     interval: NonZeroU8,
