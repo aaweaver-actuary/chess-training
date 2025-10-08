@@ -2,3 +2,5 @@
 Cargo.lock
 web-ui/repomix-output.xml
 file
+node_modules
+package-lock.json
