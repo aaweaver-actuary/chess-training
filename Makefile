@@ -7,3 +7,7 @@ test:
 		--fail-under-regions 100 \
 		--show-missing-lines \
 		-vvv
+	npm --prefix web-ui run format:check
+	npm --prefix web-ui run lint
+	npm --prefix web-ui run typecheck
+	npm --prefix web-ui run test:coverage
