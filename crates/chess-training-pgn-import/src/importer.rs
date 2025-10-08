@@ -316,7 +316,7 @@ fn move_to_uci(board: &Chess, mv: Move) -> String {
 }
 
 fn board_to_ply(board: &Chess) -> u32 {
-    let base = board.fullmoves().get() - 1;
+    let base = board.fullmoves().get().saturating_sub(1);
     base * 2 + if board.turn() == Color::Black { 1 } else { 0 }
 }
 
@@ -416,5 +416,56 @@ mod tests {
         assert_eq!(metrics.opening_edges, 1);
         assert_eq!(metrics.repertoire_edges, 1);
         assert_eq!(metrics.tactics, 1);
+    }
+
+    #[test]
+    fn board_to_ply_standard_starting_position() {
+        let board = Chess::default();
+        let ply = board_to_ply(&board);
+        // Starting position: fullmove 1, white to move
+        // ply = (1 - 1) * 2 + 0 = 0
+        assert_eq!(ply, 0);
+    }
+
+    #[test]
+    fn board_to_ply_after_one_white_move() {
+        let fen_str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+        let board = load_fen(fen_str).expect("valid FEN");
+        let ply = board_to_ply(&board);
+        // After 1. e4: fullmove 1, black to move
+        // ply = (1 - 1) * 2 + 1 = 1
+        assert_eq!(ply, 1);
+    }
+
+    #[test]
+    fn board_to_ply_after_one_full_move() {
+        let fen_str = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2";
+        let board = load_fen(fen_str).expect("valid FEN");
+        let ply = board_to_ply(&board);
+        // After 1. e4 e5: fullmove 2, white to move
+        // ply = (2 - 1) * 2 + 0 = 2
+        assert_eq!(ply, 2);
+    }
+
+    #[test]
+    fn board_to_ply_handles_fullmove_zero() {
+        // Non-standard FEN with fullmove counter set to 0
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0";
+        let board = load_fen(fen_str).expect("valid FEN");
+        let ply = board_to_ply(&board);
+        // With fullmove 0 and saturating_sub: (0 - 1).saturating_sub() = 0
+        // ply = 0 * 2 + 0 = 0
+        assert_eq!(ply, 0);
+    }
+
+    #[test]
+    fn board_to_ply_handles_fullmove_zero_black_to_move() {
+        // Non-standard FEN with fullmove counter set to 0, black to move
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 0";
+        let board = load_fen(fen_str).expect("valid FEN");
+        let ply = board_to_ply(&board);
+        // With fullmove 0 and saturating_sub: (0 - 1).saturating_sub() = 0
+        // ply = 0 * 2 + 1 = 1
+        assert_eq!(ply, 1);
     }
 }

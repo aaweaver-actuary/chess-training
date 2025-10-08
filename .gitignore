@@ -1,6 +1,4 @@
 /target
 Cargo.lock
-node_modules/
-coverage/
-apps/*/coverage/
-apps/*/node_modules/
+web-ui/repomix-output.xml
+file
