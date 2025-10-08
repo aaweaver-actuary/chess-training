@@ -143,14 +143,12 @@ fn process_game<S: Storage>(
     index: usize,
 ) -> Result<(), ImportError> {
     let fen_tag = game.tag("FEN");
-    if config.require_setup_for_fen {
-        if let Some(fen) = fen_tag {
-            if game.tag("SetUp") != Some("1") {
-                return Err(ImportError::MissingSetup {
-                    fen: fen.to_string(),
-                });
-            }
-        }
+    if let Some(fen) =
+        fen_tag.filter(|_| config.require_setup_for_fen && game.tag("SetUp") != Some("1"))
+    {
+        return Err(ImportError::MissingSetup {
+            fen: fen.to_string(),
+        });
     }
 
     let source_hint = game.tag("Event").map(str::to_string);
