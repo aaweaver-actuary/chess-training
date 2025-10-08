@@ -3,17 +3,22 @@
 use std::num::NonZeroU8;
 
 use chrono::NaiveDate;
+use thiserror::Error;
 
-/// Deterministic 64-bit hash for identifiers.
+use blake3::Hasher;
+
+/// Deterministic 64-bit hash for identifiers backed by truncated BLAKE3 output.
+///
+/// Using a cryptographic hash reduces the risk of accidental collisions when compared
+/// to simple FNV-based hashes while keeping identifier generation deterministic.
 fn hash64(parts: &[&[u8]]) -> u64 {
-    const FNV_OFFSET: u64 = 14695981039346656037;
-    const FNV_PRIME: u64 = 1099511628211;
-
-    parts.iter().fold(FNV_OFFSET, |acc, bytes| {
-        bytes.iter().fold(acc, |hash, byte| {
-            (hash ^ u64::from(*byte)).wrapping_mul(FNV_PRIME)
-        })
-    })
+    let mut hasher = Hasher::new();
+    for part in parts {
+        hasher.update(part);
+    }
+    let mut bytes = [0u8; 8];
+    bytes.copy_from_slice(&hasher.finalize().as_bytes()[..8]);
+    u64::from_le_bytes(bytes)
 }
 
 /// Chess position represented by a FEN string.
@@ -29,22 +34,35 @@ pub struct Position {
     pub ply: u32,
 }
 
+/// Errors encountered while constructing a [`Position`].
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum PositionError {
+    /// The FEN string was missing or contained an invalid side-to-move field.
+    #[error("malformed FEN: missing or invalid side-to-move field")]
+    InvalidSideToMove,
+}
+
 impl Position {
     /// Creates a new [`Position`] using a deterministic hash of the FEN as the identifier.
-    pub fn new(fen: impl Into<String>, ply: u32) -> Self {
+    ///
+    /// Returns [`Err`] when the FEN omits or provides an invalid side-to-move field.
+    pub fn new(fen: impl Into<String>, ply: u32) -> Result<Self, PositionError> {
         let fen = fen.into();
         let side_to_move = fen
             .split_whitespace()
             .nth(1)
-            .and_then(|s| s.chars().next())
-            .unwrap_or('w');
+            .and_then(|s| {
+                let c = s.chars().next()?;
+                matches!(c, 'w' | 'b').then_some(c)
+            })
+            .ok_or(PositionError::InvalidSideToMove)?;
         let id = hash64(&[fen.as_bytes()]);
-        Self {
+        Ok(Self {
             id,
             fen,
             side_to_move,
             ply,
-        }
+        })
     }
 }
 

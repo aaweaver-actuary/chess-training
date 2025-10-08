@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+blake3 = "1"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 thiserror = "1"

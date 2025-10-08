@@ -5,7 +5,9 @@ use std::fmt;
 use chrono::NaiveDate;
 use thiserror::Error;
 
-use crate::model::{Card, CardState, Edge, EdgeInput, Position, ReviewRequest, UnlockRecord};
+use crate::model::{
+    Card, CardState, Edge, EdgeInput, Position, PositionError, ReviewRequest, UnlockRecord,
+};
 
 /// Unified error type returned by [`CardStore`] implementations.
 #[derive(Debug, Error, PartialEq)]
@@ -25,6 +27,15 @@ pub enum StoreError {
     /// Unlock record already exists for the day.
     #[error("duplicate unlock for edge {edge} on {day}")]
     DuplicateUnlock { edge: u64, day: NaiveDate },
+    /// Underlying in-memory synchronization primitive was poisoned.
+    #[error("lock on {resource} store data has been poisoned")]
+    PoisonedLock { resource: &'static str },
+    /// Collision detected when generating deterministic identifiers.
+    #[error("hash collision detected for {entity}")]
+    HashCollision { entity: &'static str },
+    /// Invalid position provided during an upsert operation.
+    #[error(transparent)]
+    InvalidPosition(#[from] PositionError),
 }
 
 /// Persistence abstraction used across services.
