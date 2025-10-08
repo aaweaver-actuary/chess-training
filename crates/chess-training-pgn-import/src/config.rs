@@ -32,7 +32,8 @@ use clap::error::Result as ClapResult;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use serde::Deserialize;
 
-use crate::errors::ConfigError;
+pub use crate::errors::ConfigError;
+use crate::errors::{IoError, ParseError};
 
 /// Runtime configuration for the PGN ingest pipeline.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -71,14 +72,18 @@ struct FileConfig {
 
 impl FileConfig {
     fn from_path(path: &Path) -> ConfigResult<Self> {
-        let contents = fs::read_to_string(path).map_err(|source| ConfigError::Io {
-            path: path.to_path_buf(),
-            source,
+        let contents = fs::read_to_string(path).map_err(|source| {
+            ConfigError::Io(IoError {
+                path: path.to_path_buf(),
+                source,
+            })
         })?;
 
-        toml::from_str(&contents).map_err(|source| ConfigError::Parse {
-            path: path.to_path_buf(),
-            source,
+        toml::from_str(&contents).map_err(|source| {
+            ConfigError::Parse(ParseError {
+                path: path.to_path_buf(),
+                source,
+            })
         })
     }
 }
