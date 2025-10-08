@@ -278,6 +278,46 @@ describe('session gateway', () => {
     socket.close();
   });
 
+  it('does not deliver messages to websocket clients after session ends and closes connection on reconnect', async () => {
+    ({ server, baseUrl } = await startGateway());
+    const startResponse = await startSession(baseUrl);
+    const sessionId = startResponse.body.session_id;
+    const wsUrl = baseUrl.replace('http', 'ws') + `/ws?session_id=${sessionId}`;
+
+    // End the session
+    await request(baseUrl)
+      .post('/api/session/end')
+      .send({ session_id: sessionId })
+      .expect(200);
+
+    // Reconnect WebSocket client after session end
+    const socket = new WebSocket(wsUrl);
+
+    let closed = false;
+    let receivedMessage = false;
+
+    socket.on('message', () => {
+      receivedMessage = true;
+    });
+
+    await new Promise<void>((resolve) => socket.once('open', resolve));
+
+    // Wait for a short period to see if any messages are delivered
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    socket.on('close', () => {
+      closed = true;
+    });
+
+    // Wait for the close event or timeout
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(receivedMessage).toBe(false);
+    expect(closed).toBe(true);
+
+    socket.close();
+  });
+
   it('terminates the session and notifies websocket clients', async () => {
     ({ server, baseUrl } = await startGateway());
     const startResponse = await startSession(baseUrl);
