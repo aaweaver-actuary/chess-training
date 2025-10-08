@@ -10,6 +10,7 @@ pub trait Storage {
 }
 
 #[derive(Default)]
+/// An in-memory implementation of the `Storage` trait, primarily used for testing purposes.
 pub struct InMemoryStore {
     positions: BTreeMap<u64, Position>,
     edges: BTreeMap<u64, Edge>,
