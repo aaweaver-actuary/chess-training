@@ -201,7 +201,6 @@
     align-self: flex-end;
   }
 }
-}
 
 .review-controls {
   margin-top: var(--space-gap-large);
@@ -234,7 +233,9 @@
   cursor: pointer;
   background: var(--color-accent-primary);
   color: var(--color-surface);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
 }
 
 .grade-buttons button:hover {
@@ -245,4 +246,59 @@
 .grade-buttons button:active {
   transform: translateY(1px);
   box-shadow: none;
+}
+
+.dashboard-navigation {
+  margin-top: var(--space-gap-large);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-accent-primary);
+  color: var(--color-surface);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-medium);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.nav-link:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-elevated);
+}
+
+.nav-link:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.nav-link-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.opening-review-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-large);
+}
+
+.review-navigation {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.empty-state {
+  background: var(--color-surface);
+  border-radius: var(--radius-large);
+  padding: 2rem;
+  text-align: center;
+  box-shadow: var(--shadow-elevated);
 }

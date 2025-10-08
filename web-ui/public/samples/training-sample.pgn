@@ -1,0 +1,9 @@
+[Event "Sample Training"]
+[Site "Lichess"]
+[Date "2024.01.01"]
+[Round "-"]
+[White "Friendly Bot"]
+[Black "Another Bot"]
+[Result "1/2-1/2"]
+
+1. h3 h6 2. h4 h5 3. e3 e6 4. Ke2 Ke7 1/2-1/2

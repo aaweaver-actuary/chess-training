@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 function createDefaultStats() {
   return {
@@ -20,8 +21,9 @@ vi.mock('./state/sessionStore', () => {
     currentCard: {
       card_id: 'c1',
       kind: 'Opening',
-      position_fen: 'start',
+      position_fen: 'rn1qkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1',
       prompt: 'Play the move',
+      expected_moves_uci: ['c1g5'],
     },
     stats: createDefaultStats(),
     start: vi.fn(),
@@ -60,7 +62,11 @@ beforeEach(() => {
 
 describe('App', () => {
   it('starts the session on mount and renders live stats', async () => {
-    render(<App />);
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(mockedStore.getState().start).toHaveBeenCalled();
@@ -72,7 +78,11 @@ describe('App', () => {
 
   it('submits a grade when clicking a grade button', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    render(
+      <MemoryRouter initialEntries={['/review/opening']}>
+        <App />
+      </MemoryRouter>,
+    );
 
     await user.click(screen.getByRole('button', { name: /Good/i }));
 
@@ -81,7 +91,11 @@ describe('App', () => {
 
   it('falls back to the baseline overview when stats are unavailable', async () => {
     mockedStore.getState().stats = undefined;
-    render(<App />);
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(mockedStore.getState().start).toHaveBeenCalled();
@@ -96,7 +110,11 @@ describe('App', () => {
       due_count: 0,
       completed_count: 0,
     };
-    render(<App />);
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(mockedStore.getState().start).toHaveBeenCalled();
@@ -105,5 +123,27 @@ describe('App', () => {
     expect(dueCard).not.toBeNull();
     expect(within(dueCard as HTMLElement).getByText('0')).toBeInTheDocument();
     expect(screen.getByText(/100% complete/i)).toBeInTheDocument();
+  });
+  it('allows navigating between the dashboard and the opening review board', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    const startReviewLink = screen.getByRole('link', { name: /Start opening review/i });
+    await user.click(startReviewLink);
+
+    expect(screen.getByRole('region', { name: /Opening review/i })).toBeInTheDocument();
+
+    const backLink = screen.getByRole('link', { name: /Back to dashboard/i });
+    await user.click(backLink);
+
+    expect(screen.getByRole('heading', { name: /Daily Review Summary/i })).toBeInTheDocument();
   });
 });
