@@ -179,13 +179,13 @@ fn config_loader_reports_io_errors_with_context() {
         .into_ingest_config()
         .expect_err("missing file should surface as an IO error");
 
-    if let ConfigError::Io { path, source } = &err {
+    if let ConfigError::Io(io_error) = &err {
         assert!(
-            path.ends_with("config.toml"),
+            io_error.path.ends_with("config.toml"),
             "error should preserve the requested config path"
         );
         assert_eq!(
-            source.kind(),
+            io_error.source.kind(),
             std::io::ErrorKind::NotFound,
             "inner IO error should be a not-found"
         );
@@ -225,14 +225,14 @@ fn config_loader_reports_parse_errors_with_context() {
         .into_ingest_config()
         .expect_err("invalid TOML should surface as a parse error");
 
-    if let ConfigError::Parse { path, source } = &err {
+    if let ConfigError::Parse(parse_error) = &err {
         assert_eq!(
-            path,
+            &parse_error.path,
             &std::path::PathBuf::from(&path_string),
             "parse error should report the temporary file path"
         );
         assert!(
-            source.to_string().contains("expected"),
+            parse_error.source.to_string().contains("expected"),
             "toml parse error should include diagnostic context"
         );
     } else {
