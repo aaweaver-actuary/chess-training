@@ -39,6 +39,8 @@ impl InMemoryCardStore {
         Ok(self.positions_read()?.len())
     }
 
+    /// Creates a canonical `Position` by reconstructing it from its FEN and ply.
+    /// This validates the input and ensures consistent hash generation for storage.
     fn canonicalize_position_for_storage(position: Position) -> Result<Position, StoreError> {
         Ok(Position::new(position.fen, position.ply)?)
     }
