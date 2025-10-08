@@ -17,7 +17,7 @@ impl IoError {
     }
 
     /// Returns the underlying IO error that caused the failure.
-    pub fn source(&self) -> &io::Error {
+    pub fn io_error(&self) -> &io::Error {
         &self.source
     }
 }
