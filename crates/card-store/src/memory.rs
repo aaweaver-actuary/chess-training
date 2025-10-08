@@ -72,7 +72,7 @@ impl InMemoryCardStore {
                 NonZeroU8::new(next).unwrap()
             }
             4 => {
-                let doubled = interval.get().saturating_mul(2).clamp(1, u8::MAX);
+                let doubled = interval.get().saturating_mul(2);
                 NonZeroU8::new(doubled).unwrap()
             }
             _ => unreachable!(),
