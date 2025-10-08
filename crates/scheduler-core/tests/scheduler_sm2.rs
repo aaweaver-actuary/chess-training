@@ -131,3 +131,85 @@ fn unlocks_one_opening_per_prefix_per_day() {
     let second_queue = build_queue_for_day(&mut store, &config, owner, today);
     assert_eq!(second_queue.len(), 3, "no additional unlocks on same day");
 }
+
+#[test]
+fn relearning_card_graduates_on_good_review() {
+    let mut store = InMemoryStore::new();
+    let config = SchedulerConfig::default();
+    let owner = Uuid::new_v4();
+    let today = date(2024, 2, 2);
+
+    // Create a card in Relearning state (after a lapse)
+    let mut card = Card::new(owner, CardKind::Tactic, today, &config);
+    card.state = CardState::Relearning;
+    card.interval_days = 1;
+    card.due = today;
+    card.ease_factor = 2.0;
+    card.reviews = 5;
+    card.lapses = 1;
+    let card_id = card.id;
+    store.upsert_card(card);
+
+    let mut scheduler = Scheduler::new(store, config.clone());
+    
+    // Review with Good - should graduate back to Review state
+    let outcome = scheduler
+        .review(card_id, ReviewGrade::Good, today)
+        .expect("review should succeed");
+
+    assert_eq!(outcome.card.state, CardState::Review, "Card should graduate from Relearning to Review after Good grade");
+    assert_eq!(outcome.card.reviews, 6);
+    assert_eq!(outcome.card.lapses, 1);
+}
+
+#[test]
+fn relearning_card_graduates_on_hard_review() {
+    let mut store = InMemoryStore::new();
+    let config = SchedulerConfig::default();
+    let owner = Uuid::new_v4();
+    let today = date(2024, 2, 2);
+
+    let mut card = Card::new(owner, CardKind::Tactic, today, &config);
+    card.state = CardState::Relearning;
+    card.interval_days = 1;
+    card.due = today;
+    card.ease_factor = 2.0;
+    card.reviews = 5;
+    card.lapses = 1;
+    let card_id = card.id;
+    store.upsert_card(card);
+
+    let mut scheduler = Scheduler::new(store, config.clone());
+    
+    let outcome = scheduler
+        .review(card_id, ReviewGrade::Hard, today)
+        .expect("review should succeed");
+
+    assert_eq!(outcome.card.state, CardState::Review, "Card should graduate from Relearning to Review after Hard grade");
+}
+
+#[test]
+fn relearning_card_graduates_on_easy_review() {
+    let mut store = InMemoryStore::new();
+    let config = SchedulerConfig::default();
+    let owner = Uuid::new_v4();
+    let today = date(2024, 2, 2);
+
+    let mut card = Card::new(owner, CardKind::Tactic, today, &config);
+    card.state = CardState::Relearning;
+    card.interval_days = 1;
+    card.due = today;
+    card.ease_factor = 2.0;
+    card.reviews = 5;
+    card.lapses = 1;
+    let card_id = card.id;
+    store.upsert_card(card);
+
+    let mut scheduler = Scheduler::new(store, config.clone());
+    
+    let outcome = scheduler
+        .review(card_id, ReviewGrade::Easy, today)
+        .expect("review should succeed");
+
+    assert_eq!(outcome.card.state, CardState::Review, "Card should graduate from Relearning to Review after Easy grade");
+}
