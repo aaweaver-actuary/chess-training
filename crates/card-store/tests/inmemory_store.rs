@@ -6,6 +6,10 @@ use card_store::model::{CardState, EdgeInput, Position, ReviewRequest, UnlockRec
 use card_store::store::{CardStore, StoreError};
 use chrono::NaiveDate;
 
+fn new_store() -> InMemoryCardStore {
+    InMemoryCardStore::new(StorageConfig::default())
+}
+
 fn sample_position() -> Position {
     Position::new(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -29,7 +33,7 @@ fn setup_card_for_review(
     initial_interval: NonZeroU8,
     initial_ease: f32,
 ) -> (InMemoryCardStore, card_store::model::Card) {
-    let store = InMemoryCardStore::new(StorageConfig::default());
+    let store = new_store();
     let position = store.upsert_position(sample_position()).unwrap();
     let child = store.upsert_position(sample_child_position()).unwrap();
     let edge = store
@@ -101,7 +105,7 @@ fn position_creation_fails_with_too_many_fields() {
 
 #[test]
 fn upsert_position_is_idempotent() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
+    let store = new_store();
     let position = sample_position();
 
     let first = store.upsert_position(position.clone()).unwrap();
@@ -114,7 +118,7 @@ fn upsert_position_is_idempotent() {
 
 #[test]
 fn inserting_edge_requires_parent_position() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
+    let store = new_store();
     let child = sample_child_position();
     store.upsert_position(child.clone()).unwrap();
 
@@ -133,7 +137,7 @@ fn inserting_edge_requires_parent_position() {
 
 #[test]
 fn inserting_edge_requires_child_position() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
+    let store = new_store();
     let parent = sample_position();
     store.upsert_position(parent.clone()).unwrap();
 
@@ -150,7 +154,7 @@ fn inserting_edge_requires_child_position() {
 
 #[test]
 fn due_cards_filter_out_future_entries() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
+    let store = new_store();
     let position = store.upsert_position(sample_position()).unwrap();
     let child = store.upsert_position(sample_child_position()).unwrap();
     let edge = store
@@ -187,7 +191,7 @@ fn due_cards_filter_out_future_entries() {
 
 #[test]
 fn unlock_records_are_unique_per_day() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
+    let store = new_store();
     let date = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
     let edge_id = 42;
     let record = UnlockRecord {
@@ -205,7 +209,7 @@ fn unlock_records_are_unique_per_day() {
 
 #[test]
 fn unlock_same_edge_on_different_days() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
+    let store = new_store();
     let edge_id = 42;
     let day1 = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
     let day2 = NaiveDate::from_ymd_opt(2024, 1, 3).unwrap();
@@ -231,7 +235,7 @@ fn unlock_same_edge_on_different_days() {
 
 #[test]
 fn unlock_different_edges_on_same_day() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
+    let store = new_store();
     let date = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
     let edge_id1 = 42;
     let edge_id2 = 43;
