@@ -98,6 +98,23 @@ fn inserting_edge_requires_parent_position() {
 }
 
 #[test]
+fn inserting_edge_requires_child_position() {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let parent = sample_position();
+    store.upsert_position(parent.clone()).unwrap();
+
+    let edge_input = EdgeInput {
+        parent_id: parent.id,
+        move_uci: "e2e4".to_string(),
+        move_san: "e4".to_string(),
+        child_id: sample_child_position().id,
+    };
+
+    let result = store.upsert_edge(edge_input.clone());
+    assert!(matches!(result, Err(StoreError::MissingPosition { id }) if id == edge_input.child_id));
+}
+
+#[test]
 fn due_cards_filter_out_future_entries() {
     let store = InMemoryCardStore::new(StorageConfig::default());
     let position = store.upsert_position(sample_position()).unwrap();
