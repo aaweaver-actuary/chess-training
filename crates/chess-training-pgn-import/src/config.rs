@@ -6,9 +6,9 @@
 //! - All boolean toggles default to the most permissive, fail-fast friendly behavior to
 //!   simplify early importer development. Each toggle will be backed by CLI flags in later
 //!   commits.
-//! - CLI parsing only exposes primitive flags and repeated `--input` arguments for now;
-//!   richer configuration sources (files/env) will compose on top of these constants in a
-//!   follow-up change.
+//! - CLI parsing exposes primitive flags, repeated `--input` arguments, and an optional
+//!   `--config-file` path. Environment variable overrides remain future work but the
+//!   relevant constants make it easy to extend the configuration sources.
 //!
 //! These assumptions are intentionally captured as constants so they can be overridden by
 //! future configuration layers without touching downstream code.
@@ -25,10 +25,14 @@ pub const DEFAULT_SKIP_MALFORMED_FEN: bool = false;
 pub const DEFAULT_MAX_RAV_DEPTH: u32 = 8;
 
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::fmt;
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
 
 use clap::error::Result as ClapResult;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use serde::Deserialize;
 
 /// Runtime configuration for the PGN ingest pipeline.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -52,11 +56,72 @@ impl Default for IngestConfig {
     }
 }
 
+/// Errors that can occur while loading configuration from external sources.
+#[derive(Debug)]
+pub enum ConfigError {
+    /// The requested configuration file could not be read.
+    Io { path: PathBuf, source: io::Error },
+    /// The configuration file contained invalid TOML.
+    Parse { path: PathBuf, source: toml::de::Error },
+    /// Neither the CLI nor configuration file provided any PGN inputs.
+    NoInputs,
+}
+
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io { path, source } => {
+                write!(f, "failed to read config file {}: {}", path.display(), source)
+            }
+            Self::Parse { path, source } => {
+                write!(f, "failed to parse config file {}: {}", path.display(), source)
+            }
+            Self::NoInputs => write!(f, "no PGN inputs were provided via CLI or config file"),
+        }
+    }
+}
+
+impl std::error::Error for ConfigError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Io { source, .. } => Some(source),
+            Self::Parse { source, .. } => Some(source),
+            Self::NoInputs => None,
+        }
+    }
+}
+
+type ConfigResult<T> = Result<T, ConfigError>;
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+struct FileConfig {
+    inputs: Option<Vec<PathBuf>>,
+    tactic_from_fen: Option<bool>,
+    include_fen_in_trie: Option<bool>,
+    require_setup_for_fen: Option<bool>,
+    skip_malformed_fen: Option<bool>,
+    max_rav_depth: Option<u32>,
+}
+
+impl FileConfig {
+    fn from_path(path: &Path) -> ConfigResult<Self> {
+        let contents = fs::read_to_string(path)
+            .map_err(|source| ConfigError::Io { path: path.to_path_buf(), source })?;
+
+        toml::from_str(&contents)
+            .map_err(|source| ConfigError::Parse { path: path.to_path_buf(), source })
+    }
+}
+
 /// Command-line arguments supported by the importer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CliArgs {
     /// One or more PGN files to ingest.
     pub inputs: Vec<PathBuf>,
+
+    /// Optional TOML configuration file that seeds defaults.
+    config_file: Option<PathBuf>,
 
     /// When set, also add FEN-rooted games to the opening trie.
     include_fen_in_trie: bool,
@@ -71,7 +136,7 @@ pub struct CliArgs {
     disable_tactic_from_fen: bool,
 
     /// Limit how deep recursive annotation variations are processed.
-    max_rav_depth: u32,
+    max_rav_depth: Option<u32>,
 }
 
 impl CliArgs {
@@ -81,6 +146,7 @@ impl CliArgs {
     const ARG_SKIP_MALFORMED_FEN: &'static str = "skip-malformed-fen";
     const ARG_DISABLE_TACTIC_FROM_FEN: &'static str = "disable-tactic-from-fen";
     const ARG_MAX_RAV_DEPTH: &'static str = "max-rav-depth";
+    const ARG_CONFIG_FILE: &'static str = "config-file";
 
     /// Builds the clap command definition for parsing CLI arguments.
     fn command() -> Command {
@@ -92,7 +158,14 @@ impl CliArgs {
                     .value_name("FILE")
                     .action(ArgAction::Append)
                     .value_parser(value_parser!(PathBuf))
-                    .required(true),
+                    .help("Add a PGN file to ingest (repeatable)."),
+            )
+            .arg(
+                Arg::new(Self::ARG_CONFIG_FILE)
+                    .long("config-file")
+                    .value_name("FILE")
+                    .value_parser(value_parser!(PathBuf))
+                    .help("Load defaults, including inputs, from a TOML configuration file."),
             )
             .arg(
                 Arg::new(Self::ARG_INCLUDE_FEN_IN_TRIE)
@@ -125,21 +198,20 @@ impl CliArgs {
     fn from_matches(matches: ArgMatches) -> Self {
         let inputs = matches
             .get_many::<PathBuf>(Self::ARG_INPUT)
-            .expect("required input argument should be present")
-            .cloned()
-            .collect();
+            .map(|values| values.cloned().collect())
+            .unwrap_or_default();
+
+        let config_file = matches.get_one::<PathBuf>(Self::ARG_CONFIG_FILE).cloned();
 
         let include_fen_in_trie = matches.get_flag(Self::ARG_INCLUDE_FEN_IN_TRIE);
         let require_setup_for_fen = matches.get_flag(Self::ARG_REQUIRE_SETUP_FOR_FEN);
         let skip_malformed_fen = matches.get_flag(Self::ARG_SKIP_MALFORMED_FEN);
         let disable_tactic_from_fen = matches.get_flag(Self::ARG_DISABLE_TACTIC_FROM_FEN);
-        let max_rav_depth = matches
-            .get_one::<u32>(Self::ARG_MAX_RAV_DEPTH)
-            .copied()
-            .unwrap_or(DEFAULT_MAX_RAV_DEPTH);
+        let max_rav_depth = matches.get_one::<u32>(Self::ARG_MAX_RAV_DEPTH).copied();
 
         Self {
             inputs,
+            config_file,
             include_fen_in_trie,
             require_setup_for_fen,
             skip_malformed_fen,
@@ -160,15 +232,64 @@ impl CliArgs {
     }
 
     /// Converts the parsed CLI arguments into the runtime configuration and remaining inputs.
-    pub fn into_ingest_config(self) -> (IngestConfig, Vec<PathBuf>) {
-        let config = IngestConfig {
-            tactic_from_fen: !self.disable_tactic_from_fen,
-            include_fen_in_trie: self.include_fen_in_trie,
-            require_setup_for_fen: self.require_setup_for_fen,
-            skip_malformed_fen: self.skip_malformed_fen,
-            max_rav_depth: self.max_rav_depth,
-        };
+    pub fn into_ingest_config(self) -> ConfigResult<(IngestConfig, Vec<PathBuf>)> {
+        let CliArgs {
+            inputs,
+            config_file,
+            include_fen_in_trie,
+            require_setup_for_fen,
+            skip_malformed_fen,
+            disable_tactic_from_fen,
+            max_rav_depth,
+        } = self;
 
-        (config, self.inputs)
+        let mut config = IngestConfig::default();
+        let mut merged_inputs = Vec::new();
+
+        if let Some(path) = config_file {
+            let file_config = FileConfig::from_path(&path)?;
+            if let Some(file_inputs) = file_config.inputs {
+                merged_inputs.extend(file_inputs);
+            }
+            if let Some(value) = file_config.tactic_from_fen {
+                config.tactic_from_fen = value;
+            }
+            if let Some(value) = file_config.include_fen_in_trie {
+                config.include_fen_in_trie = value;
+            }
+            if let Some(value) = file_config.require_setup_for_fen {
+                config.require_setup_for_fen = value;
+            }
+            if let Some(value) = file_config.skip_malformed_fen {
+                config.skip_malformed_fen = value;
+            }
+            if let Some(value) = file_config.max_rav_depth {
+                config.max_rav_depth = value;
+            }
+        }
+
+        merged_inputs.extend(inputs);
+
+        if include_fen_in_trie {
+            config.include_fen_in_trie = true;
+        }
+        if require_setup_for_fen {
+            config.require_setup_for_fen = true;
+        }
+        if skip_malformed_fen {
+            config.skip_malformed_fen = true;
+        }
+        if disable_tactic_from_fen {
+            config.tactic_from_fen = false;
+        }
+        if let Some(depth) = max_rav_depth {
+            config.max_rav_depth = depth;
+        }
+
+        if merged_inputs.is_empty() {
+            return Err(ConfigError::NoInputs);
+        }
+
+        Ok((config, merged_inputs))
     }
 }
