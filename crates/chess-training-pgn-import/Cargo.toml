@@ -9,6 +9,8 @@ fnv       ="1"
 serde     ={ version="1", features=["derive"] }
 serde_json="1"
 toml      ="0.8"
+thiserror ="1"
+shakmaty     ="0.29"
 
 [dev-dependencies]
 tempfile="3"

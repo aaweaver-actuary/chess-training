@@ -2,6 +2,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use chess_training_pgn_import::config::{CliArgs, ConfigError, IngestConfig};
+use std::error::Error as _;
 use tempfile::NamedTempFile;
 
 #[test]
@@ -31,7 +32,7 @@ fn cli_parses_inputs_with_default_config() {
 
 #[test]
 fn cli_requires_at_least_one_input() {
-    let cli = CliArgs::try_parse_from(["pgn-import"]) 
+    let cli = CliArgs::try_parse_from(["pgn-import"])
         .expect("parsing should succeed to allow config-file usage");
 
     let err = cli
@@ -39,6 +40,15 @@ fn cli_requires_at_least_one_input() {
         .expect_err("conversion should fail when no inputs are provided");
 
     assert!(matches!(err, ConfigError::NoInputs));
+    assert_eq!(
+        err.to_string(),
+        "no PGN inputs were provided via CLI or config file",
+        "display should describe missing inputs"
+    );
+    assert!(
+        err.source().is_none(),
+        "no-input error should have no source"
+    );
 }
 
 #[test]
@@ -151,5 +161,132 @@ tactic_from_fen = false
     assert!(
         !config.tactic_from_fen,
         "file config should disable tactic extraction when CLI does not override"
+    );
+}
+
+#[test]
+fn config_loader_reports_io_errors_with_context() {
+    let cli = CliArgs::try_parse_from([
+        "pgn-import",
+        "--config-file",
+        "/definitely/not/present/config.toml",
+        "--input",
+        "fallback.pgn",
+    ])
+    .expect("CLI parsing should allow nonexistent config paths");
+
+    let err = cli
+        .into_ingest_config()
+        .expect_err("missing file should surface as an IO error");
+
+    if let ConfigError::Io { path, source } = &err {
+        assert!(
+            path.ends_with("config.toml"),
+            "error should preserve the requested config path"
+        );
+        assert_eq!(
+            source.kind(),
+            std::io::ErrorKind::NotFound,
+            "inner IO error should be a not-found"
+        );
+    } else {
+        panic!("expected IO error, got {err:?}");
+    }
+
+    let display = err.to_string();
+    assert!(
+        display.contains("failed to read config file"),
+        "Display implementation should describe IO failures"
+    );
+    assert!(
+        err.source().is_some(),
+        "IO errors should retain their source for debugging"
+    );
+}
+
+#[test]
+fn config_loader_reports_parse_errors_with_context() {
+    let mut file = NamedTempFile::new().expect("temp config should be created");
+    writeln!(file, "invalid = {{ this is = not }}")
+        .expect("temp config should accept invalid TOML for testing");
+    let path = file.into_temp_path();
+    let path_string = path.to_string_lossy().to_string();
+
+    let cli = CliArgs::try_parse_from([
+        "pgn-import",
+        "--config-file",
+        path.to_str().expect("path should be valid UTF-8"),
+        "--input",
+        "fallback.pgn",
+    ])
+    .expect("CLI parsing should allow invalid config contents");
+
+    let err = cli
+        .into_ingest_config()
+        .expect_err("invalid TOML should surface as a parse error");
+
+    if let ConfigError::Parse { path, source } = &err {
+        assert_eq!(
+            path,
+            &std::path::PathBuf::from(&path_string),
+            "parse error should report the temporary file path"
+        );
+        assert!(
+            source.to_string().contains("expected"),
+            "toml parse error should include diagnostic context"
+        );
+    } else {
+        panic!("expected parse error, got {err:?}");
+    }
+
+    let display = err.to_string();
+    assert!(
+        display.contains("failed to parse config file"),
+        "Display implementation should describe parse failures"
+    );
+    assert!(
+        err.source().is_some(),
+        "parse errors should retain their TOML error source"
+    );
+}
+
+#[test]
+fn config_file_flags_apply_when_cli_does_not_override() {
+    let mut file = NamedTempFile::new().expect("temp config should be created");
+    writeln!(
+        file,
+        r#"
+inputs = ["config-only.pgn"]
+require_setup_for_fen = true
+skip_malformed_fen = true
+max_rav_depth = 5
+"#
+    )
+    .expect("temp config should be writeable");
+    let path = file.into_temp_path();
+
+    let cli = CliArgs::try_parse_from([
+        "pgn-import",
+        "--config-file",
+        path.to_str().expect("path should be valid UTF-8"),
+    ])
+    .expect("CLI parsing should succeed when relying on config inputs");
+
+    let (config, inputs) = cli
+        .into_ingest_config()
+        .expect("config file should supply inputs and flags");
+
+    assert_eq!(inputs, vec![PathBuf::from("config-only.pgn")]);
+    assert!(
+        config.require_setup_for_fen,
+        "config file should enable the setup requirement"
+    );
+    assert!(
+        config.skip_malformed_fen,
+        "config file should enable skipping malformed FENs"
+    );
+    assert_eq!(
+        config.max_rav_depth, 5,
+        "config file depth should be preserved without CLI overrides"
     );
 }
