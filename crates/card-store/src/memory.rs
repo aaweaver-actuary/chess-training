@@ -202,10 +202,6 @@ impl InMemoryCardStore {
         }
     }
 
-    /// Filters and sorts cards that are due for review.
-    ///
-    /// Returns all cards belonging to `owner_id` with a due date on or before `as_of`.
-    /// Results are sorted by due date first, then by card ID for consistent ordering.
     fn collect_due_cards_for_owner(
         cards: &HashMap<u64, Card>,
         owner_id: &str,
@@ -340,6 +336,11 @@ impl InMemoryCardStore {
     }
 }
 
+/// Intermediate representation of review state changes before they are committed to a card's state.
+///
+/// This struct encapsulates the computed scheduling parameters (interval, ease factor, streak, and due date)
+/// derived from a review. It separates the calculation logic from the mutation of the card's state,
+/// allowing the transition to be validated or inspected before being applied.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct ReviewTransition {
     interval: NonZeroU8,
