@@ -22,6 +22,36 @@ fn sample_child_position() -> Position {
     .expect("valid child position")
 }
 
+/// Helper function to set up a card with the standard e2e4 edge for testing.
+/// Returns (store, card) tuple ready for review testing.
+fn setup_card_for_review(
+    review_date: NaiveDate,
+    initial_interval: NonZeroU8,
+    initial_ease: f32,
+) -> (InMemoryCardStore, card_store::model::Card) {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let position = store.upsert_position(sample_position()).unwrap();
+    let child = store.upsert_position(sample_child_position()).unwrap();
+    let edge = store
+        .upsert_edge(EdgeInput {
+            parent_id: position.id,
+            move_uci: "e2e4".to_string(),
+            move_san: "e4".to_string(),
+            child_id: child.id,
+        })
+        .unwrap();
+
+    let card = store
+        .create_opening_card(
+            "andy",
+            &edge,
+            CardState::new(review_date, initial_interval, initial_ease),
+        )
+        .unwrap();
+
+    (store, card)
+}
+
 #[test]
 fn position_creation_requires_valid_side_to_move() {
     let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", 0);
@@ -227,26 +257,8 @@ fn unlock_different_edges_on_same_day() {
 
 #[test]
 fn reviews_update_due_date_using_grade_logic() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
-    let position = store.upsert_position(sample_position()).unwrap();
-    let child = store.upsert_position(sample_child_position()).unwrap();
-    let edge = store
-        .upsert_edge(EdgeInput {
-            parent_id: position.id,
-            move_uci: "e2e4".to_string(),
-            move_san: "e4".to_string(),
-            child_id: child.id,
-        })
-        .unwrap();
-
     let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
-    let card = store
-        .create_opening_card(
-            "andy",
-            &edge,
-            CardState::new(review_date, NonZeroU8::new(1).unwrap(), 2.5),
-        )
-        .unwrap();
+    let (store, card) = setup_card_for_review(review_date, NonZeroU8::new(1).unwrap(), 2.5);
 
     let updated_card = store
         .record_review(ReviewRequest {
@@ -263,28 +275,10 @@ fn reviews_update_due_date_using_grade_logic() {
 
 #[test]
 fn grade_0_resets_interval_and_decreases_ease_factor() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
-    let position = store.upsert_position(sample_position()).unwrap();
-    let child = store.upsert_position(sample_child_position()).unwrap();
-    let edge = store
-        .upsert_edge(EdgeInput {
-            parent_id: position.id,
-            move_uci: "e2e4".to_string(),
-            move_san: "e4".to_string(),
-            child_id: child.id,
-        })
-        .unwrap();
-
     let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
     let initial_interval = NonZeroU8::new(5).unwrap();
     let initial_ease = 2.5;
-    let card = store
-        .create_opening_card(
-            "andy",
-            &edge,
-            CardState::new(review_date, initial_interval, initial_ease),
-        )
-        .unwrap();
+    let (store, card) = setup_card_for_review(review_date, initial_interval, initial_ease);
 
     let updated_card = store
         .record_review(ReviewRequest {
@@ -310,28 +304,10 @@ fn grade_0_resets_interval_and_decreases_ease_factor() {
 
 #[test]
 fn grade_1_resets_interval_with_smaller_ease_penalty() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
-    let position = store.upsert_position(sample_position()).unwrap();
-    let child = store.upsert_position(sample_child_position()).unwrap();
-    let edge = store
-        .upsert_edge(EdgeInput {
-            parent_id: position.id,
-            move_uci: "e2e4".to_string(),
-            move_san: "e4".to_string(),
-            child_id: child.id,
-        })
-        .unwrap();
-
     let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
     let initial_interval = NonZeroU8::new(10).unwrap();
     let initial_ease = 2.0;
-    let card = store
-        .create_opening_card(
-            "andy",
-            &edge,
-            CardState::new(review_date, initial_interval, initial_ease),
-        )
-        .unwrap();
+    let (store, card) = setup_card_for_review(review_date, initial_interval, initial_ease);
 
     let updated_card = store
         .record_review(ReviewRequest {
@@ -352,28 +328,10 @@ fn grade_1_resets_interval_with_smaller_ease_penalty() {
 
 #[test]
 fn grade_2_maintains_interval_with_small_ease_penalty() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
-    let position = store.upsert_position(sample_position()).unwrap();
-    let child = store.upsert_position(sample_child_position()).unwrap();
-    let edge = store
-        .upsert_edge(EdgeInput {
-            parent_id: position.id,
-            move_uci: "e2e4".to_string(),
-            move_san: "e4".to_string(),
-            child_id: child.id,
-        })
-        .unwrap();
-
     let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
     let initial_interval = NonZeroU8::new(7).unwrap();
     let initial_ease = 2.5;
-    let card = store
-        .create_opening_card(
-            "andy",
-            &edge,
-            CardState::new(review_date, initial_interval, initial_ease),
-        )
-        .unwrap();
+    let (store, card) = setup_card_for_review(review_date, initial_interval, initial_ease);
 
     let updated_card = store
         .record_review(ReviewRequest {
@@ -399,28 +357,10 @@ fn grade_2_maintains_interval_with_small_ease_penalty() {
 
 #[test]
 fn grade_3_increments_interval_and_streak() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
-    let position = store.upsert_position(sample_position()).unwrap();
-    let child = store.upsert_position(sample_child_position()).unwrap();
-    let edge = store
-        .upsert_edge(EdgeInput {
-            parent_id: position.id,
-            move_uci: "e2e4".to_string(),
-            move_san: "e4".to_string(),
-            child_id: child.id,
-        })
-        .unwrap();
-
     let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
     let initial_interval = NonZeroU8::new(3).unwrap();
     let initial_ease = 2.5;
-    let card = store
-        .create_opening_card(
-            "andy",
-            &edge,
-            CardState::new(review_date, initial_interval, initial_ease),
-        )
-        .unwrap();
+    let (store, card) = setup_card_for_review(review_date, initial_interval, initial_ease);
 
     let updated_card = store
         .record_review(ReviewRequest {
@@ -446,29 +386,11 @@ fn grade_3_increments_interval_and_streak() {
 
 #[test]
 fn grade_0_clamps_ease_factor_to_minimum() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
-    let position = store.upsert_position(sample_position()).unwrap();
-    let child = store.upsert_position(sample_child_position()).unwrap();
-    let edge = store
-        .upsert_edge(EdgeInput {
-            parent_id: position.id,
-            move_uci: "e2e4".to_string(),
-            move_san: "e4".to_string(),
-            child_id: child.id,
-        })
-        .unwrap();
-
     let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
     let initial_interval = NonZeroU8::new(5).unwrap();
     // Start with ease_factor near minimum
     let initial_ease = 1.4;
-    let card = store
-        .create_opening_card(
-            "andy",
-            &edge,
-            CardState::new(review_date, initial_interval, initial_ease),
-        )
-        .unwrap();
+    let (store, card) = setup_card_for_review(review_date, initial_interval, initial_ease);
 
     let updated_card = store
         .record_review(ReviewRequest {
@@ -485,29 +407,11 @@ fn grade_0_clamps_ease_factor_to_minimum() {
 
 #[test]
 fn grade_4_clamps_ease_factor_to_maximum() {
-    let store = InMemoryCardStore::new(StorageConfig::default());
-    let position = store.upsert_position(sample_position()).unwrap();
-    let child = store.upsert_position(sample_child_position()).unwrap();
-    let edge = store
-        .upsert_edge(EdgeInput {
-            parent_id: position.id,
-            move_uci: "e2e4".to_string(),
-            move_san: "e4".to_string(),
-            child_id: child.id,
-        })
-        .unwrap();
-
     let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
     let initial_interval = NonZeroU8::new(5).unwrap();
     // Start with ease_factor near maximum
     let initial_ease = 2.7;
-    let card = store
-        .create_opening_card(
-            "andy",
-            &edge,
-            CardState::new(review_date, initial_interval, initial_ease),
-        )
-        .unwrap();
+    let (store, card) = setup_card_for_review(review_date, initial_interval, initial_ease);
 
     let updated_card = store
         .record_review(ReviewRequest {
