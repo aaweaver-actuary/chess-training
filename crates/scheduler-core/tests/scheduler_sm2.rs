@@ -151,13 +151,17 @@ fn relearning_card_graduates_on_good_review() {
     store.upsert_card(card);
 
     let mut scheduler = Scheduler::new(store, config.clone());
-    
+
     // Review with Good - should graduate back to Review state
     let outcome = scheduler
         .review(card_id, ReviewGrade::Good, today)
         .expect("review should succeed");
 
-    assert_eq!(outcome.card.state, CardState::Review, "Card should graduate from Relearning to Review after Good grade");
+    assert_eq!(
+        outcome.card.state,
+        CardState::Review,
+        "Card should graduate from Relearning to Review after Good grade"
+    );
     assert_eq!(outcome.card.reviews, 6);
     assert_eq!(outcome.card.lapses, 1);
 }
@@ -180,12 +184,16 @@ fn relearning_card_graduates_on_hard_review() {
     store.upsert_card(card);
 
     let mut scheduler = Scheduler::new(store, config.clone());
-    
+
     let outcome = scheduler
         .review(card_id, ReviewGrade::Hard, today)
         .expect("review should succeed");
 
-    assert_eq!(outcome.card.state, CardState::Review, "Card should graduate from Relearning to Review after Hard grade");
+    assert_eq!(
+        outcome.card.state,
+        CardState::Review,
+        "Card should graduate from Relearning to Review after Hard grade"
+    );
 }
 
 #[test]
@@ -206,10 +214,14 @@ fn relearning_card_graduates_on_easy_review() {
     store.upsert_card(card);
 
     let mut scheduler = Scheduler::new(store, config.clone());
-    
+
     let outcome = scheduler
         .review(card_id, ReviewGrade::Easy, today)
         .expect("review should succeed");
 
-    assert_eq!(outcome.card.state, CardState::Review, "Card should graduate from Relearning to Review after Easy grade");
+    assert_eq!(
+        outcome.card.state,
+        CardState::Review,
+        "Card should graduate from Relearning to Review after Easy grade"
+    );
 }
