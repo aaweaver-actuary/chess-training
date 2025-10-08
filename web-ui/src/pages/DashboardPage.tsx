@@ -11,7 +11,7 @@ type DashboardPageProps = {
 };
 
 const buildLinkClass = (enabled: boolean): string =>
-  enabled ? 'nav-link' : 'nav-link nav-link-disabled';
+  enabled ? 'nav-link floating-action' : 'nav-link floating-action nav-link-disabled';
 
 export const DashboardPage: FC<DashboardPageProps> = ({
   overview,

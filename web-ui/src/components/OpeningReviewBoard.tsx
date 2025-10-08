@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { Move } from 'chess.js';
 import { Chess } from 'chess.js';
 
@@ -27,6 +27,10 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
   const gameRef = useRef(new Chess(card.position_fen));
   const expectedMovesRef = useRef<string[]>(card.expected_moves_uci ?? []);
   const startedAtRef = useRef<number>(performance.now());
+  const lichessAnalysisUrl = useMemo(
+    () => `https://lichess.org/analysis/standard/${encodeURIComponent(card.position_fen)}`,
+    [card.position_fen],
+  );
 
   useEffect(() => {
     expectedMovesRef.current = card.expected_moves_uci ?? [];
@@ -66,12 +70,23 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
   }, [card, onResult]);
 
   return (
-    <chess-board
-      data-testid="opening-review-board"
-      ref={boardRef}
-      style={{ width: 'min(90vw, 560px)' }}
-      position={card.position_fen}
-    />
+    <div className="opening-review-board">
+      <a
+        aria-label="Open position on Lichess"
+        className="floating-action lichess-shortcut"
+        href={lichessAnalysisUrl}
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        ♞
+      </a>
+      <chess-board
+        className="opening-review-board__board"
+        data-testid="opening-review-board"
+        ref={boardRef}
+        position={card.position_fen}
+      />
+    </div>
   );
 }
 
