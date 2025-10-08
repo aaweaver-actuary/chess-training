@@ -91,9 +91,7 @@ impl fmt::Display for ConfigError {
         match self {
             Self::Io(error) => fmt::Display::fmt(error, f),
             Self::Parse(error) => fmt::Display::fmt(error, f),
-            Self::NoInputs => {
-                write!(f, "no PGN inputs were provided via CLI or config file")
-            }
+            Self::NoInputs => write!(f, "no PGN inputs were provided via CLI or config file"),
         }
     }
 }
