@@ -38,21 +38,30 @@ fn position_creation_fails_with_missing_fields() {
 #[test]
 fn position_creation_fails_with_invalid_characters() {
     // Invalid character 'X' in FEN
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
 #[test]
 fn position_creation_fails_with_extra_whitespace() {
     // Extra whitespace between fields
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w KQkq - 0 1", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w KQkq - 0 1",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
 #[test]
 fn position_creation_fails_with_too_many_fields() {
     // Too many fields in FEN
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra", 0);
+    let result = Position::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra",
+        0,
+    );
     assert!(matches!(result, Err(_)));
 }
 
@@ -177,4 +186,265 @@ fn reviews_update_due_date_using_grade_logic() {
     assert!(updated_card.state.due_on > review_date);
     assert_eq!(updated_card.state.last_reviewed_on, Some(review_date));
     assert_eq!(updated_card.state.consecutive_correct, 1);
+}
+
+#[test]
+fn grade_0_resets_interval_and_decreases_ease_factor() {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let position = store.upsert_position(sample_position()).unwrap();
+    let child = store.upsert_position(sample_child_position()).unwrap();
+    let edge = store
+        .upsert_edge(EdgeInput {
+            parent_id: position.id,
+            move_uci: "e2e4".to_string(),
+            move_san: "e4".to_string(),
+            child_id: child.id,
+        })
+        .unwrap();
+
+    let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
+    let initial_interval = NonZeroU8::new(5).unwrap();
+    let initial_ease = 2.5;
+    let card = store
+        .create_opening_card(
+            "andy",
+            &edge,
+            CardState::new(review_date, initial_interval, initial_ease),
+        )
+        .unwrap();
+
+    let updated_card = store
+        .record_review(ReviewRequest {
+            card_id: card.id,
+            reviewed_on: review_date,
+            grade: 0,
+        })
+        .unwrap();
+
+    // Grade 0: interval resets to 1
+    assert_eq!(updated_card.state.interval.get(), 1);
+    // Grade 0: ease_factor decreases by -0.3, clamped to 1.3 minimum
+    assert_eq!(updated_card.state.ease_factor, 2.2); // 2.5 - 0.3 = 2.2
+    // Grade 0: consecutive_correct resets to 0
+    assert_eq!(updated_card.state.consecutive_correct, 0);
+    assert_eq!(updated_card.state.last_reviewed_on, Some(review_date));
+    // Due date should be review_date + 1 day
+    assert_eq!(
+        updated_card.state.due_on,
+        review_date + chrono::Duration::days(1)
+    );
+}
+
+#[test]
+fn grade_1_resets_interval_with_smaller_ease_penalty() {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let position = store.upsert_position(sample_position()).unwrap();
+    let child = store.upsert_position(sample_child_position()).unwrap();
+    let edge = store
+        .upsert_edge(EdgeInput {
+            parent_id: position.id,
+            move_uci: "e2e4".to_string(),
+            move_san: "e4".to_string(),
+            child_id: child.id,
+        })
+        .unwrap();
+
+    let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
+    let initial_interval = NonZeroU8::new(10).unwrap();
+    let initial_ease = 2.0;
+    let card = store
+        .create_opening_card(
+            "andy",
+            &edge,
+            CardState::new(review_date, initial_interval, initial_ease),
+        )
+        .unwrap();
+
+    let updated_card = store
+        .record_review(ReviewRequest {
+            card_id: card.id,
+            reviewed_on: review_date,
+            grade: 1,
+        })
+        .unwrap();
+
+    // Grade 1: interval resets to 1
+    assert_eq!(updated_card.state.interval.get(), 1);
+    // Grade 1: ease_factor decreases by -0.15
+    assert_eq!(updated_card.state.ease_factor, 1.85); // 2.0 - 0.15 = 1.85
+    // Grade 1: consecutive_correct resets to 0
+    assert_eq!(updated_card.state.consecutive_correct, 0);
+    assert_eq!(updated_card.state.last_reviewed_on, Some(review_date));
+}
+
+#[test]
+fn grade_2_maintains_interval_with_small_ease_penalty() {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let position = store.upsert_position(sample_position()).unwrap();
+    let child = store.upsert_position(sample_child_position()).unwrap();
+    let edge = store
+        .upsert_edge(EdgeInput {
+            parent_id: position.id,
+            move_uci: "e2e4".to_string(),
+            move_san: "e4".to_string(),
+            child_id: child.id,
+        })
+        .unwrap();
+
+    let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
+    let initial_interval = NonZeroU8::new(7).unwrap();
+    let initial_ease = 2.5;
+    let card = store
+        .create_opening_card(
+            "andy",
+            &edge,
+            CardState::new(review_date, initial_interval, initial_ease),
+        )
+        .unwrap();
+
+    let updated_card = store
+        .record_review(ReviewRequest {
+            card_id: card.id,
+            reviewed_on: review_date,
+            grade: 2,
+        })
+        .unwrap();
+
+    // Grade 2: interval remains the same
+    assert_eq!(updated_card.state.interval.get(), 7);
+    // Grade 2: ease_factor decreases by -0.05
+    assert_eq!(updated_card.state.ease_factor, 2.45); // 2.5 - 0.05 = 2.45
+    // Grade 2: consecutive_correct resets to 0
+    assert_eq!(updated_card.state.consecutive_correct, 0);
+    assert_eq!(updated_card.state.last_reviewed_on, Some(review_date));
+    // Due date should be review_date + 7 days
+    assert_eq!(
+        updated_card.state.due_on,
+        review_date + chrono::Duration::days(7)
+    );
+}
+
+#[test]
+fn grade_3_increments_interval_and_streak() {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let position = store.upsert_position(sample_position()).unwrap();
+    let child = store.upsert_position(sample_child_position()).unwrap();
+    let edge = store
+        .upsert_edge(EdgeInput {
+            parent_id: position.id,
+            move_uci: "e2e4".to_string(),
+            move_san: "e4".to_string(),
+            child_id: child.id,
+        })
+        .unwrap();
+
+    let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
+    let initial_interval = NonZeroU8::new(3).unwrap();
+    let initial_ease = 2.5;
+    let card = store
+        .create_opening_card(
+            "andy",
+            &edge,
+            CardState::new(review_date, initial_interval, initial_ease),
+        )
+        .unwrap();
+
+    let updated_card = store
+        .record_review(ReviewRequest {
+            card_id: card.id,
+            reviewed_on: review_date,
+            grade: 3,
+        })
+        .unwrap();
+
+    // Grade 3: interval increments by 1
+    assert_eq!(updated_card.state.interval.get(), 4); // 3 + 1 = 4
+    // Grade 3: ease_factor remains unchanged (delta = 0.0)
+    assert_eq!(updated_card.state.ease_factor, 2.5);
+    // Grade 3: consecutive_correct increments
+    assert_eq!(updated_card.state.consecutive_correct, 1);
+    assert_eq!(updated_card.state.last_reviewed_on, Some(review_date));
+    // Due date should be review_date + 4 days
+    assert_eq!(
+        updated_card.state.due_on,
+        review_date + chrono::Duration::days(4)
+    );
+}
+
+#[test]
+fn grade_0_clamps_ease_factor_to_minimum() {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let position = store.upsert_position(sample_position()).unwrap();
+    let child = store.upsert_position(sample_child_position()).unwrap();
+    let edge = store
+        .upsert_edge(EdgeInput {
+            parent_id: position.id,
+            move_uci: "e2e4".to_string(),
+            move_san: "e4".to_string(),
+            child_id: child.id,
+        })
+        .unwrap();
+
+    let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
+    let initial_interval = NonZeroU8::new(5).unwrap();
+    // Start with ease_factor near minimum
+    let initial_ease = 1.4;
+    let card = store
+        .create_opening_card(
+            "andy",
+            &edge,
+            CardState::new(review_date, initial_interval, initial_ease),
+        )
+        .unwrap();
+
+    let updated_card = store
+        .record_review(ReviewRequest {
+            card_id: card.id,
+            reviewed_on: review_date,
+            grade: 0,
+        })
+        .unwrap();
+
+    // Grade 0: ease_factor decreases by -0.3, but should be clamped to 1.3 minimum
+    // 1.4 - 0.3 = 1.1, but clamped to 1.3
+    assert_eq!(updated_card.state.ease_factor, 1.3);
+}
+
+#[test]
+fn grade_4_clamps_ease_factor_to_maximum() {
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let position = store.upsert_position(sample_position()).unwrap();
+    let child = store.upsert_position(sample_child_position()).unwrap();
+    let edge = store
+        .upsert_edge(EdgeInput {
+            parent_id: position.id,
+            move_uci: "e2e4".to_string(),
+            move_san: "e4".to_string(),
+            child_id: child.id,
+        })
+        .unwrap();
+
+    let review_date = NaiveDate::from_ymd_opt(2024, 2, 10).unwrap();
+    let initial_interval = NonZeroU8::new(5).unwrap();
+    // Start with ease_factor near maximum
+    let initial_ease = 2.7;
+    let card = store
+        .create_opening_card(
+            "andy",
+            &edge,
+            CardState::new(review_date, initial_interval, initial_ease),
+        )
+        .unwrap();
+
+    let updated_card = store
+        .record_review(ReviewRequest {
+            card_id: card.id,
+            reviewed_on: review_date,
+            grade: 4,
+        })
+        .unwrap();
+
+    // Grade 4: ease_factor increases by 0.15, but should be clamped to 2.8 maximum
+    // 2.7 + 0.15 = 2.85, but clamped to 2.8
+    assert_eq!(updated_card.state.ease_factor, 2.8);
 }
