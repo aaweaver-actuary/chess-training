@@ -11,3 +11,7 @@ test:
 	npm --prefix web-ui run lint
 	npm --prefix web-ui run typecheck
 	npm --prefix web-ui run test:coverage
+	npm --prefix apps/session-gateway run format:check
+	npm --prefix apps/session-gateway run lint
+	npm --prefix apps/session-gateway run typecheck
+	npm --prefix apps/session-gateway run test:coverage

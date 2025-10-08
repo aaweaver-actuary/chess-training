@@ -5,10 +5,10 @@ use crate::model::{Edge, Position, RepertoireEdge, Tactic};
 /// Trait for abstracting storage of chess training data, such as positions, edges, repertoire edges, and tactics.
 ///
 /// The `upsert_*` methods insert or update the given item in the storage.
-/// 
+///
 /// # Return value semantics
 /// Each `upsert_*` method returns `true` if the item was newly inserted, and `false` if it replaced an existing item.
-/// 
+///
 /// # Expected behavior
 /// Implementors should ensure that the storage is updated with the provided item, and that the return value accurately reflects
 /// whether the item was newly added or replaced an existing entry.
