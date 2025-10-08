@@ -13,6 +13,17 @@ describe('OpeningReviewBoard', () => {
     expected_moves_uci: ['c1g5'],
   };
 
+  it('links to the Lichess analysis board for the current position', () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
+
+    const shortcut = screen.getByRole('link', { name: /open position on lichess/i });
+    expect(shortcut).toHaveAttribute(
+      'href',
+      `https://lichess.org/analysis/standard/${encodeURIComponent(baseCard.position_fen)}`,
+    );
+  });
+
   it('reports success when the expected move is played', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
