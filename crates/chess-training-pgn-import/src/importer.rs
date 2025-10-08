@@ -7,6 +7,16 @@ use crate::model::{Edge, Position as ModelPosition, RepertoireEdge, Tactic};
 use crate::storage::{InMemoryStore, Storage};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Tracks various metrics during the import process.
+///
+/// - `games_total`: The total number of games processed.
+/// - `opening_positions`: The number of unique opening positions inserted.
+/// - `opening_edges`: The number of opening edges (moves) inserted.
+/// - `repertoire_edges`: The number of repertoire edges (moves) inserted.
+/// - `tactics`: The number of tactics inserted.
+///
+/// These metrics are incremented when the corresponding items are successfully inserted
+/// during the import process, as tracked by the `note_*` methods.
 pub struct ImportMetrics {
     pub games_total: usize,
     pub opening_positions: usize,
