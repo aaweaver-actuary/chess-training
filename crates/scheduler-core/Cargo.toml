@@ -1,6 +1,12 @@
 [package]
-name = "scheduler-core"
-version = "0.1.0"
-edition = "2024"
+edition="2024"
+name   ="scheduler-core"
+version="0.1.0"
 
 [dependencies]
+chrono   ="0.4"
+thiserror="1"
+uuid     ={ version="1", features=["v4"] }
+
+[dev-dependencies]
+maplit="1"
