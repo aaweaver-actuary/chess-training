@@ -1,85 +1,109 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
 import './App.css';
-import { ReviewDashboard } from './components/ReviewDashboard';
 import { sampleSnapshot } from './fixtures/sampleSnapshot';
+import { DashboardPage } from './pages/DashboardPage';
+import { OpeningReviewPage } from './pages/OpeningReviewPage';
 import { ReviewPlanner } from './services/ReviewPlanner';
-import type { ReviewGrade } from './types/gateway';
+import type { CardSummary, ReviewGrade } from './types/gateway';
 import { sessionStore } from './state/sessionStore';
 
 const planner = new ReviewPlanner();
+const baselineOverview = planner.buildOverview(sampleSnapshot);
 
-const gradeLabels: ReviewGrade[] = ['Again', 'Hard', 'Good', 'Easy'];
+const useSessionState = () =>
+  useSyncExternalStore(sessionStore.subscribe, sessionStore.getState, sessionStore.getState);
 
-function useSessionState() {
-  return useSyncExternalStore(sessionStore.subscribe, sessionStore.getState, sessionStore.getState);
-}
+const buildOverview = (stats: ReturnType<typeof sessionStore.getState>['stats']) => {
+  const baseline = baselineOverview;
+  if (!stats) {
+    return baseline;
+  }
 
-function App(): JSX.Element {
-  const session = useSessionState();
-  const { stats, currentCard, start, submitGrade } = session;
+  const totalDue = stats.due_count;
+  const completed = stats.completed_count;
+  const remaining = Math.max(totalDue - completed, 0);
+  const completionRate = totalDue === 0 ? 1 : completed / totalDue;
+
+  return {
+    ...baseline,
+    progress: {
+      ...baseline.progress,
+      totalDue,
+      completedToday: completed,
+      remaining,
+      completionRate,
+      accuracyRate: stats.accuracy,
+    },
+  };
+};
+
+const useStartTimestamp = (card?: CardSummary) => {
   const startedAtRef = useRef<number>(performance.now());
-
-  const baselineOverview = useMemo(() => planner.buildOverview(sampleSnapshot), []);
-  const overview = useMemo(() => {
-    if (!stats) {
-      return baselineOverview;
+  useEffect(() => {
+    if (card) {
+      startedAtRef.current = performance.now();
     }
+  }, [card]);
+  return startedAtRef;
+};
 
-    const totalDue = stats.due_count;
-    const completed = stats.completed_count;
-    const remaining = Math.max(totalDue - completed, 0);
-    const completionRate = totalDue === 0 ? 1 : completed / totalDue;
-
-    return {
-      ...baselineOverview,
-      progress: {
-        ...baselineOverview.progress,
-        totalDue,
-        completedToday: completed,
-        remaining,
-        completionRate,
-        accuracyRate: stats.accuracy,
-      },
-    };
-  }, [baselineOverview, stats]);
-
+const useSessionLifecycle = (start: (userId: string) => Promise<void>) => {
   useEffect(() => {
     void start('demo-user');
   }, [start]);
+};
 
-  useEffect(() => {
-    if (currentCard) {
-      startedAtRef.current = performance.now();
-    }
-  }, [currentCard]);
+const SessionRoutes = () => {
+  const session = useSessionState();
+  const { stats, currentCard, start, submitGrade } = session;
+  useSessionLifecycle(start);
+
+  const startedAtRef = useStartTimestamp(currentCard);
+
+  const overview = useMemo(() => buildOverview(stats), [stats]);
+  const canStartOpening = currentCard?.kind === 'Opening';
+  const openingCard = canStartOpening ? currentCard : undefined;
 
   const handleGrade = (grade: ReviewGrade) => {
     const latency = Math.max(0, Math.round(performance.now() - startedAtRef.current));
     void submitGrade(grade, latency);
   };
 
+  const handleBoardResult = (grade: ReviewGrade, latencyMs: number) => {
+    void submitGrade(grade, latencyMs);
+  };
+
   return (
-    <main className="app-shell">
-      <ReviewDashboard overview={overview} />
-      <section aria-label="Review controls" className="review-controls">
-        <h2>Grade Current Card</h2>
-        <div className="grade-buttons">
-          {gradeLabels.map((grade) => (
-            <button
-              key={grade}
-              type="button"
-              onClick={() => {
-                handleGrade(grade);
-              }}
-            >
-              {grade}
-            </button>
-          ))}
-        </div>
-      </section>
-    </main>
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route
+        path="/dashboard"
+        element={
+          <DashboardPage
+            overview={overview}
+            openingPath="/review/opening"
+            canStartOpening={canStartOpening}
+          />
+        }
+      />
+      <Route
+        path="/review/opening"
+        element={
+          <OpeningReviewPage
+            card={openingCard}
+            onGrade={handleGrade}
+            onBoardResult={handleBoardResult}
+            backPath="/dashboard"
+          />
+        }
+      />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
-}
+};
+
+const App = (): JSX.Element => <SessionRoutes />;
 
 export default App;

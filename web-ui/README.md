@@ -22,6 +22,16 @@ npm run dev
 
 Visit `http://localhost:5173` and the dashboard will load the built-in sample snapshot.
 
+### Sample PGN
+
+For smoke testing the opening board, a small PGN lives at `public/samples/training-sample.pgn`:
+
+```
+1. h3 h6 2. h4 h5 3. e3 e6 4. Ke2 Ke7
+```
+
+You can import it into any chess GUI to confirm that the board accepts manual moves end-to-end.
+
 ## Quality gates
 
 The project follows a strict test-first workflow. The commands below are composed inside the

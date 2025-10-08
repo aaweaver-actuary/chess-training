@@ -30,8 +30,10 @@ describe('sessionGateway', () => {
       }),
     );
     const [, init] = fetchMock.mock.calls[0];
-    expect(init?.headers).toBeInstanceOf(Headers);
-    expect((init?.headers as Headers).get('content-type')).toBe('application/json');
+    expect(init).toBeDefined();
+    const headers = (init as RequestInit).headers;
+    expect(headers).toBeInstanceOf(Headers);
+    expect((headers as Headers).get('content-type')).toBe('application/json');
     expect(result).toEqual(responseBody);
   });
 
@@ -57,8 +59,10 @@ describe('sessionGateway', () => {
       }),
     );
     const [, gradeInit] = fetchMock.mock.calls[0];
-    expect(gradeInit?.headers).toBeInstanceOf(Headers);
-    expect((gradeInit?.headers as Headers).get('content-type')).toBe('application/json');
+    expect(gradeInit).toBeDefined();
+    const gradeHeaders = (gradeInit as RequestInit).headers;
+    expect(gradeHeaders).toBeInstanceOf(Headers);
+    expect((gradeHeaders as Headers).get('content-type')).toBe('application/json');
     expect(result).toEqual(responseBody);
   });
 
