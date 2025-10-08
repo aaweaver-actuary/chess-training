@@ -198,6 +198,24 @@ describe('session gateway', () => {
     expect(gradeResponse.body.stats.accuracy).toBeCloseTo(1);
   });
 
+  it('rejects grading with an invalid card id for an existing session', async () => {
+    ({ server, baseUrl } = await startGateway());
+    const startResponse = await startSession(baseUrl);
+
+    const invalidCardId = 'invalid_card_id';
+    const response = await request(baseUrl)
+      .post('/api/session/grade')
+      .send({
+        session_id: startResponse.body.session_id,
+        card_id: invalidCardId,
+        grade: 'Good',
+      });
+
+    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(response.body).toHaveProperty('error');
+    await closeGateway(server);
+  });
+
   it('returns aggregated session stats', async () => {
     ({ server, baseUrl } = await startGateway());
     const startResponse = await startSession(baseUrl);
