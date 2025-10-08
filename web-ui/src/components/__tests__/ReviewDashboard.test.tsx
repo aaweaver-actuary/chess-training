@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { ReviewDashboard } from '../ReviewDashboard';
+import { UNLOCK_DATE_FALLBACK_LABEL } from '../../utils/formatUnlockDate';
 import type { ReviewOverview } from '../../services/ReviewPlanner';
 
 describe('ReviewDashboard', () => {
@@ -61,6 +62,26 @@ describe('ReviewDashboard', () => {
     expect(items[0]).toHaveTextContent('Queens pawn space gain');
     expect(items[1]).toHaveTextContent('c4');
     expect(items[1]).toHaveTextContent('English transposition');
+  });
+
+  it('falls back to a friendly label when an unlock date is invalid', () => {
+    render(
+      <ReviewDashboard
+        overview={{
+          ...overview,
+          upcomingUnlocks: [
+            {
+              id: 'unlock-3',
+              move: 'Bb5+',
+              idea: 'Sicilian Rossolimo pin motif',
+              scheduledFor: 'not-a-date',
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText(UNLOCK_DATE_FALLBACK_LABEL)).toBeInTheDocument();
   });
 
   it('communicates cleared backlog and critical accuracy states', () => {

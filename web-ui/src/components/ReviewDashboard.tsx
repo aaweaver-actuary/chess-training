@@ -1,6 +1,7 @@
 import type { FC } from 'react';
 
 import type { ReviewOverview } from '../services/ReviewPlanner';
+import { formatUnlockDate } from '../utils/formatUnlockDate';
 
 type MetricCardProps = {
   title: string;
@@ -72,10 +73,7 @@ export const ReviewDashboard: FC<ReviewDashboardProps> = ({ overview }) => {
                 <p className="unlock-idea">{unlock.idea}</p>
               </div>
               <time dateTime={unlock.scheduledFor} className="unlock-date">
-                {new Date(unlock.scheduledFor).toLocaleDateString(undefined, {
-                  month: 'short',
-                  day: 'numeric',
-                })}
+                {formatUnlockDate(unlock.scheduledFor)}
               </time>
             </li>
           ))}

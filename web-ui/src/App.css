@@ -3,16 +3,10 @@
   margin: 0;
   display: flex;
   justify-content: center;
-  background: radial-gradient(circle at top, #1a2a6c, #162447);
-  padding: 3rem 1rem;
-  font-family:
-    'Inter',
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
-  color: #f7f9fc;
+  background: var(--color-app-shell-background);
+  padding: var(--space-page) 1rem;
+  font-family: var(--font-family-base);
+  color: var(--color-text-primary);
 }
 
 .app-shell {
@@ -20,27 +14,27 @@
 }
 
 .dashboard {
-  background: rgba(18, 22, 43, 0.92);
-  border-radius: 20px;
-  padding: 2.5rem;
-  box-shadow: 0 24px 60px rgba(3, 6, 20, 0.45);
+  background: var(--color-surface);
+  border-radius: var(--radius-large);
+  padding: var(--space-section);
+  box-shadow: var(--shadow-elevated);
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: var(--space-gap-large);
 }
 
 .dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-gap-small);
 }
 
 .dashboard-subtitle {
   text-transform: uppercase;
   letter-spacing: 0.3rem;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-text-soft);
   margin: 0 0 0.5rem;
 }
 
@@ -59,51 +53,51 @@
 }
 
 .badge-cleared {
-  background: rgba(56, 178, 172, 0.25);
-  color: #38b2ac;
+  background: var(--badge-cleared-bg);
+  color: var(--badge-cleared-fg);
 }
 
 .badge-low {
-  background: rgba(76, 175, 80, 0.25);
-  color: #4caf50;
+  background: var(--badge-low-bg);
+  color: var(--badge-low-fg);
 }
 
 .badge-moderate {
-  background: rgba(255, 193, 7, 0.25);
-  color: #ffc107;
+  background: var(--badge-moderate-bg);
+  color: var(--badge-moderate-fg);
 }
 
 .badge-high {
-  background: rgba(244, 67, 54, 0.25);
-  color: #f44336;
+  background: var(--badge-high-bg);
+  color: var(--badge-high-fg);
 }
 
 .badge-stable {
-  background: rgba(76, 175, 80, 0.2);
-  color: #a0f0c5;
+  background: var(--badge-stable-bg);
+  color: var(--badge-stable-fg);
 }
 
 .badge-watch {
-  background: rgba(255, 152, 0, 0.2);
-  color: #ffcc80;
+  background: var(--badge-watch-bg);
+  color: var(--badge-watch-fg);
 }
 
 .badge-critical {
-  background: rgba(244, 67, 54, 0.2);
-  color: #ff8a80;
+  background: var(--badge-critical-bg);
+  color: var(--badge-critical-fg);
 }
 
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 1.5rem;
+  gap: var(--space-gap-medium);
 }
 
 .metric-card {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
+  background: var(--color-surface-subtle);
+  border-radius: var(--radius-medium);
   padding: 1.5rem;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow: var(--shadow-inset);
 }
 
 .metric-title {
@@ -111,7 +105,7 @@
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-text-soft);
 }
 
 .metric-value {
@@ -123,7 +117,7 @@
 .metric-description {
   margin: 0;
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-text-muted);
 }
 
 .recommendation h2,
@@ -141,14 +135,14 @@
 
 .secondary-action {
   margin: 0.75rem 0 0;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-text-muted);
 }
 
 .section-heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-gap-small);
 }
 
 .upcoming ul {
@@ -157,18 +151,18 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-gap-small);
 }
 
 .unlock-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 14px;
+  gap: var(--space-gap-small);
+  background: var(--color-surface-subtle);
+  border-radius: var(--radius-compact);
   padding: 1rem 1.25rem;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow: var(--shadow-inset);
 }
 
 .unlock-move {
@@ -179,13 +173,13 @@
 
 .unlock-idea {
   margin: 0.25rem 0 0;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-text-muted);
   max-width: 460px;
 }
 
 .unlock-date {
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-text-soft);
 }
 
 @media (max-width: 720px) {

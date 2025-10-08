@@ -35,6 +35,80 @@ export type ReviewOverview = {
   upcomingUnlocks: UpcomingUnlock[];
 };
 
+type Recommendation = ReviewOverview['recommendation'];
+
+type RecommendationContext = {
+  backlog: BacklogPressure;
+  accuracy: AccuracyRisk;
+  streakLength: number;
+  remaining: number;
+};
+
+type RecommendationRule = {
+  backlog?: BacklogPressure;
+  accuracy?: AccuracyRisk;
+  predicate?: (context: RecommendationContext) => boolean;
+  recommendation: Recommendation;
+};
+
+const RECOMMENDATION_RULES: RecommendationRule[] = [
+  {
+    backlog: 'high',
+    recommendation: {
+      primaryAction: 'Catch up on overdue reviews',
+      secondaryAction: 'Reinforce accuracy with short tactics drills',
+    },
+  },
+  {
+    backlog: 'moderate',
+    recommendation: {
+      primaryAction: "Work through today's reviews in two focused blocks",
+      secondaryAction: 'Log any mistakes immediately to revisit tomorrow',
+    },
+  },
+  {
+    backlog: 'low',
+    accuracy: 'critical',
+    recommendation: {
+      primaryAction: 'Stabilize accuracy with quick refresh drills',
+      secondaryAction: 'Tag the weakest lines for focused review',
+    },
+  },
+  {
+    backlog: 'low',
+    recommendation: {
+      primaryAction: 'Complete the remaining reviews in a single sprint',
+      secondaryAction: "Do a light skim of yesterday's problem areas",
+    },
+  },
+  {
+    accuracy: 'critical',
+    recommendation: {
+      primaryAction: 'Rebuild confidence on the weakest variations',
+      secondaryAction: 'Schedule a tactics-only session for reinforcement',
+    },
+  },
+  {
+    accuracy: 'watch',
+    recommendation: {
+      primaryAction: 'Finish the day with one more focused review block',
+      secondaryAction: 'Revisit the last set of inaccuracies to lock them in',
+    },
+  },
+  {
+    predicate: (context) => context.streakLength >= 10 && context.remaining === 0,
+    recommendation: {
+      primaryAction: 'Add one new line to your repertoire',
+      secondaryAction: 'Review high-value mistakes from the past week',
+    },
+  },
+];
+
+const RECOMMENDATION_FALLBACK: Recommendation = {
+  primaryAction: "Plan tomorrow's unlock and keep the momentum",
+  secondaryAction: "Share today's success in your training journal",
+};
+
 export class ReviewPlanner {
   public buildOverview(snapshot: ReviewSnapshot): ReviewOverview {
     this.assertSnapshot(snapshot);
@@ -107,64 +181,23 @@ export class ReviewPlanner {
     return 'critical';
   }
 
-  private deriveRecommendation(input: {
-    backlog: BacklogPressure;
-    accuracy: AccuracyRisk;
-    streakLength: number;
-    remaining: number;
-  }): ReviewOverview['recommendation'] {
-    if (input.backlog === 'high') {
-      return {
-        primaryAction: 'Catch up on overdue reviews',
-        secondaryAction: 'Reinforce accuracy with short tactics drills',
-      };
-    }
-
-    if (input.backlog === 'moderate') {
-      return {
-        primaryAction: "Work through today's reviews in two focused blocks",
-        secondaryAction: 'Log any mistakes immediately to revisit tomorrow',
-      };
-    }
-
-    if (input.backlog === 'low') {
-      if (input.accuracy === 'critical') {
-        return {
-          primaryAction: 'Stabilize accuracy with quick refresh drills',
-          secondaryAction: 'Tag the weakest lines for focused review',
-        };
+  private deriveRecommendation(input: RecommendationContext): Recommendation {
+    const matchingRule = RECOMMENDATION_RULES.find((rule) => {
+      if (rule.backlog && rule.backlog !== input.backlog) {
+        return false;
       }
 
-      return {
-        primaryAction: 'Complete the remaining reviews in a single sprint',
-        secondaryAction: "Do a light skim of yesterday's problem areas",
-      };
-    }
+      if (rule.accuracy && rule.accuracy !== input.accuracy) {
+        return false;
+      }
 
-    if (input.accuracy === 'critical') {
-      return {
-        primaryAction: 'Rebuild confidence on the weakest variations',
-        secondaryAction: 'Schedule a tactics-only session for reinforcement',
-      };
-    }
+      if (rule.predicate && !rule.predicate(input)) {
+        return false;
+      }
 
-    if (input.accuracy === 'watch') {
-      return {
-        primaryAction: 'Finish the day with one more focused review block',
-        secondaryAction: 'Revisit the last set of inaccuracies to lock them in',
-      };
-    }
+      return true;
+    });
 
-    if (input.streakLength >= 10 && input.remaining === 0) {
-      return {
-        primaryAction: 'Add one new line to your repertoire',
-        secondaryAction: 'Review high-value mistakes from the past week',
-      };
-    }
-
-    return {
-      primaryAction: "Plan tomorrow's unlock and keep the momentum",
-      secondaryAction: "Share today's success in your training journal",
-    };
+    return matchingRule?.recommendation ?? RECOMMENDATION_FALLBACK;
   }
 }
