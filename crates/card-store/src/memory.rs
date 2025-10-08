@@ -112,7 +112,7 @@ impl InMemoryCardStore {
             0 | 1 => NonZeroU8::new(1).unwrap(),
             2 => interval,
             3 => {
-                let next = interval.get().saturating_add(1).min(u8::MAX);
+                let next = interval.get().saturating_add(1);
                 NonZeroU8::new(next).unwrap()
             }
             4 => {

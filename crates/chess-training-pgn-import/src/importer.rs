@@ -17,6 +17,7 @@ use crate::storage::{InMemoryStore, Storage};
 ///
 /// These metrics are incremented when the corresponding items are successfully inserted
 /// during the import process, as tracked by the `note_*` methods.
+#[derive(Default)]
 pub struct ImportMetrics {
     pub games_total: usize,
     pub opening_positions: usize,
@@ -51,18 +52,6 @@ impl ImportMetrics {
     }
 }
 
-impl Default for ImportMetrics {
-    fn default() -> Self {
-        Self {
-            games_total: 0,
-            opening_positions: 0,
-            opening_edges: 0,
-            repertoire_edges: 0,
-            tactics: 0,
-        }
-    }
-}
-
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum ImportError {
     #[error("failed to parse PGN: {0}")]
@@ -91,7 +80,10 @@ pub enum ImportError {
 /// let config = IngestConfig::default();
 /// let store = InMemoryStore::new();
 /// let mut importer = Importer::new(config, store);
-/// importer.ingest_pgn_str("owner", "repertoire", pgn_str)?;
+/// let pgn_str = r#"[Event "Example"]
+/// 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O
+/// 9. h3 Nb8 10. d4 Nbd7 *"#;
+/// importer.ingest_pgn_str("owner", "repertoire", pgn_str).expect("ingest should succeed");
 /// let (store, metrics) = importer.finalize();
 /// ```
 pub struct Importer<S: Storage> {
@@ -151,10 +143,14 @@ fn process_game<S: Storage>(
     index: usize,
 ) -> Result<(), ImportError> {
     let fen_tag = game.tag("FEN");
-    if config.require_setup_for_fen && fen_tag.is_some() && game.tag("SetUp") != Some("1") {
-        return Err(ImportError::MissingSetup {
-            fen: fen_tag.unwrap().to_string(),
-        });
+    if config.require_setup_for_fen {
+        if let Some(fen) = fen_tag {
+            if game.tag("SetUp") != Some("1") {
+                return Err(ImportError::MissingSetup {
+                    fen: fen.to_string(),
+                });
+            }
+        }
     }
 
     let source_hint = game.tag("Event").map(str::to_string);
@@ -269,9 +265,7 @@ fn parse_tag(line: &str) -> Option<(String, String)> {
 }
 
 fn sanitize_tokens(line: &str) -> Vec<String> {
-    line.split_whitespace()
-        .filter_map(|token| sanitize_token(token))
-        .collect()
+    line.split_whitespace().filter_map(sanitize_token).collect()
 }
 
 fn sanitize_token(raw: &str) -> Option<String> {
@@ -288,7 +282,7 @@ fn sanitize_token(raw: &str) -> Option<String> {
         return None;
     }
 
-    let cleaned = stripped.trim_end_matches(|c: char| matches!(c, '!' | '?' | '+' | '#'));
+    let cleaned = stripped.trim_end_matches(['!', '?', '+', '#']);
     if cleaned.is_empty() {
         return None;
     }

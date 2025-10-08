@@ -25,14 +25,14 @@ pub const DEFAULT_SKIP_MALFORMED_FEN: bool = false;
 pub const DEFAULT_MAX_RAV_DEPTH: u32 = 8;
 
 use std::ffi::OsString;
-use std::fmt;
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 
 use clap::error::Result as ClapResult;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use serde::Deserialize;
+
+use crate::errors::ConfigError;
 
 /// Runtime configuration for the PGN ingest pipeline.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -52,54 +52,6 @@ impl Default for IngestConfig {
             require_setup_for_fen: DEFAULT_REQUIRE_SETUP_FOR_FEN,
             skip_malformed_fen: DEFAULT_SKIP_MALFORMED_FEN,
             max_rav_depth: DEFAULT_MAX_RAV_DEPTH,
-        }
-    }
-}
-
-/// Errors that can occur while loading configuration from external sources.
-#[derive(Debug)]
-pub enum ConfigError {
-    /// The requested configuration file could not be read.
-    Io { path: PathBuf, source: io::Error },
-    /// The configuration file contained invalid TOML.
-    Parse {
-        path: PathBuf,
-        source: toml::de::Error,
-    },
-    /// Neither the CLI nor configuration file provided any PGN inputs.
-    NoInputs,
-}
-
-impl fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io { path, source } => {
-                write!(
-                    f,
-                    "failed to read config file {}: {}",
-                    path.display(),
-                    source
-                )
-            }
-            Self::Parse { path, source } => {
-                write!(
-                    f,
-                    "failed to parse config file {}: {}",
-                    path.display(),
-                    source
-                )
-            }
-            Self::NoInputs => write!(f, "no PGN inputs were provided via CLI or config file"),
-        }
-    }
-}
-
-impl std::error::Error for ConfigError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Io { source, .. } => Some(source),
-            Self::Parse { source, .. } => Some(source),
-            Self::NoInputs => None,
         }
     }
 }

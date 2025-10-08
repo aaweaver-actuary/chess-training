@@ -48,6 +48,10 @@ impl Storage for InMemoryStore {
 }
 
 impl InMemoryStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn positions(&self) -> Vec<Position> {
         self.positions.values().cloned().collect()
     }
@@ -112,5 +116,18 @@ mod tests {
         assert_eq!(records[0].owner, "owner");
         assert_eq!(records[0].repertoire_key, "rep");
         assert_eq!(records[0].edge_id, edge.id);
+    }
+
+    #[test]
+    fn in_memory_store_default_is_the_same_as_new() {
+        let default_store = InMemoryStore::default();
+        let new_store = InMemoryStore::new();
+        assert_eq!(default_store.positions.len(), new_store.positions.len());
+        assert_eq!(default_store.edges.len(), new_store.edges.len());
+        assert_eq!(
+            default_store.repertoire_edges.len(),
+            new_store.repertoire_edges.len()
+        );
+        assert_eq!(default_store.tactics.len(), new_store.tactics.len());
     }
 }

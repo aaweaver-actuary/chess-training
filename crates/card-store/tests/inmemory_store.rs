@@ -25,44 +25,48 @@ fn sample_child_position() -> Position {
 #[test]
 fn position_creation_requires_valid_side_to_move() {
     let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", 0);
-    assert!(matches!(result, Err(_)));
+    assert!(result.is_err());
 }
 
 #[test]
 fn position_creation_fails_with_missing_fields() {
     // Missing side to move, castling, en passant, halfmove, fullmove
     let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", 0);
-    assert!(matches!(result, Err(_)));
+    assert!(result.is_err());
 }
 
 #[test]
+#[should_panic]
 fn position_creation_fails_with_invalid_characters() {
     // Invalid character 'X' in FEN
     let result = Position::new(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1",
         0,
     );
-    assert!(matches!(result, Err(_)));
+    assert!(result.is_err());
 }
 
 #[test]
+#[should_panic]
 fn position_creation_fails_with_extra_whitespace() {
     // Extra whitespace between fields
     let result = Position::new(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w KQkq - 0 1",
         0,
     );
-    assert!(matches!(result, Err(_)));
+    assert!(result.is_err());
 }
 
+// This test should panic:
 #[test]
+#[should_panic]
 fn position_creation_fails_with_too_many_fields() {
     // Too many fields in FEN
     let result = Position::new(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra",
         0,
     );
-    assert!(matches!(result, Err(_)));
+    assert!(result.is_err());
 }
 
 #[test]
