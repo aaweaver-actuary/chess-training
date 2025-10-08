@@ -53,7 +53,7 @@ impl ParseError {
     }
 
     /// Returns the underlying TOML parse error.
-    pub fn source(&self) -> &toml::de::Error {
+    pub fn toml_error(&self) -> &toml::de::Error {
         &self.source
     }
 }
