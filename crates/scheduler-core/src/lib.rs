@@ -329,6 +329,8 @@ fn apply_sm2(card: &mut Card, grade: ReviewGrade, config: &SchedulerConfig, toda
     let previous_interval = card.interval_days.max(1);
     let ease = update_ease(card.ease_factor, grade, config);
 
+    // State transitions: only Again keeps/moves to Relearning; all other grades
+    // graduate to Review state (including cards currently in Relearning).
     let interval = match grade {
         ReviewGrade::Again => {
             card.lapses = card.lapses.saturating_add(1);
