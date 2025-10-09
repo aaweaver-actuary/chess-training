@@ -131,11 +131,12 @@ export const BlankBoardPage: FC = () => {
     };
 
     const extractSquareFromEvent = (event: Event): string | null => {
-      if (typeof (event as Event & { composedPath?: () => EventTarget[] }).composedPath !== 'function') {
+      if (typeof (event as { composedPath?: () => EventTarget[] }).composedPath !== 'function') {
         return null;
       }
 
-      const path = (event as Event & { composedPath: () => EventTarget[] }).composedPath();
+      const eventWithComposedPath = event as Event & { composedPath: () => EventTarget[] };
+      const path = eventWithComposedPath.composedPath();
       for (const element of path) {
         if (element instanceof HTMLElement) {
           const square = element.getAttribute('data-square');
