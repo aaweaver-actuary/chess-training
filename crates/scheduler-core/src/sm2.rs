@@ -149,6 +149,32 @@ mod tests {
     }
 
     #[test]
+    fn hard_interval_handles_first_reviews() {
+        assert_eq!(hard_interval(0, 10), 1);
+        assert_eq!(hard_interval(1, 10), 4);
+        assert_eq!(hard_interval(5, 10), 12);
+    }
+
+    #[test]
+    fn good_interval_handles_first_reviews() {
+        assert_eq!(good_interval(0, 1, 2.0), 1);
+        assert_eq!(good_interval(1, 1, 2.0), 6);
+        assert_eq!(good_interval(2, 10, 2.5), 25);
+    }
+
+    #[test]
+    fn easy_interval_handles_first_reviews() {
+        assert_eq!(easy_interval(0, 1, 2.0), 1);
+        assert_eq!(easy_interval(1, 1, 2.0), 6);
+        assert_eq!(easy_interval(3, 10, 2.0), 26);
+    }
+
+    #[test]
+    fn scaled_interval_handles_non_finite_product() {
+        assert_eq!(scaled_interval(5, f64::INFINITY), 1);
+    }
+
+    #[test]
     fn apply_sm2_updates_due_and_state() {
         let config = SchedulerConfig::default();
         let mut card = sample_card(CardState::Review);

@@ -110,7 +110,9 @@ fn extract_prefix(card: &Card) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{CardKind, SchedulerOpeningCard, SchedulerUnlockDetail, new_card};
+    use crate::domain::{
+        CardKind, SchedulerOpeningCard, SchedulerTacticCard, SchedulerUnlockDetail, new_card,
+    };
     use crate::store::InMemoryStore;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -160,5 +162,80 @@ mod tests {
         let queue = build_queue_for_day(&mut store, &config, owner, naive_date(2023, 1, 1));
         assert_eq!(queue.len(), 1);
         assert_eq!(queue[0].state.stage, CardState::Learning);
+    }
+
+    #[test]
+    fn skip_candidate_blocks_previously_seen_card() {
+        let mut store = InMemoryStore::new();
+        let config = SchedulerConfig::default();
+        let owner = Uuid::new_v4();
+        let mut queue = Vec::new();
+        let prior_unlock = sample_opening(owner, "d4");
+        let duplicate = sample_opening(owner, "d4");
+        store.upsert_card(prior_unlock.clone());
+        store.upsert_card(duplicate);
+        store.record_unlock(UnlockRecord {
+            owner_id: owner,
+            detail: SchedulerUnlockDetail {
+                card_id: prior_unlock.id,
+                parent_prefix: Some("d4".into()),
+            },
+            unlocked_on: naive_date(2023, 1, 2),
+        });
+
+        let mut existing =
+            ExistingUnlocks::from_records(&store.unlocked_on(owner, naive_date(2023, 1, 2)));
+        extend_queue_with_unlocks(
+            &mut store,
+            &config,
+            owner,
+            naive_date(2023, 1, 3),
+            &mut queue,
+            &mut existing,
+        );
+
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn skip_candidate_ignores_tactic_cards() {
+        let owner = Uuid::new_v4();
+        let mut store = InMemoryStore::new();
+        let config = SchedulerConfig::default();
+        let mut queue = Vec::new();
+        let tactic_card = new_card(
+            owner,
+            CardKind::Tactic(SchedulerTacticCard::new()),
+            naive_date(2023, 1, 1),
+            &config,
+        );
+        store.upsert_card(tactic_card.clone());
+
+        let mut existing = ExistingUnlocks::from_records(&[]);
+        extend_queue_with_unlocks(
+            &mut store,
+            &config,
+            owner,
+            naive_date(2023, 1, 2),
+            &mut queue,
+            &mut existing,
+        );
+
+        assert!(queue.is_empty());
+        assert!(!existing.contains_card(&tactic_card.id));
+    }
+
+    #[test]
+    fn extract_prefix_returns_none_for_tactic_cards() {
+        let owner = Uuid::new_v4();
+        let config = SchedulerConfig::default();
+        let tactic_card = new_card(
+            owner,
+            CardKind::Tactic(SchedulerTacticCard::new()),
+            naive_date(2023, 1, 1),
+            &config,
+        );
+
+        assert!(extract_prefix(&tactic_card).is_none());
     }
 }

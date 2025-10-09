@@ -60,14 +60,7 @@ impl CardStore for InMemoryStore {
             .filter(|card| card.owner_id == owner_id && matches!(card.state.stage, CardState::New))
             .cloned()
             .collect();
-        candidates.sort_by(|a, b| match (&a.kind, &b.kind) {
-            (CardKind::Opening(a_opening), CardKind::Opening(b_opening)) => {
-                (&a_opening.parent_prefix, &a.id).cmp(&(&b_opening.parent_prefix, &b.id))
-            }
-            (CardKind::Opening(_), _) => std::cmp::Ordering::Less,
-            (_, CardKind::Opening(_)) => std::cmp::Ordering::Greater,
-            _ => a.id.cmp(&b.id),
-        });
+        candidates.sort_by(candidate_ordering);
         candidates
     }
 
@@ -84,12 +77,26 @@ impl CardStore for InMemoryStore {
     }
 }
 
+fn candidate_ordering(a: &Card, b: &Card) -> std::cmp::Ordering {
+    match (&a.kind, &b.kind) {
+        (CardKind::Opening(a_opening), CardKind::Opening(b_opening)) => {
+            (&a_opening.parent_prefix, &a.id).cmp(&(&b_opening.parent_prefix, &b.id))
+        }
+        (CardKind::Opening(_), _) => std::cmp::Ordering::Less,
+        (_, CardKind::Opening(_)) => std::cmp::Ordering::Greater,
+        _ => a.id.cmp(&b.id),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::SchedulerConfig;
-    use crate::domain::{SchedulerTacticCard, SchedulerUnlockDetail, new_card};
+    use crate::domain::{
+        SchedulerOpeningCard, SchedulerTacticCard, SchedulerUnlockDetail, new_card,
+    };
     use chrono::NaiveDate;
+    use std::cmp::Ordering;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
@@ -150,5 +157,94 @@ mod tests {
         store.record_unlock(record.clone());
         let logs = store.unlocked_on(owner, naive_date(2023, 1, 1));
         assert_eq!(logs, vec![record]);
+    }
+
+    #[test]
+    fn unlock_candidates_prioritizes_openings_and_orders_tactics() {
+        let mut store = InMemoryStore::new();
+        let owner = Uuid::new_v4();
+        let config = SchedulerConfig::default();
+        let mut opening = new_card(
+            owner,
+            CardKind::Opening(SchedulerOpeningCard::new("a")),
+            naive_date(2023, 1, 1),
+            &config,
+        );
+        let mut later_opening = new_card(
+            owner,
+            CardKind::Opening(SchedulerOpeningCard::new("b")),
+            naive_date(2023, 1, 1),
+            &config,
+        );
+        let mut tactic = new_card(
+            owner,
+            CardKind::Tactic(SchedulerTacticCard::new()),
+            naive_date(2023, 1, 1),
+            &config,
+        );
+        let mut another_tactic = new_card(
+            owner,
+            CardKind::Tactic(SchedulerTacticCard::new()),
+            naive_date(2023, 1, 1),
+            &config,
+        );
+        opening.id = Uuid::from_u128(2);
+        later_opening.id = Uuid::from_u128(4);
+        tactic.id = Uuid::from_u128(3);
+        another_tactic.id = Uuid::from_u128(1);
+        store.upsert_card(opening.clone());
+        store.upsert_card(later_opening.clone());
+        store.upsert_card(tactic.clone());
+        store.upsert_card(another_tactic.clone());
+
+        let candidates = store.unlock_candidates(owner);
+        let prefixes: Vec<_> = candidates
+            .iter()
+            .filter_map(|card| match &card.kind {
+                CardKind::Opening(opening) => Some(opening.parent_prefix.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(prefixes, vec!["a".to_string(), "b".to_string()]);
+        let tactic_ids: Vec<_> = candidates
+            .iter()
+            .filter(|card| matches!(card.kind, CardKind::Tactic(_)))
+            .map(|card| card.id)
+            .collect();
+        let mut expected_ids = vec![tactic.id, another_tactic.id];
+        expected_ids.sort();
+        assert_eq!(tactic_ids, expected_ids);
+    }
+
+    #[test]
+    fn candidate_ordering_handles_mixed_kinds() {
+        let owner = Uuid::new_v4();
+        let config = SchedulerConfig::default();
+        let mut opening = new_card(
+            owner,
+            CardKind::Opening(SchedulerOpeningCard::new("a")),
+            naive_date(2023, 1, 1),
+            &config,
+        );
+        let mut tactic = new_card(
+            owner,
+            CardKind::Tactic(SchedulerTacticCard::new()),
+            naive_date(2023, 1, 1),
+            &config,
+        );
+        let mut second_tactic = tactic.clone();
+        opening.id = Uuid::from_u128(1);
+        tactic.id = Uuid::from_u128(2);
+        second_tactic.id = Uuid::from_u128(3);
+
+        assert_eq!(super::candidate_ordering(&opening, &tactic), Ordering::Less);
+        assert_eq!(
+            super::candidate_ordering(&tactic, &opening),
+            Ordering::Greater
+        );
+        assert_eq!(
+            super::candidate_ordering(&tactic, &second_tactic),
+            tactic.id.cmp(&second_tactic.id)
+        );
     }
 }
