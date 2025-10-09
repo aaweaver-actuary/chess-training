@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { FormEvent, KeyboardEvent } from 'react';
 
 import './CommandConsole.css';
 
@@ -6,13 +7,17 @@ type CommandConsoleProps = {
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
+  onExecuteCommand: (command: string) => Promise<void> | void;
 };
 
 const CONSOLE_ANIMATION_DURATION_MS = 240;
 
-export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps) => {
+export const CommandConsole = ({ isOpen, onOpen, onClose, onExecuteCommand }: CommandConsoleProps) => {
   const [isRendered, setIsRendered] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
+  const [command, setCommand] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const keepOpenRef = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -44,6 +49,22 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
     return classNames.join(' ');
   }, [isRendered]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setCommand('');
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
   const overlayClassName = useMemo(() => {
     const classNames = ['command-console-overlay'];
     if (isClosing) {
@@ -61,6 +82,46 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
   }, [isClosing]);
 
   const isVisible = isOpen || isClosing;
+  const shouldRenderConsole = isRendered || isOpen;
+
+  const resetFocus = () => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      keepOpenRef.current = event.ctrlKey || event.metaKey;
+    }
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const keepOpen = keepOpenRef.current;
+    keepOpenRef.current = false;
+
+    const trimmed = command.trim();
+    setCommand('');
+
+    if (trimmed.length === 0) {
+      if (keepOpen) {
+        resetFocus();
+        return;
+      }
+      onClose();
+      return;
+    }
+
+    await onExecuteCommand(trimmed);
+
+    if (keepOpen) {
+      resetFocus();
+      return;
+    }
+
+    onClose();
+  };
 
   return (
     <>
@@ -73,7 +134,7 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
       >
         <span className="command-console-launcher__icon">{isVisible ? '×' : '$:'}</span>
       </button>
-      {isRendered && (
+      {shouldRenderConsole && (
         <div className={overlayClassName}>
           <div
             className={consoleClassName}
@@ -94,10 +155,19 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
                 <span className="command-console__title">Command Console</span>
                 <span className="command-console__hint">Press Esc or click × to close</span>
               </div>
-              <div className="command-console__body">
+              <form className="command-console__body" onSubmit={handleSubmit}>
                 <span className="command-console__prompt">$:</span>
-                <span className="command-console__placeholder">Awaiting commands…</span>
-              </div>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className="command-console__input"
+                  aria-label="Command input"
+                  placeholder="Awaiting commands…"
+                  value={command}
+                  onChange={(event) => setCommand(event.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
+              </form>
             </div>
           </div>
         </div>

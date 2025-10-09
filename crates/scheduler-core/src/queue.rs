@@ -89,7 +89,7 @@ fn skip_candidate(candidate: &Card, unlocked: &ExistingUnlocks) -> bool {
     }
     match &candidate.kind {
         CardKind::Opening(opening) => unlocked.contains_prefix(&opening.parent_prefix),
-        _ => true,
+        CardKind::Tactic(_) => true,
     }
 }
 
@@ -103,7 +103,7 @@ fn unlock_card(card: &mut Card, config: &SchedulerConfig, today: NaiveDate) {
 fn extract_prefix(card: &Card) -> Option<String> {
     match &card.kind {
         CardKind::Opening(opening) => Some(opening.parent_prefix.clone()),
-        _ => None,
+        CardKind::Tactic(_) => None,
     }
 }
 

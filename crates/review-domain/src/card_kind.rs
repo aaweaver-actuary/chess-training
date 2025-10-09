@@ -44,8 +44,8 @@ mod tests {
 
     #[test]
     fn map_opening_transforms_opening_variant() {
-        let card = CardKind::Opening("line".to_string());
-        let mapped = card.map_opening(|opening| opening.len());
+        let card: CardKind<String, ()> = CardKind::Opening("line".to_string());
+        let mapped: CardKind<usize, _> = card.map_opening(|opening| opening.len());
         assert!(matches!(mapped, CardKind::Opening(4)));
     }
 
@@ -58,8 +58,8 @@ mod tests {
 
     #[test]
     fn map_tactic_transforms_tactic_variant() {
-        let card = CardKind::Tactic("pin".to_string());
-        let mapped = card.map_tactic(|tactic| tactic.len());
+        let card: CardKind<(), String> = CardKind::Tactic("pin".to_string());
+        let mapped: CardKind<(), usize> = card.map_tactic(|tactic| tactic.len());
         assert!(matches!(mapped, CardKind::Tactic(3)));
     }
 

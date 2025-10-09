@@ -71,8 +71,7 @@ impl CardStore for TimedStore {
             .filter(|card| {
                 self.availability
                     .get(&card.id)
-                    .map(|available| *available <= self.current_day)
-                    .unwrap_or(true)
+                    .is_none_or(|available| *available <= self.current_day)
             })
             .cloned()
             .collect();

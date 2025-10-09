@@ -143,7 +143,7 @@ mod tests {
             source: io_err,
         };
 
-        let display_str = format!("{}", error);
+        let display_str = format!("{error}");
         assert!(display_str.contains("failed to read config file"));
         assert!(display_str.contains("/test/config.toml"));
         assert!(display_str.contains("Permission denied"));
@@ -188,7 +188,7 @@ mod tests {
             source: toml_err,
         };
 
-        let display_str = format!("{}", error);
+        let display_str = format!("{error}");
         assert!(display_str.contains("failed to parse config file"));
         assert!(display_str.contains("/test/invalid.toml"));
         assert!(display_str.contains("Invalid TOML syntax"));
@@ -256,7 +256,7 @@ mod tests {
         };
         let config_error = ConfigError::Io(io_error);
 
-        let display_str = format!("{}", config_error);
+        let display_str = format!("{config_error}");
         assert!(display_str.contains("failed to read config file"));
         assert!(display_str.contains("/test/config.toml"));
         assert!(display_str.contains("File not found"));
@@ -272,7 +272,7 @@ mod tests {
         };
         let config_error = ConfigError::Parse(parse_error);
 
-        let display_str = format!("{}", config_error);
+        let display_str = format!("{config_error}");
         assert!(display_str.contains("failed to parse config file"));
         assert!(display_str.contains("/test/invalid.toml"));
         assert!(display_str.contains("Invalid TOML syntax"));
@@ -282,7 +282,7 @@ mod tests {
     fn test_config_error_display_no_inputs() {
         let config_error = ConfigError::NoInputs;
 
-        let display_str = format!("{}", config_error);
+        let display_str = format!("{config_error}");
         assert_eq!(
             display_str,
             "no PGN inputs were provided via CLI or config file"
@@ -338,7 +338,7 @@ mod tests {
             source: io_err,
         };
 
-        let debug_str = format!("{:?}", error);
+        let debug_str = format!("{error:?}");
         assert!(debug_str.contains("IoError"));
         assert!(debug_str.contains("/test/config.toml"));
     }
@@ -352,7 +352,7 @@ mod tests {
             source: toml_err,
         };
 
-        let debug_str = format!("{:?}", error);
+        let debug_str = format!("{error:?}");
         assert!(debug_str.contains("ParseError"));
         assert!(debug_str.contains("/test/invalid.toml"));
     }
@@ -361,7 +361,7 @@ mod tests {
     fn test_config_error_debug() {
         let config_error = ConfigError::NoInputs;
 
-        let debug_str = format!("{:?}", config_error);
+        let debug_str = format!("{config_error:?}");
         assert!(debug_str.contains("NoInputs"));
     }
 }
