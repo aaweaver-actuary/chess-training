@@ -307,7 +307,7 @@ function applyMove(game: Chess, detail: DropDetail): Move | null {
 }
 
 function isSquare(value: unknown): value is Square {
-  return typeof value === 'string' && OVERLAY_SQUARE_SET.has(value as Square);
+  return typeof value === 'string' && OVERLAY_SQUARE_SET.has(value);
 }
 
 function extractTeachingArrow(meta?: CardSummary['meta']): string | null {
