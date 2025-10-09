@@ -36,6 +36,7 @@ pub use crate::errors::ConfigError;
 use crate::errors::{IoError, ParseError};
 
 /// Runtime configuration for the PGN ingest pipeline.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IngestConfig {
     pub tactic_from_fen: bool,
@@ -89,6 +90,7 @@ impl FileConfig {
 }
 
 /// Command-line arguments supported by the importer.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CliArgs {
     /// One or more PGN files to ingest.
@@ -169,7 +171,7 @@ impl CliArgs {
             )
     }
 
-    fn from_matches(matches: ArgMatches) -> Self {
+    fn from_matches(matches: &ArgMatches) -> Self {
         let inputs = matches
             .get_many::<PathBuf>(Self::ARG_INPUT)
             .map(|values| values.cloned().collect())
@@ -195,7 +197,10 @@ impl CliArgs {
     }
 
     /// Attempts to parse CLI arguments using the custom command definition.
-    #[must_use]
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if clap fails to parse the provided iterator of arguments.
     pub fn try_parse_from<I, T>(iterator: I) -> ClapResult<Self>
     where
         I: IntoIterator<Item = T>,
@@ -203,11 +208,15 @@ impl CliArgs {
     {
         Self::command()
             .try_get_matches_from(iterator)
-            .map(Self::from_matches)
+            .map(|matches| Self::from_matches(&matches))
     }
 
     /// Converts the parsed CLI arguments into the runtime configuration and remaining inputs.
-    #[must_use]
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a configuration file is requested but cannot be read or parsed,
+    /// or if no PGN inputs are supplied after merging CLI and file sources.
     pub fn into_ingest_config(self) -> ConfigResult<(IngestConfig, Vec<PathBuf>)> {
         let CliArgs {
             inputs,
