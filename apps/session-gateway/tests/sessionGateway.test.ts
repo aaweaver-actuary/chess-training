@@ -278,7 +278,7 @@ describe('session gateway', () => {
 
     await gradeCard(baseUrl, sessionId, 'c123', 'Good');
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await wait();
     const updateMessage = messages.find(
       (msg) => (msg as { type: string }).type === 'UPDATE',
     );
@@ -288,9 +288,6 @@ describe('session gateway', () => {
       card: expect.objectContaining({ card_id: 'c456' }),
       stats: expect.objectContaining({ reviews_today: 1 }),
     });
-    await wait();
-    const updateMessage = messages.find((msg) => (msg as { type: string }).type === 'UPDATE');
-    expect(updateMessage).toBeTruthy();
     expect((updateMessage as { stats?: unknown })?.stats).toBeTruthy();
     socket.close();
     await waitForClose(socket);
