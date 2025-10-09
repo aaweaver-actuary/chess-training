@@ -254,34 +254,106 @@
   justify-content: flex-end;
 }
 
-.nav-link {
+.floating-action {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  background: var(--color-accent-primary);
-  color: var(--color-surface);
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius-medium);
+  justify-content: center;
+  border-radius: 999px;
   font-weight: 600;
   text-decoration: none;
+  color: var(--color-text-primary);
+  background: rgba(18, 22, 43, 0.92);
+  box-shadow: 0 24px 60px rgba(3, 6, 20, 0.55);
+  backdrop-filter: blur(16px);
   transition:
-    transform 0.1s ease,
-    box-shadow 0.1s ease;
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
 }
 
-.nav-link:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-elevated);
+.floating-action::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(147, 207, 255, 0.85), rgba(104, 102, 255, 0.6));
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.9;
 }
 
-.nav-link:active {
+.floating-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 30px 70px rgba(3, 6, 20, 0.65);
+}
+
+.floating-action:active {
   transform: translateY(1px);
-  box-shadow: none;
+  box-shadow: 0 16px 35px rgba(3, 6, 20, 0.5);
+}
+
+.nav-link {
+  gap: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  letter-spacing: 0.02em;
 }
 
 .nav-link-disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   pointer-events: none;
+  box-shadow: none;
+}
+
+.nav-link-disabled::before {
+  opacity: 0.5;
+}
+
+.nav-link-disabled:hover,
+.nav-link-disabled:active {
+  transform: none;
+}
+
+.opening-review-board {
+  position: relative;
+  width: min(90vw, 560px);
+}
+
+.opening-review-board__board {
+  width: 100%;
+}
+
+.lichess-shortcut {
+  position: absolute;
+  top: -24px;
+  right: -24px;
+  width: 64px;
+  height: 64px;
+  font-size: 28px;
+  line-height: 1;
+  z-index: 3;
+}
+
+@media (max-width: 600px) {
+  .lichess-shortcut {
+    top: 8px;
+    right: 8px;
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+  }
+}
+
+.lichess-shortcut::before {
+  opacity: 1;
 }
 
 .opening-review-page {
