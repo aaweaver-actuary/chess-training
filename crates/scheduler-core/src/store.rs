@@ -84,7 +84,7 @@ fn candidate_ordering(a: &Card, b: &Card) -> std::cmp::Ordering {
         }
         (CardKind::Opening(_), _) => std::cmp::Ordering::Less,
         (_, CardKind::Opening(_)) => std::cmp::Ordering::Greater,
-        _ => a.id.cmp(&b.id),
+        (CardKind::Tactic(_), CardKind::Tactic(_)) => a.id.cmp(&b.id),
     }
 }
 
