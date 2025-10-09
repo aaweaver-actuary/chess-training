@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { UserEvent } from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 function createDefaultStats() {
@@ -65,6 +65,140 @@ beforeEach(() => {
 });
 
 describe('App', () => {
+  describe('command console commands', () => {
+    let alertSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      alertSpy.mockRestore();
+    });
+
+    it('dispatches commands when enter is pressed and closes the console', async () => {
+      const user = setupUser();
+      render(
+        <MemoryRouter>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockedStore.getState().start).toHaveBeenCalled();
+      });
+
+      expect(screen.queryByRole('dialog', { name: /command console/i })).not.toBeInTheDocument();
+
+      await user.keyboard(':');
+
+      const input = await screen.findByRole('textbox', { name: /command input/i });
+      expect(input).toHaveFocus();
+
+      await user.type(input, 'status{Enter}');
+
+      expect(alertSpy).toHaveBeenCalledWith('status');
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: /command console/i })).not.toBeInTheDocument();
+      });
+    });
+
+    it.each([
+      ['Control', { ctrlKey: true }],
+      ['Meta', { metaKey: true }],
+    ])('keeps the console open for %s+Enter submissions', async (_name, keyOptions) => {
+      const user = setupUser();
+      render(
+        <MemoryRouter>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockedStore.getState().start).toHaveBeenCalled();
+      });
+
+      await user.keyboard(':');
+
+      const input = await screen.findByRole('textbox', { name: /command input/i });
+      expect(input).toHaveFocus();
+
+      await user.type(input, 'repeat');
+
+      fireEvent.keyDown(input, { key: 'Enter', ...keyOptions });
+
+      const form = input.closest('form');
+      expect(form).not.toBeNull();
+      fireEvent.submit(form as HTMLFormElement);
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith('repeat');
+      });
+
+      expect(screen.getByRole('dialog', { name: /command console/i })).toBeInTheDocument();
+
+      const refreshedInput = await screen.findByRole('textbox', { name: /command input/i });
+      expect(refreshedInput).toHaveFocus();
+      expect(refreshedInput).toHaveValue('');
+    });
+
+    it('navigates to the sandbox board when the cb command is dispatched', async () => {
+      const user = setupUser();
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockedStore.getState().start).toHaveBeenCalled();
+      });
+
+      await user.keyboard(':');
+
+      const input = await screen.findByRole('textbox', { name: /command input/i });
+      await user.type(input, 'cb{Enter}');
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /Sandbox Board/i })).toBeInTheDocument();
+      });
+
+      const board = await screen.findByTestId('sandbox-board');
+      expect(board).toHaveAttribute('position', 'start');
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: /command console/i })).not.toBeInTheDocument();
+      });
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it('returns to the dashboard when the db command is dispatched', async () => {
+      const user = setupUser();
+      render(
+        <MemoryRouter initialEntries={['/tools/board']}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockedStore.getState().start).toHaveBeenCalled();
+      });
+
+      await user.keyboard(':');
+
+      const input = await screen.findByRole('textbox', { name: /command input/i });
+      await user.type(input, 'db{Enter}');
+
+      const dashboardHeading = await screen.findByRole('heading', { name: /Daily Review Summary/i });
+      expect(dashboardHeading).toBeInTheDocument();
+
+      expect(alertSpy).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: /command console/i })).not.toBeInTheDocument();
+      });
+    });
+  });
+
   it('starts the session on mount and renders live stats', async () => {
     render(
       <MemoryRouter>
