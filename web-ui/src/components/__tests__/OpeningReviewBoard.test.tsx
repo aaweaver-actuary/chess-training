@@ -1,14 +1,17 @@
-import { render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Chess } from 'chess.js';
 import type { Move } from 'chess.js';
 
 import type { CardSummary } from '../../types/gateway';
 import { OpeningReviewBoard } from '../OpeningReviewBoard';
+import type { ChessBoardElement } from 'chessboard-element';
 
 describe('OpeningReviewBoard', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   const baseCard: CardSummary = {
@@ -36,6 +39,14 @@ describe('OpeningReviewBoard', () => {
     expected_moves_uci: ['g1f3'],
     meta: { teaching_move_uci: 'g1f3', line_reviews: 0 },
   };
+
+  const startingPosition: CardSummary = {
+    card_id: 'starting',
+    kind: 'Opening',
+    position_fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    prompt: 'Make a classical first move.',
+    expected_moves_uci: ['e2e4'],
+  };
   it('links to the Lichess analysis board for the current position', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
@@ -53,11 +64,13 @@ describe('OpeningReviewBoard', () => {
 
     const board = screen.getByTestId('opening-review-board');
 
-    board.dispatchEvent(
-      new CustomEvent('drop', {
-        detail: { source: 'c1', target: 'g5', piece: 'wB' },
-      }),
-    );
+    act(() => {
+      board.dispatchEvent(
+        new CustomEvent('drop', {
+          detail: { source: 'c1', target: 'g5', piece: 'wB' },
+        }),
+      );
+    });
 
     expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
     expect(board).toHaveAttribute(
@@ -72,11 +85,13 @@ describe('OpeningReviewBoard', () => {
 
     const board = screen.getByTestId('opening-review-board');
 
-    board.dispatchEvent(
-      new CustomEvent('drop', {
-        detail: { source: 'g1', target: 'f3', piece: 'wN' },
-      }),
-    );
+    act(() => {
+      board.dispatchEvent(
+        new CustomEvent('drop', {
+          detail: { source: 'g1', target: 'f3', piece: 'wN' },
+        }),
+      );
+    });
 
     expect(onResult).toHaveBeenCalledWith('Again', expect.any(Number));
     expect(board).toHaveAttribute(
@@ -91,7 +106,9 @@ describe('OpeningReviewBoard', () => {
 
     const board = screen.getByTestId('opening-review-board');
 
-    board.dispatchEvent(new CustomEvent('drop'));
+    act(() => {
+      board.dispatchEvent(new CustomEvent('drop'));
+    });
 
     expect(onResult).not.toHaveBeenCalled();
     expect(board).toHaveAttribute('position', baseCard.position_fen);
@@ -106,11 +123,13 @@ describe('OpeningReviewBoard', () => {
 
     const board = screen.getByTestId('opening-review-board');
 
-    board.dispatchEvent(
-      new CustomEvent('drop', {
-        detail: { source: 'c1', target: 'c2' },
-      }),
-    );
+    act(() => {
+      board.dispatchEvent(
+        new CustomEvent('drop', {
+          detail: { source: 'c1', target: 'c2' },
+        }),
+      );
+    });
 
     expect(onResult).not.toHaveBeenCalled();
     expect(board).toHaveAttribute('position', baseCard.position_fen);
@@ -123,11 +142,13 @@ describe('OpeningReviewBoard', () => {
 
     const board = screen.getByTestId('opening-review-board');
 
-    board.dispatchEvent(
-      new CustomEvent('drop', {
-        detail: { source: 'g1', target: 'f3' },
-      }),
-    );
+    act(() => {
+      board.dispatchEvent(
+        new CustomEvent('drop', {
+          detail: { source: 'g1', target: 'f3' },
+        }),
+      );
+    });
 
     expect(onResult).toHaveBeenCalledWith('Again', expect.any(Number));
   });
@@ -143,11 +164,13 @@ describe('OpeningReviewBoard', () => {
 
     const board = screen.getByTestId('opening-review-board');
 
-    board.dispatchEvent(
-      new CustomEvent('drop', {
-        detail: { source: 'd7', target: 'd8', promotion: 'q' },
-      }),
-    );
+    act(() => {
+      board.dispatchEvent(
+        new CustomEvent('drop', {
+          detail: { source: 'd7', target: 'd8', promotion: 'q' },
+        }),
+      );
+    });
 
     expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
   });
@@ -206,15 +229,124 @@ describe('OpeningReviewBoard', () => {
 
     const board = screen.getByTestId('opening-review-board');
 
-    board.dispatchEvent(
-      new CustomEvent('drop', {
-        detail: { source: 'g1', target: 'f3', piece: 'wN' },
-      }),
-    );
+    act(() => {
+      board.dispatchEvent(
+        new CustomEvent('drop', {
+          detail: { source: 'g1', target: 'f3', piece: 'wN' },
+        }),
+      );
+    });
 
     expect(onResult).toHaveBeenCalledWith('Again', expect.any(Number));
 
     expect(board.getAttribute('data-error-square')).toBe('f3');
     expect(board.getAttribute('data-teaching-arrow')).toBe('e2e4');
   });
+
+  it('selects a movable piece when it is clicked', async () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board') as ChessBoardElement;
+    const e2 = await findBoardSquare(board, 'e2');
+
+    fireEvent.click(e2);
+
+    expect(board.getAttribute('data-selected-square')).toBe('e2');
+
+    const overlaySquare = getOverlaySquare(board, 'e2');
+    expect(overlaySquare).toHaveClass('opening-review-board__overlay-square--selected');
+  });
+
+  it('moves a piece when its legal destination square is clicked', async () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board') as ChessBoardElement;
+
+    fireEvent.click(await findBoardSquare(board, 'e2'));
+    fireEvent.click(await findBoardSquare(board, 'e4'));
+
+    expect(board.getAttribute('position')).toBe(
+      'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+    );
+    expect(board.hasAttribute('data-selected-square')).toBe(false);
+
+    const overlay = getOverlaySquare(board, 'e4');
+    expect(overlay).not.toHaveClass('opening-review-board__overlay-square--error');
+  });
+
+  it('highlights an illegal destination when clicked before clearing it', async () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board') as ChessBoardElement;
+
+    fireEvent.click(await findBoardSquare(board, 'e2'));
+    fireEvent.click(await findBoardSquare(board, 'e5'));
+
+    expect(board.getAttribute('data-error-square')).toBe('e5');
+
+    const overlay = getOverlaySquare(board, 'e5');
+    expect(overlay).toHaveClass('opening-review-board__overlay-square--error');
+
+    await waitFor(
+      () => {
+        expect(board.hasAttribute('data-error-square')).toBe(false);
+        expect(overlay).not.toHaveClass('opening-review-board__overlay-square--error');
+      },
+      { timeout: 1500 },
+    );
+  });
+
+  it('indicates when a piece cannot be moved', async () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board') as ChessBoardElement;
+
+    const e7 = await findBoardSquare(board, 'e7');
+    fireEvent.click(e7);
+
+    expect(board.hasAttribute('data-selected-square')).toBe(false);
+    expect(board.getAttribute('data-error-square')).toBe('e7');
+
+    const overlay = getOverlaySquare(board, 'e7');
+    expect(overlay).toHaveClass('opening-review-board__overlay-square--error');
+
+    await waitFor(
+      () => {
+        expect(board.hasAttribute('data-error-square')).toBe(false);
+        expect(overlay).not.toHaveClass('opening-review-board__overlay-square--error');
+      },
+      { timeout: 1500 },
+    );
+  });
 });
+
+async function findBoardSquare(board: ChessBoardElement, square: string): Promise<HTMLElement> {
+  return await waitFor(() => {
+    const element = board.shadowRoot?.querySelector<HTMLElement>(`[data-square="${square}"]`);
+    if (!element) {
+      throw new Error(`Failed to locate square ${square}`);
+    }
+
+    return element;
+  });
+}
+
+function getOverlaySquare(board: ChessBoardElement, square: string): HTMLElement {
+  const wrapper = board.parentElement;
+  if (!wrapper) {
+    throw new Error('Board wrapper is missing');
+  }
+
+  const overlay = within(wrapper).getByTestId('opening-review-board-overlay');
+  const element = overlay.querySelector<HTMLElement>(`[data-overlay-square="${square}"]`);
+
+  if (!element) {
+    throw new Error(`Failed to locate overlay square ${square}`);
+  }
+
+  return element;
+}

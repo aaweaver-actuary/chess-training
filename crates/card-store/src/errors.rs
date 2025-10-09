@@ -53,6 +53,13 @@ mod tests {
     }
 
     #[test]
+    fn position_error_invalid_piece_placement_display_output_is_correct() {
+        let err = PositionError::InvalidPiecePlacement;
+        let display_str = format!("{err}");
+        assert_eq!(display_str, "malformed FEN: invalid piece placement field");
+    }
+
+    #[test]
     fn position_error_invalid_side_to_move_partial_eq_returns_true_for_same_variant() {
         let err1 = PositionError::InvalidSideToMove;
         let err2 = PositionError::InvalidSideToMove;
@@ -63,6 +70,13 @@ mod tests {
     fn position_error_malformed_fen_partial_eq_returns_true_for_same_variant() {
         let err1 = PositionError::MalformedFen;
         let err2 = PositionError::MalformedFen;
+        assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn position_error_invalid_piece_placement_partial_eq_returns_true_for_same_variant() {
+        let err1 = PositionError::InvalidPiecePlacement;
+        let err2 = PositionError::InvalidPiecePlacement;
         assert_eq!(err1, err2);
     }
 
