@@ -47,11 +47,9 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
   }, [isRendered]);
 
   useEffect(() => {
-    if (isOpen) {
-      return;
+    if (!isOpen) {
+      setCommand('');
     }
-
-    setCommand('');
   }, [isOpen]);
 
   useEffect(() => {
