@@ -7,6 +7,7 @@ pub struct SchedulerOpeningCard {
 }
 
 impl SchedulerOpeningCard {
+    #[must_use]
     pub fn new(parent_prefix: impl Into<String>) -> Self {
         Self {
             parent_prefix: parent_prefix.into(),
@@ -19,6 +20,7 @@ impl SchedulerOpeningCard {
 pub struct SchedulerTacticCard;
 
 impl SchedulerTacticCard {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

@@ -37,6 +37,7 @@ pub struct InMemoryCardStore {
 
 impl InMemoryCardStore {
     /// Construct a new [`InMemoryCardStore`] with the provided [`StorageConfig`].
+    #[must_use]
     pub fn new(config: StorageConfig) -> Self {
         Self {
             _config: config,
@@ -48,6 +49,7 @@ impl InMemoryCardStore {
     }
 
     /// Number of unique positions currently stored. Useful for tests.
+    #[must_use = "handle potential store errors when counting positions"]
     pub fn position_count(&self) -> Result<usize, StoreError> {
         Ok(self.positions_read()?.len())
     }

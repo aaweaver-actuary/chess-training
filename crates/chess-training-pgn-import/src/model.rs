@@ -16,6 +16,7 @@ pub struct Position {
 }
 
 impl Position {
+    #[must_use]
     pub fn new(fen: &str, side_to_move: char, ply: u32) -> Self {
         let id = hash_with_seed(HASH_NAMESPACE, SCHEMA_VERSION, &fen);
         Self {
@@ -36,6 +37,7 @@ pub struct OpeningEdgeRecord {
 
 impl OpeningEdgeRecord {
     #[allow(clippy::too_many_arguments)]
+    #[must_use]
     pub fn new(
         parent_id: u64,
         move_uci: &str,
@@ -57,6 +59,7 @@ pub struct RepertoireEdge {
 }
 
 impl RepertoireEdge {
+    #[must_use]
     pub fn new(owner: &str, repertoire_key: &str, edge_id: u64) -> Self {
         Self {
             owner: owner.to_string(),
@@ -76,6 +79,7 @@ pub struct Tactic {
 }
 
 impl Tactic {
+    #[must_use]
     pub fn new(
         fen: &str,
         pv_uci: Vec<String>,
