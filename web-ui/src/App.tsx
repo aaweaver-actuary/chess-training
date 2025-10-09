@@ -15,7 +15,7 @@ import { sessionStore } from './state/sessionStore';
 import { CommandConsole } from './components/CommandConsole';
 import type { DetectedOpeningLine, ImportResult, ScheduledOpeningLine } from './types/repertoire';
 import { createCommandDispatcher } from './utils/commandDispatcher';
-import type { CommandDispatcher } from './utils/commandDispatcher';
+import type { CommandDispatcher, CommandHandler } from './utils/commandDispatcher';
 
 const planner = new ReviewPlanner();
 const baselineOverview = planner.buildOverview(sampleSnapshot);
@@ -181,29 +181,30 @@ const App = (): JSX.Element => {
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const [importedLines, setImportedLines] = useState<ScheduledOpeningLine[]>([]);
   const navigate = useNavigate();
-  const dispatcher: CommandDispatcher = useMemo(
-    () =>
-      createCommandDispatcher({
-        onUnknownCommand: (input) => {
-          window.alert(input);
+  const dispatcher: CommandDispatcher = useMemo(() => {
+    const buildNavigationHandler = (path: string): CommandHandler => {
+      return () => {
+        void navigate(path);
+        return undefined;
+      };
+    };
+
+    return createCommandDispatcher({
+      onUnknownCommand: (input) => {
+        window.alert(input);
+      },
+      commands: [
+        {
+          command: 'cb',
+          handler: buildNavigationHandler('/tools/board'),
         },
-        commands: [
-          {
-            command: 'cb',
-            handler: () => {
-              void navigate('/tools/board');
-            },
-          },
-          {
-            command: 'db',
-            handler: () => {
-              void navigate('/dashboard');
-            },
-          },
-        ],
-      }),
-    [navigate],
-  );
+        {
+          command: 'db',
+          handler: buildNavigationHandler('/dashboard'),
+        },
+      ],
+    });
+  }, [navigate]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
