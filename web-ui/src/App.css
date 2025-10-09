@@ -302,3 +302,39 @@
   text-align: center;
   box-shadow: var(--shadow-elevated);
 }
+
+.opening-review-board {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.floating-action {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 3rem;
+  height: 3rem;
+  background: var(--color-accent-primary);
+  color: var(--color-surface);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-elevated);
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+  text-decoration: none;
+  z-index: 10;
+}
+
+.floating-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.floating-action:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-elevated);
+}

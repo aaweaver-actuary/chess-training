@@ -13,6 +13,17 @@ describe('OpeningReviewBoard', () => {
     expected_moves_uci: ['c1g5'],
   };
 
+  it('links to the Lichess analysis board for the current position', () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
+
+    const shortcut = screen.getByRole('link', { name: /analyze this position on lichess/i });
+    expect(shortcut).toHaveAttribute(
+      'href',
+      'https://lichess.org/analysis/standard/rn1qkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR_w_KQkq_-_0_1',
+    );
+  });
+
   it('reports success when the expected move is played', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
