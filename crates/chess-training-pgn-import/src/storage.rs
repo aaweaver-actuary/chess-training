@@ -36,6 +36,7 @@ impl UpsertOutcome {
         matches!(self, Self::Inserted)
     }
 
+    #[must_use]
     pub const fn from_bool(inserted: bool) -> Self {
         if inserted {
             Self::Inserted
