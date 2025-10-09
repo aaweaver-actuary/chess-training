@@ -40,7 +40,7 @@ export const createCommandDispatcher = ({
       return;
     }
 
-    const result = await handler(trimmed, args);
+    const result = await handler(command, args);
 
     if (typeof result === 'string' && result.trim().length > 0) {
       onResult?.(result);
