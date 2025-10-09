@@ -40,7 +40,7 @@ async function request<T>(path: string, init?: RequestConfig): Promise<JsonShape
 function normalizeConfig(init: RequestConfigWithBody): RequestInit {
   const headers = new Headers(init.headers);
   headers.set('content-type', 'application/json');
-  const { body, headers: _headers, ...rest } = init;
+  const { body, ...rest } = init;
   return {
     ...rest,
     body: JSON.stringify(body),
