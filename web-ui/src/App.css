@@ -295,6 +295,33 @@
   justify-content: flex-start;
 }
 
+.opening-review {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.opening-review chess-board {
+  display: block;
+  position: relative;
+  z-index: 10;
+}
+
+/* Ensure board remains interactive on small screens by adding safe area */
+@media (max-width: 480px) {
+  .opening-review {
+    /* Add padding to prevent overlays from covering the board */
+    padding: 32px 32px 0 0;
+    margin: -32px -32px 0 0;
+  }
+
+  /* Disable pointer events on any absolutely positioned overlays 
+     that might cover the board on small screens */
+  .opening-review > :not(chess-board) {
+    pointer-events: none;
+  }
+}
+
 .empty-state {
   background: var(--color-surface);
   border-radius: var(--radius-large);

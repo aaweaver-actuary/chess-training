@@ -37,12 +37,21 @@ beforeEach(() => {
   gateway.startSession.mockReset();
   gateway.grade.mockReset();
   gateway.stats.mockReset();
-  sessionStore.setState({ sessionId: undefined, currentCard: undefined, queue: [], stats: undefined });
+  sessionStore.setState({
+    sessionId: undefined,
+    currentCard: undefined,
+    queue: [],
+    stats: undefined,
+  });
 });
 
 describe('sessionStore', () => {
   it('starts a session and loads stats', async () => {
-    const response: StartSessionResponse = { session_id: 's1', queue_size: 3, first_card: stubCard };
+    const response: StartSessionResponse = {
+      session_id: 's1',
+      queue_size: 3,
+      first_card: stubCard,
+    };
     gateway.startSession.mockResolvedValue(response);
     gateway.stats.mockResolvedValue(stubStats);
 
