@@ -303,10 +303,7 @@ fn config_loader_handles_missing_optional_fields() {
     let mut file = NamedTempFile::new().expect("temp config should be created");
     writeln!(
         file,
-        r#"
-include_fen_in_trie = true
-require_setup_for_fen = true
-"#
+        "include_fen_in_trie = true\nrequire_setup_for_fen = true"
     )
     .expect("temp config should be writeable");
     let path = file.into_temp_path();
