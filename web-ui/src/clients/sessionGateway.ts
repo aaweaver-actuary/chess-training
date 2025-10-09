@@ -15,8 +15,17 @@ type JsonShape<T> = T;
 
 type RequestConfig = Omit<RequestInit, 'body'> & { body?: Record<string, unknown> };
 
+const toRequestInit = (init: RequestConfig): RequestInit => {
+  if (init.body) {
+    return normalizeConfig(init);
+  }
+
+  const { body: _ignored, ...rest } = init;
+  return rest;
+};
+
 async function request<T>(path: string, init?: RequestConfig): Promise<JsonShape<T>> {
-  const config = init?.body ? normalizeConfig(init) : init;
+  const config = init ? toRequestInit(init) : undefined;
   const response = await fetch(`${BASE_URL}${path}`, config);
   if (!response.ok) {
     throw new Error(`${path} failed: ${String(response.status)}`);

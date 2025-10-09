@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
