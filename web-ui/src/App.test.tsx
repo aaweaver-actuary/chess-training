@@ -179,12 +179,10 @@ describe('App', () => {
       const input = await screen.findByRole('textbox', { name: /command input/i });
       await user.type(input, 'cb{Enter}');
 
-      await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /Sandbox Board/i })).toBeInTheDocument();
-      });
-
       const board = await screen.findByTestId('sandbox-board');
+      expect(screen.queryByRole('heading', { name: /Sandbox Board/i })).not.toBeInTheDocument();
       expect(board).toHaveAttribute('position', 'start');
+      expect(board).toHaveAttribute('draggable-pieces', 'true');
       await waitFor(() => {
         expect(screen.queryByRole('dialog', { name: /command console/i })).not.toBeInTheDocument();
       });
