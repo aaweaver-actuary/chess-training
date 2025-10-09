@@ -27,7 +27,10 @@ pub struct EdgeInput {
 }
 
 impl EdgeInput {
-    /// Converts the input payload into a canonical [`Edge`].
+    /// Converts the input payload into a canonical [`OpeningEdge`].
+    ///
+    /// The canonical form computes a deterministic edge ID from the parent position and move,
+    /// and returns an [`OpeningEdge`] with normalized fields.
     pub fn into_edge(self) -> Edge {
         let id = hash64(&[&self.parent_id.to_be_bytes(), self.move_uci.as_bytes()]);
         Edge {
