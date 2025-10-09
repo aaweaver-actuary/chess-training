@@ -98,7 +98,7 @@ fn state_after_grade(current: CardState, grade: ReviewGrade) -> CardState {
         ReviewGrade::Again => CardState::Relearning,
         ReviewGrade::Hard | ReviewGrade::Good | ReviewGrade::Easy => match current {
             CardState::New | CardState::Learning => CardState::Review,
-            other => other,
+            current_state => current_state,
         },
     }
 }
