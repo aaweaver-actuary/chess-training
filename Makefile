@@ -26,6 +26,7 @@ test-steps:
 	cargo fmt
 	cargo clippy
 	cargo test
+	mkdir -p target/llvm-cov
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
 
 test-card-store:
@@ -33,6 +34,7 @@ test-card-store:
 	cargo fmt && \
 	cargo clippy && \
 	cargo test && \
+	mkdir -p target/llvm-cov && \
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
 
 test-chess-training-pgn-import:
@@ -40,6 +42,7 @@ test-chess-training-pgn-import:
 	cargo fmt && \
 	cargo clippy && \
 	cargo test && \
+	mkdir -p target/llvm-cov && \
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
 
 test-scheduler-core:
@@ -47,6 +50,7 @@ test-scheduler-core:
 	cargo fmt && \
 	cargo clippy && \
 	cargo test && \
+	mkdir -p target/llvm-cov && \
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
 
 test-web-ui:
