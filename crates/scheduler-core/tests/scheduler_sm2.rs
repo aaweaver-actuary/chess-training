@@ -168,7 +168,7 @@ fn unlocks_one_opening_per_prefix_per_day() {
         .iter()
         .map(|card| match &card.kind {
             CardKind::Opening(opening) => opening.parent_prefix.clone(),
-            _ => panic!("expected opening"),
+            CardKind::Tactic(_) => panic!("expected opening"),
         })
         .collect();
     assert_eq!(prefixes.len(), 2);
