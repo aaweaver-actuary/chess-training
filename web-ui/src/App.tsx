@@ -141,23 +141,16 @@ const App = (): JSX.Element => {
       }
 
       if (event.key === 'Escape') {
-        let shouldPreventDefault = false;
-        setIsConsoleOpen((open) => {
-          if (open) {
-            shouldPreventDefault = true;
-          }
-          return false;
-        });
-
-        if (shouldPreventDefault) {
+        if (isConsoleOpen) {
           event.preventDefault();
+          setIsConsoleOpen(false);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isConsoleOpen]);
 
   const handleOpenConsole = () => setIsConsoleOpen(true);
   const handleCloseConsole = () => setIsConsoleOpen(false);

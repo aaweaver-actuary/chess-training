@@ -1,7 +1,6 @@
 //! In-memory implementation of the [`CardStore`](crate::store::CardStore) trait organized by
 //! storage concern for readability.
 
-use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
@@ -142,19 +141,19 @@ impl CardStore for InMemoryCardStore {
 
     fn fetch_due_cards(&self, owner_id: &str, as_of: NaiveDate) -> Result<Vec<Card>, StoreError> {
         let cards = self.cards_read()?;
-        Ok(collect_due_cards_for_owner(&*cards, owner_id, as_of))
+        Ok(collect_due_cards_for_owner(&cards, owner_id, as_of))
     }
 
     fn record_review(&self, review: ReviewRequest) -> Result<Card, StoreError> {
         let mut cards = self.cards_write()?;
-        let card = borrow_card_for_review(&mut *cards, &review)?;
+        let card = borrow_card_for_review(&mut cards, &review)?;
         apply_review(&mut card.state, &review)?;
         Ok(card.clone())
     }
 
     fn record_unlock(&self, unlock: UnlockRecord) -> Result<(), StoreError> {
         let mut unlocks = self.unlocks_write()?;
-        insert_unlock_or_error(&mut *unlocks, unlock)
+        insert_unlock_or_error(&mut unlocks, unlock)
     }
 }
 
