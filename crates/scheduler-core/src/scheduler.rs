@@ -28,6 +28,7 @@ impl<S: CardStore> Scheduler<S> {
     ///
     /// Returns [`SchedulerError::CardNotFound`] when the requested card cannot be retrieved
     /// from the underlying store.
+    #[must_use = "handle potential errors when reviewing a card"]
     pub fn review(
         &mut self,
         card_id: Uuid,

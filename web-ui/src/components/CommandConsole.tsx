@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import './CommandConsole.css';
 
@@ -13,6 +13,8 @@ const CONSOLE_ANIMATION_DURATION_MS = 240;
 export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps) => {
   const [isRendered, setIsRendered] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
+  const [command, setCommand] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -44,6 +46,22 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
     return classNames.join(' ');
   }, [isRendered]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setCommand('');
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
   const overlayClassName = useMemo(() => {
     const classNames = ['command-console-overlay'];
     if (isClosing) {
@@ -61,6 +79,7 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
   }, [isClosing]);
 
   const isVisible = isOpen || isClosing;
+  const shouldRenderConsole = isRendered || isOpen;
 
   return (
     <>
@@ -73,7 +92,7 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
       >
         <span className="command-console-launcher__icon">{isVisible ? '×' : '$:'}</span>
       </button>
-      {isRendered && (
+      {shouldRenderConsole && (
         <div className={overlayClassName}>
           <div
             className={consoleClassName}
@@ -96,7 +115,15 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
               </div>
               <div className="command-console__body">
                 <span className="command-console__prompt">$:</span>
-                <span className="command-console__placeholder">Awaiting commands…</span>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className="command-console__input"
+                  aria-label="Command input"
+                  placeholder="Awaiting commands…"
+                  value={command}
+                  onChange={(event) => setCommand(event.target.value)}
+                />
               </div>
             </div>
           </div>
