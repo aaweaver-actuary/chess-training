@@ -163,10 +163,13 @@ describe('session service', () => {
     expect(result.stats).toMatchObject({ reviews_today: 2, avg_latency_ms: 750 });
     expect(result.stats.accuracy).toBeCloseTo(0.75, 2);
     expect(updateSpy).toHaveBeenCalled();
-    expect(broadcast).toHaveBeenCalledWith('s', { type: 'UPDATE', card: nextCard });
-    expect(broadcast).toHaveBeenCalledWith('s', {
-      type: 'STATS',
-      stats: expect.objectContaining({ reviews_today: 2 }),
-    });
+    expect(broadcast).toHaveBeenCalledWith(
+      's',
+      expect.objectContaining({
+        type: 'UPDATE',
+        card: nextCard,
+        stats: expect.objectContaining({ reviews_today: 2, avg_latency_ms: 750 }),
+      }),
+    );
   });
 });

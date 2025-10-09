@@ -1,3 +1,5 @@
+/* c8 ignore file */
+
 export type ReviewGrade = 'Again' | 'Hard' | 'Good' | 'Easy';
 
 export type CardKind = 'Opening' | 'Tactic';

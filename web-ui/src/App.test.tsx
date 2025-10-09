@@ -58,6 +58,7 @@ beforeEach(() => {
   state.start.mockClear();
   state.submitGrade.mockClear();
   state.stats = createDefaultStats();
+  state.currentCard.kind = 'Opening';
 });
 
 describe('App', () => {
@@ -87,6 +88,42 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /Good/i }));
 
     expect(mockedStore.getState().submitGrade).toHaveBeenCalledWith('Good', expect.any(Number));
+  });
+
+  it('submits board results when the opening review board emits a move', async () => {
+    render(
+      <MemoryRouter initialEntries={['/review/opening']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const board = await screen.findByTestId('opening-review-board');
+
+    board.dispatchEvent(
+      new CustomEvent('drop', {
+        detail: { source: 'g1', target: 'h3' },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().submitGrade).toHaveBeenCalledWith('Again', expect.any(Number));
+    });
+  });
+
+  it('shows an empty opening state when the current card is not an opening', async () => {
+    mockedStore.getState().currentCard.kind = 'Tactic';
+
+    render(
+      <MemoryRouter initialEntries={['/review/opening']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText('No opening card available right now.')).toBeInTheDocument();
   });
 
   it('falls back to the baseline overview when stats are unavailable', async () => {

@@ -1,8 +1,15 @@
-import type { CardSummary, ReviewGrade, SessionStats, StartSessionResponse } from '../types/gateway';
+import type {
+  CardSummary,
+  ReviewGrade,
+  SessionStats,
+  StartSessionResponse,
+} from '../types/gateway';
 
-/* c8 ignore next 2 */
+/* c8 ignore start */
 const env = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
-const baseUrlFromEnv = env && typeof env.VITE_SESSION_URL === 'string' ? env.VITE_SESSION_URL : undefined;
+const baseUrlFromEnv =
+  env && typeof env.VITE_SESSION_URL === 'string' ? env.VITE_SESSION_URL : undefined;
+/* c8 ignore end */
 const BASE_URL: string = baseUrlFromEnv ?? 'http://localhost:3000';
 
 type JsonShape<T> = T;
@@ -23,10 +30,10 @@ function normalizeConfig(init: RequestConfig): RequestInit {
   headers.set('content-type', 'application/json');
   return {
     ...init,
-      body: JSON.stringify(init.body),
-      headers,
-    } satisfies RequestInit;
-  }
+    body: JSON.stringify(init.body),
+    headers,
+  } satisfies RequestInit;
+}
 
 export const sessionGateway = {
   startSession(userId: string): Promise<StartSessionResponse> {
@@ -35,7 +42,11 @@ export const sessionGateway = {
       body: { user_id: userId },
     });
   },
-  grade(cardId: string, gradeValue: ReviewGrade, latencyMs: number): Promise<{ next_card?: CardSummary }> {
+  grade(
+    cardId: string,
+    gradeValue: ReviewGrade,
+    latencyMs: number,
+  ): Promise<{ next_card?: CardSummary }> {
     return request<{ next_card?: CardSummary }>('/api/session/grade', {
       method: 'POST',
       body: { card_id: cardId, grade: gradeValue, latency_ms: latencyMs },

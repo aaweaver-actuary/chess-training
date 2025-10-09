@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Chess } from 'chess.js';
 
 import type { CardSummary } from '../../types/gateway';
 import { OpeningReviewBoard } from '../OpeningReviewBoard';
@@ -12,6 +13,10 @@ describe('OpeningReviewBoard', () => {
     prompt: 'Play the natural developing move.',
     expected_moves_uci: ['c1g5'],
   };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('reports success when the expected move is played', () => {
     const onResult = vi.fn();
@@ -49,5 +54,72 @@ describe('OpeningReviewBoard', () => {
       'position',
       'rn1qkbnr/ppp1pppp/8/3p4/3P4/5N2/PPP1PPPP/RNBQKB1R b KQkq - 1 1',
     );
+  });
+
+  it('ignores drop events that do not include move details', () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+
+    board.dispatchEvent(new CustomEvent('drop'));
+
+    expect(onResult).not.toHaveBeenCalled();
+    expect(board).toHaveAttribute('position', baseCard.position_fen);
+  });
+
+  it('ignores invalid moves emitted by the board element', () => {
+    const onResult = vi.fn();
+    const moveSpy = vi.spyOn(Chess.prototype, 'move');
+    moveSpy.mockReturnValueOnce(null);
+
+    render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+
+    board.dispatchEvent(
+      new CustomEvent('drop', {
+        detail: { source: 'c1', target: 'c2' },
+      }),
+    );
+
+    expect(onResult).not.toHaveBeenCalled();
+    expect(board).toHaveAttribute('position', baseCard.position_fen);
+  });
+
+  it('falls back to an empty expected move list when none are provided', () => {
+    const onResult = vi.fn();
+    const cardWithoutMoves: CardSummary = { ...baseCard, expected_moves_uci: undefined };
+    render(<OpeningReviewBoard card={cardWithoutMoves} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+
+    board.dispatchEvent(
+      new CustomEvent('drop', {
+        detail: { source: 'g1', target: 'f3' },
+      }),
+    );
+
+    expect(onResult).toHaveBeenCalledWith('Again', expect.any(Number));
+  });
+
+  it('includes the promotion piece when reporting a successful move', () => {
+    const onResult = vi.fn();
+    const promotionCard: CardSummary = {
+      ...baseCard,
+      position_fen: '4k3/3P4/8/8/8/8/8/4K3 w - - 0 1',
+      expected_moves_uci: ['d7d8q'],
+    };
+    render(<OpeningReviewBoard card={promotionCard} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+
+    board.dispatchEvent(
+      new CustomEvent('drop', {
+        detail: { source: 'd7', target: 'd8', promotion: 'q' },
+      }),
+    );
+
+    expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
   });
 });

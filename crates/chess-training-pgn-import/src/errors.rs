@@ -124,7 +124,7 @@ mod tests {
         };
 
         assert_eq!(error.path(), path.as_path());
-        assert_eq!(error.source().kind(), io::ErrorKind::NotFound);
+        assert_eq!(error.io_error().kind(), io::ErrorKind::NotFound);
     }
 
     #[test]
@@ -211,8 +211,9 @@ mod tests {
             source: io_err,
         };
         let config_error = ConfigError::Io(io_error);
-
-        assert!(matches!(config_error, ConfigError::Io(_)));
+        let is_io = |error: &ConfigError| matches!(error, ConfigError::Io(_));
+        assert!(is_io(&config_error));
+        assert!(!is_io(&ConfigError::NoInputs));
     }
 
     #[test]
@@ -223,12 +224,19 @@ mod tests {
             path,
             source: toml_err,
         };
-        let config_error = ConfigError::Parse(parse_error);
+        let is_parse = |error: &ConfigError| matches!(error, ConfigError::Parse(_));
+        let is_no_inputs = |error: &ConfigError| matches!(error, ConfigError::NoInputs);
 
-        assert!(matches!(config_error, ConfigError::Parse(_)));
-        let config_error = ConfigError::NoInputs;
+        let parse_config = ConfigError::Parse(parse_error);
+        assert!(is_parse(&parse_config));
+        assert!(!is_parse(&ConfigError::Io(IoError {
+            path: PathBuf::from("/other"),
+            source: io::Error::new(io::ErrorKind::Other, "other"),
+        })));
 
-        assert!(matches!(config_error, ConfigError::NoInputs));
+        let no_inputs = ConfigError::NoInputs;
+        assert!(is_no_inputs(&no_inputs));
+        assert!(!is_no_inputs(&parse_config));
     }
 
     #[test]

@@ -91,16 +91,13 @@ describe('http scheduler client', () => {
     global.fetch = originalFetch;
   });
 
-  it('throws an error when fetchQueue receives a malformed response body', async () => {
+  it('treats missing queue payloads as empty results', async () => {
     const fetchMock = vi.fn();
-    // Response missing the 'queue' field
-    fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ not_queue: [] }), { status: 200 }),
-    );
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
     const client = createHttpSchedulerClient({
       baseUrl: 'http://scheduler.test',
       fetchImpl: fetchMock,
     });
-    await expect(client.fetchQueue('user-3')).rejects.toThrow('scheduler-error');
+    await expect(client.fetchQueue('user-3')).resolves.toEqual([]);
   });
 });

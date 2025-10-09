@@ -17,7 +17,10 @@ describe('sessionGateway', () => {
   it('starts a session with the expected payload', async () => {
     const responseBody = { session_id: 's1', queue_size: 3, first_card: { card_id: 'c1' } };
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify(responseBody), { status: 200, headers: { 'content-type': 'application/json' } }),
+      new Response(JSON.stringify(responseBody), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
     );
 
     const result = await sessionGateway.startSession('user-1');
@@ -40,13 +43,18 @@ describe('sessionGateway', () => {
   it('throws when startSession fails', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 500 }));
 
-    await expect(sessionGateway.startSession('user-2')).rejects.toThrow('/api/session/start failed: 500');
+    await expect(sessionGateway.startSession('user-2')).rejects.toThrow(
+      '/api/session/start failed: 500',
+    );
   });
 
   it('submits a grade and returns the next card', async () => {
     const responseBody = { next_card: { card_id: 'c2' } };
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify(responseBody), { status: 200, headers: { 'content-type': 'application/json' } }),
+      new Response(JSON.stringify(responseBody), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
     );
 
     const result = await sessionGateway.grade('c1', 'Good', 4500);
@@ -69,13 +77,18 @@ describe('sessionGateway', () => {
   it('throws when grade fails', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 400 }));
 
-    await expect(sessionGateway.grade('c9', 'Again', 1000)).rejects.toThrow('/api/session/grade failed: 400');
+    await expect(sessionGateway.grade('c9', 'Again', 1000)).rejects.toThrow(
+      '/api/session/grade failed: 400',
+    );
   });
 
   it('fetches stats', async () => {
     const responseBody = { reviews_today: 3 };
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify(responseBody), { status: 200, headers: { 'content-type': 'application/json' } }),
+      new Response(JSON.stringify(responseBody), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
     );
 
     const result = await sessionGateway.stats();
