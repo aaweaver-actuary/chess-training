@@ -214,6 +214,36 @@ describe('App', () => {
         expect(screen.queryByRole('dialog', { name: /command console/i })).not.toBeInTheDocument();
       });
     });
+
+    it('closes the PGN import pane when the x command is dispatched', async () => {
+      const user = setupUser();
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockedStore.getState().start).toHaveBeenCalled();
+      });
+
+      const pane = screen.getByRole('complementary', { name: /pgn import tools/i });
+      const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+
+      fireEvent.pointerEnter(pane);
+      expect(handle).toHaveAttribute('aria-expanded', 'true');
+
+      await user.keyboard(':');
+
+      const input = await screen.findByRole('textbox', { name: /command input/i });
+      await user.type(input, 'x{Enter}');
+
+      await waitFor(() => {
+        expect(handle).toHaveAttribute('aria-expanded', 'false');
+      });
+
+      expect(alertSpy).not.toHaveBeenCalledWith('x');
+    });
   });
 
   it('starts the session on mount and renders live stats', async () => {

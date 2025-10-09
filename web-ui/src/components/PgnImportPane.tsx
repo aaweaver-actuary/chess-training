@@ -1,12 +1,14 @@
-import type { JSX } from 'react';
-import { useRef, useState } from 'react';
+import type { FocusEvent, JSX } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import './PgnImportPane.css';
 import type { DetectedOpeningLine, ImportResult } from '../types/repertoire';
 import { formatUnlockDate, UNLOCK_DATE_FALLBACK_LABEL } from '../utils/formatUnlockDate';
+import type { CommandDispatcher } from '../utils/commandDispatcher';
 
 type PgnImportPaneProps = {
   onImportLine: (line: DetectedOpeningLine) => ImportResult;
+  commandDispatcher?: CommandDispatcher;
 };
 
 type FeedbackState =
@@ -87,13 +89,18 @@ const buildScheduledMessage = (result: ImportResult): FeedbackState => {
   };
 };
 
-export const PgnImportPane = ({ onImportLine }: PgnImportPaneProps): JSX.Element => {
+export const PgnImportPane = ({ onImportLine, commandDispatcher }: PgnImportPaneProps): JSX.Element => {
   const containerRef = useRef<HTMLElement | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPasteMode, setIsPasteMode] = useState(false);
   const [pgnText, setPgnText] = useState('');
   const [detectedLine, setDetectedLine] = useState<DetectedOpeningLine | undefined>(undefined);
   const [feedback, setFeedback] = useState<FeedbackState>(undefined);
+
+  const collapsePane = useCallback(() => {
+    setIsExpanded(false);
+    setIsPasteMode(false);
+  }, []);
 
   const paneContainsFocus = () => {
     const active = document.activeElement;
@@ -104,20 +111,18 @@ export const PgnImportPane = ({ onImportLine }: PgnImportPaneProps): JSX.Element
     setIsExpanded(true);
   };
 
-  const handlePointerLeave = () => {
-    if (paneContainsFocus()) {
-      return;
-    }
-    setIsExpanded(false);
-  };
-
   const handleFocusCapture = () => {
     setIsExpanded(true);
   };
 
-  const handleBlurCapture = () => {
+  const handleBlurCapture = (event: FocusEvent<HTMLElement>) => {
+    const nextTarget = event.relatedTarget as Node | null;
+    if (nextTarget && containerRef.current?.contains(nextTarget)) {
+      return;
+    }
+
     if (!paneContainsFocus()) {
-      setIsExpanded(false);
+      collapsePane();
     }
   };
 
@@ -161,12 +166,47 @@ export const PgnImportPane = ({ onImportLine }: PgnImportPaneProps): JSX.Element
     }
   };
 
+  useEffect(() => {
+    if (!isExpanded) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+
+      const path = event.composedPath();
+      if (path.includes(container)) {
+        return;
+      }
+
+      collapsePane();
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [collapsePane, isExpanded]);
+
+  useEffect(() => {
+    if (!commandDispatcher) {
+      return;
+    }
+
+    commandDispatcher.register('x', () => {
+      collapsePane();
+    });
+  }, [collapsePane, commandDispatcher]);
+
   return (
     <aside
       ref={containerRef}
       className={`pgn-import-pane${isExpanded ? ' pgn-import-pane-expanded' : ''}`}
       aria-label="PGN import tools"
-      onPointerLeave={handlePointerLeave}
+      onPointerEnter={handlePointerEnter}
       onFocusCapture={handleFocusCapture}
       onBlurCapture={handleBlurCapture}
     >
