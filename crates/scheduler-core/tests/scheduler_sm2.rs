@@ -1,12 +1,42 @@
 use chrono::NaiveDate;
 use scheduler_core::{
-    Card, CardKind, CardState, CardStore, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig,
-    build_queue_for_day,
+    build_queue_for_day, Card, CardKind, CardState, CardStore, InMemoryStore, ReviewGrade,
+    Scheduler, SchedulerConfig,
 };
 use uuid::Uuid;
 
 fn date(y: i32, m: u32, d: u32) -> NaiveDate {
     NaiveDate::from_ymd_opt(y, m, d).expect("invalid date")
+}
+
+struct RelearningFixture {
+    scheduler: Scheduler<InMemoryStore>,
+    card_id: Uuid,
+    today: NaiveDate,
+}
+
+fn relearning_fixture() -> RelearningFixture {
+    let mut store = InMemoryStore::new();
+    let config = SchedulerConfig::default();
+    let owner = Uuid::new_v4();
+    let today = date(2024, 2, 2);
+
+    let mut card = Card::new(owner, CardKind::Tactic, today, &config);
+    card.state = CardState::Relearning;
+    card.interval_days = 1;
+    card.due = today;
+    card.ease_factor = 2.0;
+    card.reviews = 5;
+    card.lapses = 1;
+    let card_id = card.id;
+    store.upsert_card(card);
+
+    let scheduler = Scheduler::new(store, config);
+    RelearningFixture {
+        scheduler,
+        card_id,
+        today,
+    }
 }
 
 #[test]
@@ -134,25 +164,12 @@ fn unlocks_one_opening_per_prefix_per_day() {
 
 #[test]
 fn relearning_card_graduates_on_good_review() {
-    let mut store = InMemoryStore::new();
-    let config = SchedulerConfig::default();
-    let owner = Uuid::new_v4();
-    let today = date(2024, 2, 2);
+    let RelearningFixture {
+        mut scheduler,
+        card_id,
+        today,
+    } = relearning_fixture();
 
-    // Create a card in Relearning state (after a lapse)
-    let mut card = Card::new(owner, CardKind::Tactic, today, &config);
-    card.state = CardState::Relearning;
-    card.interval_days = 1;
-    card.due = today;
-    card.ease_factor = 2.0;
-    card.reviews = 5;
-    card.lapses = 1;
-    let card_id = card.id;
-    store.upsert_card(card);
-
-    let mut scheduler = Scheduler::new(store, config.clone());
-
-    // Review with Good - should graduate back to Review state
     let outcome = scheduler
         .review(card_id, ReviewGrade::Good, today)
         .expect("review should succeed");
@@ -168,22 +185,11 @@ fn relearning_card_graduates_on_good_review() {
 
 #[test]
 fn relearning_card_graduates_on_hard_review() {
-    let mut store = InMemoryStore::new();
-    let config = SchedulerConfig::default();
-    let owner = Uuid::new_v4();
-    let today = date(2024, 2, 2);
-
-    let mut card = Card::new(owner, CardKind::Tactic, today, &config);
-    card.state = CardState::Relearning;
-    card.interval_days = 1;
-    card.due = today;
-    card.ease_factor = 2.0;
-    card.reviews = 5;
-    card.lapses = 1;
-    let card_id = card.id;
-    store.upsert_card(card);
-
-    let mut scheduler = Scheduler::new(store, config.clone());
+    let RelearningFixture {
+        mut scheduler,
+        card_id,
+        today,
+    } = relearning_fixture();
 
     let outcome = scheduler
         .review(card_id, ReviewGrade::Hard, today)
@@ -198,22 +204,11 @@ fn relearning_card_graduates_on_hard_review() {
 
 #[test]
 fn relearning_card_graduates_on_easy_review() {
-    let mut store = InMemoryStore::new();
-    let config = SchedulerConfig::default();
-    let owner = Uuid::new_v4();
-    let today = date(2024, 2, 2);
-
-    let mut card = Card::new(owner, CardKind::Tactic, today, &config);
-    card.state = CardState::Relearning;
-    card.interval_days = 1;
-    card.due = today;
-    card.ease_factor = 2.0;
-    card.reviews = 5;
-    card.lapses = 1;
-    let card_id = card.id;
-    store.upsert_card(card);
-
-    let mut scheduler = Scheduler::new(store, config.clone());
+    let RelearningFixture {
+        mut scheduler,
+        card_id,
+        today,
+    } = relearning_fixture();
 
     let outcome = scheduler
         .review(card_id, ReviewGrade::Easy, today)

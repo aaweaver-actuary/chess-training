@@ -1,6 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createHttpSchedulerClient } from '../src/clients/httpSchedulerClient.js';
 
+const jsonResponse = (body: unknown, init: ResponseInit = {}) => {
+  const headers = new Headers(init.headers);
+  if (!headers.has('content-type')) {
+    headers.set('content-type', 'application/json');
+  }
+  return new Response(JSON.stringify(body), {
+    status: init.status ?? 200,
+    ...init,
+    headers,
+  });
+};
+
+const createClient = (fetchImpl?: ReturnType<typeof vi.fn>) =>
+  createHttpSchedulerClient({ baseUrl: 'http://scheduler.test', fetchImpl });
+
 const sampleCard = {
   card_id: 'card-1',
   kind: 'Opening' as const,
@@ -10,17 +25,8 @@ const sampleCard = {
 
 describe('http scheduler client', () => {
   it('fetches queues and next cards from scheduler', async () => {
-    const fetchMock = vi.fn(
-      async () =>
-        new Response(JSON.stringify({ queue: [sampleCard] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
-    );
-    const client = createHttpSchedulerClient({
-      baseUrl: 'http://scheduler.test',
-      fetchImpl: fetchMock,
-    });
+    const fetchMock = vi.fn(async () => jsonResponse({ queue: [sampleCard] }));
+    const client = createClient(fetchMock);
     const queue = await client.fetchQueue('user-1');
     expect(queue).toEqual([sampleCard]);
     expect(fetchMock).toHaveBeenCalledWith(
@@ -28,12 +34,7 @@ describe('http scheduler client', () => {
       expect.anything(),
     );
 
-    fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ next_card: sampleCard }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-    );
+    fetchMock.mockResolvedValueOnce(jsonResponse({ next_card: sampleCard }));
     const next = await client.gradeCard({
       sessionId: 'session-1',
       cardId: 'card-1',
@@ -68,10 +69,7 @@ describe('http scheduler client', () => {
 
   it('throws when scheduler responds with non-ok status', async () => {
     const fetchMock = vi.fn(async () => new Response('fail', { status: 500 }));
-    const client = createHttpSchedulerClient({
-      baseUrl: 'http://scheduler.test',
-      fetchImpl: fetchMock,
-    });
+    const client = createClient(fetchMock);
     await expect(client.fetchQueue('user-1')).rejects.toThrow('scheduler-error');
     fetchMock.mockResolvedValueOnce(new Response('nope', { status: 500 }));
     await expect(
@@ -85,22 +83,17 @@ describe('http scheduler client', () => {
       async () => new Response(JSON.stringify({ queue: [] }), { status: 200 }),
     );
     global.fetch = fetchSpy as typeof fetch;
-    const client = createHttpSchedulerClient({ baseUrl: 'http://scheduler.test' });
+    const client = createClient();
     await client.fetchQueue('user-2');
     expect(fetchSpy).toHaveBeenCalled();
     global.fetch = originalFetch;
   });
 
-  it('throws an error when fetchQueue receives a malformed response body', async () => {
+  it('returns an empty queue when the scheduler omits the queue field', async () => {
     const fetchMock = vi.fn();
     // Response missing the 'queue' field
-    fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ not_queue: [] }), { status: 200 }),
-    );
-    const client = createHttpSchedulerClient({
-      baseUrl: 'http://scheduler.test',
-      fetchImpl: fetchMock,
-    });
-    await expect(client.fetchQueue('user-3')).rejects.toThrow('scheduler-error');
+    fetchMock.mockResolvedValueOnce(jsonResponse({ not_queue: [] }, { headers: {} }));
+    const client = createClient(fetchMock);
+    await expect(client.fetchQueue('user-3')).resolves.toEqual([]);
   });
 });

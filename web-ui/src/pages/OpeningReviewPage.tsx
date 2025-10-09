@@ -37,7 +37,7 @@ export const OpeningReviewPage: FC<OpeningReviewPageProps> = ({
 }) => (
   <main className="app-shell opening-review-page">
     <nav aria-label="Page navigation" className="review-navigation">
-      <Link to={backPath} className="nav-link">
+      <Link to={backPath} className="nav-link floating-action">
         Back to Dashboard
       </Link>
     </nav>
