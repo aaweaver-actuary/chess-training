@@ -199,6 +199,9 @@ export const PgnImportPane = ({ onImportLine, commandDispatcher }: PgnImportPane
     commandDispatcher.register('x', () => {
       collapsePane();
     });
+    return () => {
+      commandDispatcher.unregister?.('x');
+    };
   }, [collapsePane, commandDispatcher]);
 
   return (
