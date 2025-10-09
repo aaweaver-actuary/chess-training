@@ -396,7 +396,7 @@
 
   /* Disable pointer events on any absolutely positioned overlays 
      that might cover the board on small screens */
-.opening-review > :not(chess-board) {
+  .opening-review > :not(chess-board) {
     pointer-events: none;
   }
 }
