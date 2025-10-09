@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 3. Add some sample cards to the store
     let owner_id = Uuid::new_v4();
-    let today = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
+    let today = NaiveDate::from_ymd_opt(2025, 1, 15).expect("valid example date");
 
     // Create a new opening card
     let card1 = new_card(

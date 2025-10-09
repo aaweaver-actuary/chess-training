@@ -67,7 +67,10 @@ fn sm2_good_review_promotes_new_card() {
 
     assert_eq!(outcome.card.state.stage, CardState::Review);
     assert_eq!(outcome.card.state.interval_days, 1);
-    assert_eq!(outcome.card.state.due, today.succ_opt().unwrap());
+    assert_eq!(
+        outcome.card.state.due,
+        today.succ_opt().expect("successor date should exist")
+    );
     assert_eq!(outcome.card.state.reviews, 1);
 
     let store = scheduler.into_store();
@@ -106,7 +109,10 @@ fn sm2_again_resets_interval_and_ease() {
 
     assert_eq!(outcome.card.state.stage, CardState::Relearning);
     assert_eq!(outcome.card.state.interval_days, 1);
-    assert_eq!(outcome.card.state.due, today.succ_opt().unwrap());
+    assert_eq!(
+        outcome.card.state.due,
+        today.succ_opt().expect("successor date should exist")
+    );
     assert_eq!(outcome.card.state.lapses, 1);
     assert!(outcome.card.state.ease_factor >= config.ease_minimum);
     assert!(outcome.card.state.ease_factor < 2.4);
