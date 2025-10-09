@@ -118,12 +118,17 @@ const isTextEntryTarget = (target: EventTarget | null): boolean => {
   return tagName === 'INPUT' || tagName === 'TEXTAREA' || target.getAttribute('role') === 'textbox';
 };
 
+const isColonKeyPressed = (event: KeyboardEvent): boolean => {
+  // Detects colon key (:) on US keyboards: Shift+; or direct colon key
+  return event.key === ':' || (event.key === ';' && event.shiftKey);
+};
+
 const App = (): JSX.Element => {
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const isColonKey = event.key === ':' || (event.key === ';' && event.shiftKey);
+      const isColonKey = isColonKeyPressed(event);
 
       if (isColonKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
         if (isTextEntryTarget(event.target)) {

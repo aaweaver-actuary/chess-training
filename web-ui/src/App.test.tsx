@@ -183,4 +183,81 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: /Daily Review Summary/i })).toBeInTheDocument();
   });
+
+  it('opens the command console when colon key is pressed', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    // Press the colon key (Shift+;)
+    await user.keyboard('{Shift>};{/Shift}');
+
+    expect(screen.getByRole('dialog', { name: /command console/i })).toBeInTheDocument();
+  });
+
+  it('opens the command console when direct colon key is pressed', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    // Press the colon key directly
+    await user.keyboard(':');
+
+    expect(screen.getByRole('dialog', { name: /command console/i })).toBeInTheDocument();
+  });
+
+  it('does not open command console when semicolon is pressed without shift', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    await user.keyboard(';');
+
+    expect(screen.queryByRole('dialog', { name: /command console/i })).not.toBeInTheDocument();
+  });
+
+  it('closes the command console when Escape key is pressed', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    // Open the console
+    await user.keyboard(':');
+    expect(screen.getByRole('dialog', { name: /command console/i })).toBeInTheDocument();
+
+    // Close it with Escape
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: /command console/i })).not.toBeInTheDocument();
+    });
+  });
 });
