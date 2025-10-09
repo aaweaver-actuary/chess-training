@@ -34,7 +34,7 @@ describe('sessionGateway', () => {
     );
     const firstCall = fetchMock.mock.calls[0];
     expect(firstCall).not.toBeUndefined();
-    const [, init] = firstCall as Parameters<typeof fetch>;
+    const init = Array.isArray(firstCall) ? firstCall[1] : undefined;
     expect(init).toBeDefined();
     const headers = init?.headers;
     expect(headers).toBeInstanceOf(Headers);
