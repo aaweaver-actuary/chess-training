@@ -6,9 +6,17 @@ import type {
 } from '../types/gateway';
 
 /* c8 ignore start */
-const env = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
-const baseUrlFromEnv =
-  env && typeof env.VITE_SESSION_URL === 'string' ? env.VITE_SESSION_URL : undefined;
+let baseUrlFromEnv: string | undefined;
+
+if (typeof import.meta !== 'undefined') {
+  const env: unknown = import.meta.env;
+  if (typeof env === 'object' && env !== null && 'VITE_SESSION_URL' in env) {
+    const envSessionUrl = (env as { VITE_SESSION_URL?: unknown }).VITE_SESSION_URL;
+    if (typeof envSessionUrl === 'string') {
+      baseUrlFromEnv = envSessionUrl;
+    }
+  }
+}
 const BASE_URL: string = baseUrlFromEnv ?? 'http://localhost:3000';
 
 type JsonShape<T> = T;
@@ -17,14 +25,15 @@ type RequestConfig = Omit<RequestInit, 'body'> & { body?: Record<string, unknown
 type RequestConfigWithBody = RequestConfig & { body: Record<string, unknown> };
 
 const hasBody = (config: RequestConfig): config is RequestConfigWithBody =>
-  typeof config.body === 'object' && config.body !== null;
+  config.body !== undefined;
 
 const toRequestInit = (init: RequestConfig): RequestInit => {
   if (hasBody(init)) {
     return normalizeConfig(init);
   }
 
-  const { body: _ignored, ...rest } = init;
+  const { body: _unusedBody, ...rest } = init;
+  void _unusedBody;
   return rest;
 };
 
