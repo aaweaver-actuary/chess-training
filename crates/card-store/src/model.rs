@@ -129,23 +129,34 @@ mod tests {
         let opening = OpeningCard::new(7);
         let mapped_opening = CardKind::Opening(opening.clone())
             .map_opening(|card| OpeningCard::new(card.edge_id + 1));
-        match mapped_opening {
-            CardKind::Opening(card) => assert_eq!(card.edge_id, 8),
-            CardKind::Tactic(_) => panic!("expected opening variant"),
-        }
+        assert!(matches!(
+            mapped_opening,
+            CardKind::Opening(card) if card.edge_id == 8
+        ));
+        assert!(matches!(
+            GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(13))
+                .map_opening(|card| OpeningCard::new(card.edge_id + 1)),
+            GenericCardKind::Tactic(tactic) if tactic.tactic_id == 13
+        ));
 
         let tactic_kind = CardKind::Tactic(TacticCard::new(11));
-        match tactic_kind
-            .clone()
-            .map_tactic(|payload| payload.tactic_id + 1)
-        {
-            GenericCardKind::Tactic(identifier) => assert_eq!(identifier, 12),
-            GenericCardKind::Opening(_) => panic!("expected tactic variant"),
-        }
-        match tactic_kind.as_ref() {
-            GenericCardKind::Tactic(payload) => assert_eq!(payload.tactic_id, 11),
-            GenericCardKind::Opening(_) => panic!("expected tactic reference"),
-        }
+        assert!(matches!(
+            tactic_kind.clone().map_tactic(|payload| payload.tactic_id + 1),
+            GenericCardKind::Tactic(identifier) if identifier == 12
+        ));
+        assert!(matches!(
+            tactic_kind.as_ref(),
+            GenericCardKind::Tactic(payload) if payload.tactic_id == 11
+        ));
+        assert!(matches!(
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(opening.clone())
+                .map_tactic(|card| card.tactic_id + 1),
+            GenericCardKind::Opening(card) if card.edge_id == opening.edge_id
+        ));
+        assert!(matches!(
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(opening.clone()).as_ref(),
+            GenericCardKind::Opening(reference) if reference.edge_id == opening.edge_id
+        ));
 
         let edge = OpeningEdge::new(1, 2, 3, "e2e4", "e4");
         assert_eq!(edge.move_uci, "e2e4");

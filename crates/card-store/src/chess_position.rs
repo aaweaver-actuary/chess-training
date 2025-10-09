@@ -25,14 +25,26 @@ impl ChessPosition {
     #[must_use = "inspect the result to detect invalid chess positions"]
     pub fn new(fen: impl Into<String>, ply: u32) -> Result<Self, PositionError> {
         let fen = fen.into();
-        let side_to_move = fen
-            .split_whitespace()
-            .nth(1)
-            .and_then(|s| {
-                let c = s.chars().next()?;
-                matches!(c, 'w' | 'b').then_some(c)
-            })
+        let parts: Vec<&str> = fen.split(' ').collect();
+        if parts.len() != 6 || parts.iter().any(|segment| segment.is_empty()) {
+            return Err(PositionError::MalformedFen);
+        }
+
+        let side_to_move = parts[1]
+            .chars()
+            .next()
+            .filter(|c| matches!(c, 'w' | 'b'))
             .ok_or(PositionError::InvalidSideToMove)?;
+
+        if !parts[0].chars().all(|c| {
+            matches!(
+                c,
+                '/' | '1'
+                    ..='8' | 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p'
+            )
+        }) {
+            return Err(PositionError::InvalidSideToMove);
+        }
         let id = hash64(&[fen.as_bytes()]);
         Ok(Self {
             id,

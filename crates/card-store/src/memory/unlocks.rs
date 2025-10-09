@@ -5,7 +5,7 @@ use crate::store::StoreError;
 
 pub(super) fn insert_unlock_or_error(
     unlocks: &mut HashSet<UnlockRecord>,
-    unlock: UnlockRecord,
+    unlock: &UnlockRecord,
 ) -> Result<(), StoreError> {
     if unlocks.insert(unlock.clone()) {
         Ok(())
@@ -35,8 +35,8 @@ mod tests {
             detail: UnlockDetail { edge_id: 7 },
             unlocked_on: naive_date(2023, 1, 1),
         };
-        insert_unlock_or_error(&mut unlocks, record.clone()).expect("first insert succeeds");
-        let err = insert_unlock_or_error(&mut unlocks, record).unwrap_err();
+        insert_unlock_or_error(&mut unlocks, &record).expect("first insert succeeds");
+        let err = insert_unlock_or_error(&mut unlocks, &record).unwrap_err();
         assert!(matches!(err, StoreError::DuplicateUnlock { edge, .. } if edge == 7));
     }
 }

@@ -115,6 +115,7 @@ fn commit_review_transition(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::panic::catch_unwind;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
@@ -176,16 +177,16 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn interval_after_grade_panics_on_out_of_range_values() {
         let interval = NonZeroU8::new(3).unwrap();
-        let _ = interval_after_grade(interval, 9);
+        let result = catch_unwind(|| interval_after_grade(interval, 9));
+        assert!(result.is_err());
     }
 
     #[test]
-    #[should_panic]
     fn ease_delta_for_grade_panics_on_out_of_range_values() {
-        let _ = ease_delta_for_grade(9);
+        let result = catch_unwind(|| ease_delta_for_grade(9));
+        assert!(result.is_err());
     }
 
     #[test]
@@ -208,7 +209,7 @@ mod tests {
         let interval = NonZeroU8::new(2).unwrap();
         let transition = finalize_transition(&state, &review, interval, 2.3);
         assert_eq!(transition.interval, interval);
-        assert_eq!(transition.ease, 2.3);
+        assert!((transition.ease - 2.3).abs() < f32::EPSILON);
         assert_eq!(transition.due_on, naive_date(2023, 1, 3));
     }
 
@@ -223,7 +224,7 @@ mod tests {
         };
         commit_review_transition(&mut state, naive_date(2023, 1, 2), transition);
         assert_eq!(state.interval.get(), 3);
-        assert_eq!(state.ease_factor, 2.1);
+        assert!((state.ease_factor - 2.1).abs() < f32::EPSILON);
         assert_eq!(state.due_on, naive_date(2023, 1, 4));
     }
 }

@@ -49,6 +49,10 @@ impl InMemoryCardStore {
     }
 
     /// Number of unique positions currently stored. Useful for tests.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::PoisonedLock`] when the underlying position lock is poisoned.
     #[must_use = "handle potential store errors when counting positions"]
     pub fn position_count(&self) -> Result<usize, StoreError> {
         Ok(self.positions_read()?.len())
@@ -160,7 +164,7 @@ impl CardStore for InMemoryCardStore {
 
     fn record_unlock(&self, unlock: UnlockRecord) -> Result<(), StoreError> {
         let mut unlocks = self.unlocks_write()?;
-        insert_unlock_or_error(&mut unlocks, unlock)
+        insert_unlock_or_error(&mut unlocks, &unlock)
     }
 }
 

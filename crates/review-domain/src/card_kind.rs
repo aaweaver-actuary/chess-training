@@ -40,7 +40,6 @@ impl<Opening, Tactic> CardKind<Opening, Tactic> {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     #[test]
@@ -74,15 +73,15 @@ mod tests {
     #[test]
     fn as_ref_preserves_payload_references() {
         let tactic = String::from("skewer");
-        let card: CardKind<(), String> = CardKind::Tactic(tactic.clone());
-        match card.as_ref() {
-            CardKind::Tactic(reference) => assert_eq!(*reference, "skewer"),
-            CardKind::Opening(_) => panic!("expected tactic variant"),
-        }
-        let opening: CardKind<String, ()> = CardKind::Opening(String::from("Ruy Lopez"));
-        match opening.as_ref() {
-            CardKind::Opening(reference) => assert_eq!(*reference, "Ruy Lopez"),
-            CardKind::Tactic(_) => panic!("expected opening variant"),
-        }
+        let card = CardKind::Tactic(tactic.clone());
+        assert!(matches!(
+            card.as_ref(),
+            CardKind::Tactic(reference) if *reference == "skewer"
+        ));
+        let opening = CardKind::Opening(String::from("Ruy Lopez"));
+        assert!(matches!(
+            opening.as_ref(),
+            CardKind::Opening(reference) if *reference == "Ruy Lopez"
+        ));
     }
 }
