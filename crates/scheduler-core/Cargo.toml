@@ -8,6 +8,7 @@ chrono   ="0.4"
 review-domain={ path="../review-domain" }
 thiserror="1"
 uuid     ={ version="1", features=["v4"] }
+num-traits="0.2"
 
 [dev-dependencies]
 maplit="1"

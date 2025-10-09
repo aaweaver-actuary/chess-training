@@ -40,12 +40,13 @@ impl<Opening, Tactic> CardKind<Opening, Tactic> {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
     fn map_opening_transforms_opening_variant() {
-        let card = CardKind::Opening("line".to_string());
-        let mapped = card.map_opening(|opening| opening.len());
+        let card: CardKind<String, ()> = CardKind::Opening("line".to_string());
+        let mapped: CardKind<usize, _> = card.map_opening(|opening| opening.len());
         assert!(matches!(mapped, CardKind::Opening(4)));
     }
 
@@ -58,8 +59,8 @@ mod tests {
 
     #[test]
     fn map_tactic_transforms_tactic_variant() {
-        let card = CardKind::Tactic("pin".to_string());
-        let mapped = card.map_tactic(|tactic| tactic.len());
+        let card: CardKind<(), String> = CardKind::Tactic("pin".to_string());
+        let mapped: CardKind<(), usize> = card.map_tactic(|tactic| tactic.len());
         assert!(matches!(mapped, CardKind::Tactic(3)));
     }
 
@@ -73,12 +74,12 @@ mod tests {
     #[test]
     fn as_ref_preserves_payload_references() {
         let tactic = String::from("skewer");
-        let card = CardKind::Tactic(tactic.clone());
+        let card: CardKind<(), String> = CardKind::Tactic(tactic.clone());
         match card.as_ref() {
             CardKind::Tactic(reference) => assert_eq!(*reference, "skewer"),
             CardKind::Opening(_) => panic!("expected tactic variant"),
         }
-        let opening = CardKind::Opening(String::from("Ruy Lopez"));
+        let opening: CardKind<String, ()> = CardKind::Opening(String::from("Ruy Lopez"));
         match opening.as_ref() {
             CardKind::Opening(reference) => assert_eq!(*reference, "Ruy Lopez"),
             CardKind::Tactic(_) => panic!("expected opening variant"),

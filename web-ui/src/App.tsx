@@ -1,10 +1,13 @@
 import type { JSX } from 'react';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+
+
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 
 import './App.css';
 import { sampleSnapshot } from './fixtures/sampleSnapshot';
 import { DashboardPage } from './pages/DashboardPage';
+import { BlankBoardPage } from './pages/BlankBoardPage';
 import { OpeningReviewPage } from './pages/OpeningReviewPage';
 import { ReviewPlanner } from './services/ReviewPlanner';
 import type { ReviewOverview } from './services/ReviewPlanner';
@@ -12,6 +15,7 @@ import type { CardSummary, ReviewGrade } from './types/gateway';
 import { sessionStore } from './state/sessionStore';
 import { CommandConsole } from './components/CommandConsole';
 import type { DetectedOpeningLine, ImportResult, ScheduledOpeningLine } from './types/repertoire';
+import { createCommandDispatcher } from './utils/commandDispatcher';
 
 const planner = new ReviewPlanner();
 const baselineOverview = planner.buildOverview(sampleSnapshot);
@@ -147,6 +151,7 @@ const SessionRoutes = ({ importedLines, onImportLine }: SessionRoutesProps) => {
           />
         }
       />
+      <Route path="/tools/board" element={<BlankBoardPage backPath="/dashboard" />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
@@ -173,6 +178,14 @@ const isColonKeyPressed = (event: KeyboardEvent): boolean => {
 const App = (): JSX.Element => {
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const [importedLines, setImportedLines] = useState<ScheduledOpeningLine[]>([]);
+  const navigate = useNavigate();
+  const dispatcher = useMemo(
+    () =>
+      createCommandDispatcher({
+        onUnknownCommand: (input) => window.alert(input),
+      }),
+    [],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -220,6 +233,22 @@ const App = (): JSX.Element => {
     setIsConsoleOpen(false);
   };
 
+  useEffect(() => {
+    dispatcher.register('cb', () => {
+      navigate('/tools/board');
+    });
+    dispatcher.register('db', () => {
+      navigate('/dashboard');
+    });
+  }, [dispatcher, navigate]);
+
+  const handleExecuteCommand = useCallback(
+    async (input: string) => {
+      await dispatcher.dispatch(input);
+    },
+    [dispatcher],
+  );
+
   return (
     <>
       <SessionRoutes importedLines={importedLines} onImportLine={handleImportLine} />
@@ -227,6 +256,7 @@ const App = (): JSX.Element => {
         isOpen={isConsoleOpen}
         onOpen={handleOpenConsole}
         onClose={handleCloseConsole}
+        onExecuteCommand={handleExecuteCommand}
       />
     </>
   );
