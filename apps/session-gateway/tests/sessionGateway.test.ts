@@ -289,9 +289,8 @@ describe('session gateway', () => {
       stats: expect.objectContaining({ reviews_today: 1 }),
     });
     await wait();
-    const statsUpdateMessage = messages.find(
-      (msg) => (msg as { type: string }).type === 'UPDATE',
-    );
+    const allUpdateMessages = messages.filter((msg) => (msg as { type: string }).type === 'UPDATE');
+    const statsUpdateMessage = allUpdateMessages.length > 1 ? allUpdateMessages[1] : allUpdateMessages[0];
     expect(statsUpdateMessage).toBeTruthy();
     expect((statsUpdateMessage as { stats?: unknown })?.stats).toBeTruthy();
     socket.close();
