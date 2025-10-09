@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn card_kind_helpers_cover_review_domain_types() {
         let opening = OpeningCard::new(7);
-        let mapped_opening = CardKind::Opening(opening.clone())
+        let mapped_opening = CardKind::Opening(opening)
             .map_opening(|card| OpeningCard::new(card.edge_id + 1));
         assert!(matches!(
             mapped_opening,
@@ -149,12 +149,12 @@ mod tests {
             GenericCardKind::Tactic(payload) if payload.tactic_id == 11
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Opening(opening.clone())
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(opening)
                 .map_tactic(|card| card.tactic_id + 1),
             GenericCardKind::Opening(card) if card.edge_id == opening.edge_id
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Opening(opening.clone()).as_ref(),
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(opening).as_ref(),
             GenericCardKind::Opening(reference) if reference.edge_id == opening.edge_id
         ));
 
