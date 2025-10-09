@@ -72,13 +72,25 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
   return (
     <div className="opening-review-board">
       <a
-        aria-label="Open position on Lichess"
+        aria-label="Analyze this position on Lichess"
         className="floating-action lichess-shortcut"
         href={lichessAnalysisUrl}
         rel="noopener noreferrer"
         target="_blank"
       >
-        ♞
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+          focusable="false"
+          style={{ verticalAlign: 'middle' }}
+        >
+          <title>Analyze on Lichess</title>
+          <path d="M7 2C7 2 8 4 8 6C8 8 6 10 6 12C6 14 8 16 10 16C12 16 14 14 14 12C14 10 12 8 12 6C12 4 13 2 13 2H7ZM10 18C8.34315 18 7 19.3431 7 21H13C13 19.3431 11.6569 18 10 18Z" />
+        </svg>
       </a>
       <chess-board
         className="opening-review-board__board"
