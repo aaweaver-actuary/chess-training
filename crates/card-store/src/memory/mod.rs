@@ -52,39 +52,6 @@ impl InMemoryCardStore {
         Ok(self.positions_read()?.len())
     }
 
-    /// Creates a canonical `Position` by reconstructing it from its FEN and ply.
-    /// This validates the input and ensures consistent hash generation for storage.
-    fn canonicalize_position_for_storage(position: Position) -> Result<Position, StoreError> {
-        Ok(Position::new(position.fen, position.ply)?)
-    }
-
-    fn store_canonical_position(
-        positions: &mut HashMap<u64, Position>,
-        canonical: Position,
-    ) -> Result<Position, StoreError> {
-        Ok(match positions.entry(canonical.id) {
-            Entry::Occupied(entry) => {
-                Self::validate_position_collision(entry.get(), &canonical)?;
-                entry.get().clone()
-            }
-            Entry::Vacant(slot) => {
-                slot.insert(canonical.clone());
-                canonical
-            }
-        })
-    }
-
-    fn validate_position_collision(
-        existing: &Position,
-        canonical: &Position,
-    ) -> Result<(), StoreError> {
-        if existing.fen == canonical.fen {
-            Ok(())
-        } else {
-            Err(StoreError::HashCollision { entity: "position" })
-        }
-    }
-
     fn positions_read(&self) -> Result<RwLockReadGuard<'_, HashMap<u64, Position>>, StoreError> {
         self.positions.read().map_err(|_| StoreError::PoisonedLock {
             resource: "positions",
@@ -175,19 +142,19 @@ impl CardStore for InMemoryCardStore {
 
     fn fetch_due_cards(&self, owner_id: &str, as_of: NaiveDate) -> Result<Vec<Card>, StoreError> {
         let cards = self.cards_read()?;
-        Ok(collect_due_cards_for_owner(&cards, owner_id, as_of))
+        Ok(collect_due_cards_for_owner(&*cards, owner_id, as_of))
     }
 
     fn record_review(&self, review: ReviewRequest) -> Result<Card, StoreError> {
         let mut cards = self.cards_write()?;
-        let card = borrow_card_for_review(&mut cards, &review)?;
+        let card = borrow_card_for_review(&mut *cards, &review)?;
         apply_review(&mut card.state, &review)?;
         Ok(card.clone())
     }
 
     fn record_unlock(&self, unlock: UnlockRecord) -> Result<(), StoreError> {
         let mut unlocks = self.unlocks_write()?;
-        insert_unlock_or_error(&mut unlocks, unlock)
+        insert_unlock_or_error(&mut *unlocks, unlock)
     }
 }
 
@@ -232,36 +199,6 @@ mod tests {
         let store = InMemoryCardStore::new(StorageConfig::default());
         let err = store.ensure_edge_exists(24).unwrap_err();
         assert!(matches!(err, StoreError::MissingEdge { id } if id == 24));
-    }
-
-    #[test]
-    fn validate_position_collision_allows_identical_fens() {
-        let existing = Position::new(
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            0,
-        )
-        .unwrap();
-        let canonical = Position::new(existing.fen.clone(), existing.ply).unwrap();
-
-        InMemoryCardStore::validate_position_collision(&existing, &canonical).unwrap();
-    }
-
-    #[test]
-    fn validate_position_collision_rejects_mismatched_fens() {
-        let existing = Position::new(
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            0,
-        )
-        .unwrap();
-        let canonical = Position::new(
-            "rnbqkbnr/pppp1ppp/8/4p3/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            0,
-        )
-        .unwrap();
-
-        let err =
-            InMemoryCardStore::validate_position_collision(&existing, &canonical).unwrap_err();
-        assert!(matches!(err, StoreError::HashCollision { entity } if entity == "position"));
     }
 
     #[test]
