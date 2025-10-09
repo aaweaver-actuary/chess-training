@@ -15,26 +15,31 @@ pub enum StudyStage {
 
 impl StudyStage {
     /// Returns true if the card is in the New stage.
+    #[must_use]
     pub fn is_new(self) -> bool {
         matches!(self, StudyStage::New)
     }
 
     /// Returns true if the card is in the Learning stage.
+    #[must_use]
     pub fn is_learning(self) -> bool {
         matches!(self, StudyStage::Learning)
     }
 
     /// Returns true if the card is in the Review stage.
+    #[must_use]
     pub fn is_review(self) -> bool {
         matches!(self, StudyStage::Review)
     }
 
     /// Returns true if the card is in the Relearning stage.
+    #[must_use]
     pub fn is_relearning(self) -> bool {
         matches!(self, StudyStage::Relearning)
     }
 
     /// Returns true if the card is in any of the active stages (Learning, Review, Relearning).
+    #[must_use]
     pub fn is_active(self) -> bool {
         matches!(
             self,
@@ -43,6 +48,7 @@ impl StudyStage {
     }
 
     /// Converts a character to a `StudyStage`.
+    #[must_use]
     pub fn from_char(c: char) -> Option<Self> {
         match c {
             'N' | 'n' => Some(StudyStage::New),

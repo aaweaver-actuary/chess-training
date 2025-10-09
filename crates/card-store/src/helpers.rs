@@ -4,6 +4,7 @@ use blake3::Hasher;
 ///
 /// Using a cryptographic hash reduces the risk of accidental collisions when compared
 /// to simple FNV-based hashes while keeping identifier generation deterministic.
+#[must_use]
 pub fn hash64(parts: &[&[u8]]) -> u64 {
     let mut hasher = Hasher::new();
     for part in parts {

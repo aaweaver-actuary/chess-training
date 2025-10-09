@@ -17,10 +17,12 @@ pub struct Scheduler<S: CardStore> {
 }
 
 impl<S: CardStore> Scheduler<S> {
+    #[must_use]
     pub fn new(store: S, config: SchedulerConfig) -> Self {
         Self { store, config }
     }
 
+    #[must_use]
     pub fn review(
         &mut self,
         card_id: Uuid,
@@ -41,10 +43,12 @@ impl<S: CardStore> Scheduler<S> {
         })
     }
 
+    #[must_use]
     pub fn build_queue(&mut self, owner_id: Uuid, today: NaiveDate) -> Vec<Card> {
         build_queue_for_day(&mut self.store, &self.config, owner_id, today)
     }
 
+    #[must_use]
     pub fn into_store(self) -> S {
         self.store
     }
@@ -53,7 +57,7 @@ impl<S: CardStore> Scheduler<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{new_card, CardKind, CardState, SchedulerTacticCard};
+    use crate::domain::{CardKind, CardState, SchedulerTacticCard, new_card};
     use crate::store::InMemoryStore;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {

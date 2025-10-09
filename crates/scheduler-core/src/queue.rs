@@ -9,6 +9,7 @@ use crate::config::SchedulerConfig;
 use crate::domain::{Card, CardKind, CardState, SchedulerUnlockDetail, UnlockRecord};
 use crate::store::CardStore;
 
+#[must_use]
 pub fn build_queue_for_day<S: CardStore>(
     store: &mut S,
     config: &SchedulerConfig,
@@ -109,7 +110,7 @@ fn extract_prefix(card: &Card) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{new_card, CardKind, SchedulerOpeningCard, SchedulerUnlockDetail};
+    use crate::domain::{CardKind, SchedulerOpeningCard, SchedulerUnlockDetail, new_card};
     use crate::store::InMemoryStore;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {

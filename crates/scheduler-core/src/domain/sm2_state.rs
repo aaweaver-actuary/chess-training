@@ -1,5 +1,5 @@
-use chrono::NaiveDate;
 use super::CardState;
+use chrono::NaiveDate;
 
 /// Mutable SM-2 scheduling data tracked for a card.
 #[derive(Debug, Clone, PartialEq)]
@@ -20,6 +20,7 @@ pub struct Sm2State {
 
 impl Sm2State {
     /// Constructs a new SM-2 state for a freshly created card.
+    #[must_use]
     pub fn new(stage: CardState, today: NaiveDate, initial_ease: f32) -> Self {
         Self {
             stage,
