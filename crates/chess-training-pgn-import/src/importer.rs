@@ -142,7 +142,20 @@ fn process_game<S: Storage>(
     game: RawGame,
     index: usize,
 ) -> Result<(), ImportError> {
-    let fen_tag = game.tag("FEN");
+    let fen_tag = game.tag("FEN").map(str::to_string);
+    ensure_setup_requirement_for_fen_games(config, &game, fen_tag.as_deref())?;
+    let source_hint = game.tag("Event").map(str::to_string);
+    let context =
+        initialize_game_context(config, store, metrics, fen_tag.clone(), source_hint.clone())?;
+    play_moves_and_finalize(store, metrics, owner, repertoire, &game, index, context)?;
+    Ok(())
+}
+
+fn ensure_setup_requirement_for_fen_games(
+    config: &IngestConfig,
+    game: &RawGame,
+    fen_tag: Option<&str>,
+) -> Result<(), ImportError> {
     if let Some(fen) =
         fen_tag.filter(|_| config.require_setup_for_fen && game.tag("SetUp") != Some("1"))
     {
@@ -150,70 +163,222 @@ fn process_game<S: Storage>(
             fen: fen.to_string(),
         });
     }
+    Ok(())
+}
 
-    let source_hint = game.tag("Event").map(str::to_string);
+#[derive(Clone)]
+struct GameContext {
+    board: Chess,
+    ply: u32,
+    include_in_trie: bool,
+    record_tactic_moves: bool,
+    pv_moves: Vec<String>,
+    source_hint: Option<String>,
+    fen_tag: Option<String>,
+}
 
-    let mut board = match fen_tag {
-        Some(fen) => match load_fen(fen) {
-            Ok(board) => board,
-            Err(_err) if config.skip_malformed_fen => return Ok(()),
-            Err(err) => return Err(err),
-        },
-        None => Chess::default(),
-    };
-
-    let include_in_trie = fen_tag.is_none() || config.include_fen_in_trie;
-    let mut ply = board_to_ply(&board);
-    if include_in_trie {
-        metrics.note_position(store.upsert_position(position_from_board(&board, ply)));
+impl GameContext {
+    fn new(
+        board: Chess,
+        ply: u32,
+        include_in_trie: bool,
+        record_tactic_moves: bool,
+        source_hint: Option<String>,
+        fen_tag: Option<String>,
+    ) -> Self {
+        Self {
+            board,
+            ply,
+            include_in_trie,
+            record_tactic_moves,
+            pv_moves: Vec::new(),
+            source_hint,
+            fen_tag,
+        }
     }
 
-    let mut pv_moves = Vec::new();
+    fn record_starting_position<S: Storage>(&self, store: &mut S, metrics: &mut ImportMetrics) {
+        if self.include_in_trie {
+            metrics
+                .note_position(store.upsert_position(position_from_board(&self.board, self.ply)));
+        }
+    }
 
-    for san_text in &game.moves {
-        let san = parse_san(san_text)?;
-        let mv = san.to_move(&board).map_err(|_| ImportError::IllegalSan {
-            san: san_text.clone(),
-            game: index,
-        })?;
-        let uci = move_to_uci(&board, mv);
-        let mut next_board = board.clone();
-        next_board.play_unchecked(mv);
+    fn advance(&mut self, movement: MoveContext) {
+        if self.record_tactic_moves {
+            self.pv_moves.push(movement.uci.clone());
+        }
+        self.board = movement.next_board;
+        self.ply = movement.child_ply;
+    }
 
-        if include_in_trie {
-            let parent = position_from_board(&board, ply);
-            let child_ply = board_to_ply(&next_board);
-            let child = position_from_board(&next_board, child_ply);
-            metrics.note_position(store.upsert_position(child.clone()));
-            let edge = Edge::new(
-                parent.id,
-                &uci,
-                &san.to_string(),
-                child.id,
-                source_hint.clone(),
-            );
-            metrics.note_edge(store.upsert_edge(edge.clone()));
-            metrics.note_repertoire(
-                store.upsert_repertoire_edge(RepertoireEdge::new(owner, repertoire, edge.id)),
-            );
-            ply = child_ply;
+    fn into_tactic(self) -> Option<Tactic> {
+        if self.record_tactic_moves {
+            self.fen_tag
+                .map(|fen| Tactic::new(&fen, self.pv_moves, Vec::new(), self.source_hint))
         } else {
-            ply = board_to_ply(&next_board);
-        }
-
-        board = next_board;
-
-        if fen_tag.is_some() && config.tactic_from_fen {
-            pv_moves.push(uci);
+            None
         }
     }
+}
 
-    if fen_tag.is_some() && config.tactic_from_fen {
-        let tactic = Tactic::new(fen_tag.unwrap(), pv_moves, Vec::new(), source_hint);
+struct MoveContext {
+    uci: String,
+    next_board: Chess,
+    child_ply: u32,
+}
+
+impl MoveContext {
+    fn new(current: &Chess, mv: Move) -> Self {
+        let mut next_board = current.clone();
+        next_board.play_unchecked(mv);
+        let uci = move_to_uci(current, mv);
+        let child_ply = board_to_ply(&next_board);
+        Self {
+            uci,
+            next_board,
+            child_ply,
+        }
+    }
+}
+
+fn initialize_game_context<S: Storage>(
+    config: &IngestConfig,
+    store: &mut S,
+    metrics: &mut ImportMetrics,
+    fen_tag: Option<String>,
+    source_hint: Option<String>,
+) -> Result<Option<GameContext>, ImportError> {
+    match load_initial_board_from_optional_fen(fen_tag.as_deref(), config)? {
+        Some(board) => {
+            let include_in_trie = fen_tag.is_none() || config.include_fen_in_trie;
+            let record_tactic_moves = fen_tag.is_some() && config.tactic_from_fen;
+            let ply = board_to_ply(&board);
+            let context = GameContext::new(
+                board,
+                ply,
+                include_in_trie,
+                record_tactic_moves,
+                source_hint,
+                fen_tag,
+            );
+            context.record_starting_position(store, metrics);
+            Ok(Some(context))
+        }
+        None => Ok(None),
+    }
+}
+
+fn load_initial_board_from_optional_fen(
+    fen_tag: Option<&str>,
+    config: &IngestConfig,
+) -> Result<Option<Chess>, ImportError> {
+    match fen_tag {
+        Some(fen) => match load_fen(fen) {
+            Ok(board) => Ok(Some(board)),
+            Err(_err) if config.skip_malformed_fen => Ok(None),
+            Err(err) => Err(err),
+        },
+        None => Ok(Some(Chess::default())),
+    }
+}
+
+fn play_moves_and_finalize<S: Storage>(
+    store: &mut S,
+    metrics: &mut ImportMetrics,
+    owner: &str,
+    repertoire: &str,
+    game: &RawGame,
+    index: usize,
+    context: Option<GameContext>,
+) -> Result<(), ImportError> {
+    if let Some(mut ctx) = context {
+        execute_full_move_sequence(store, metrics, owner, repertoire, game, index, &mut ctx)?;
+        finalize_tactic_if_requested(store, metrics, ctx);
+    }
+    Ok(())
+}
+
+fn execute_full_move_sequence<S: Storage>(
+    store: &mut S,
+    metrics: &mut ImportMetrics,
+    owner: &str,
+    repertoire: &str,
+    game: &RawGame,
+    index: usize,
+    context: &mut GameContext,
+) -> Result<(), ImportError> {
+    for san_text in &game.moves {
+        process_single_san_move(store, metrics, owner, repertoire, context, san_text, index)?;
+    }
+    Ok(())
+}
+
+fn process_single_san_move<S: Storage>(
+    store: &mut S,
+    metrics: &mut ImportMetrics,
+    owner: &str,
+    repertoire: &str,
+    context: &mut GameContext,
+    san_text: &str,
+    index: usize,
+) -> Result<(), ImportError> {
+    let san = parse_san(san_text)?;
+    let mv = convert_san_to_move(&context.board, &san, san_text, index)?;
+    let movement = MoveContext::new(&context.board, mv);
+    store_opening_data_if_requested(store, metrics, owner, repertoire, context, &movement, &san);
+    context.advance(movement);
+    Ok(())
+}
+
+fn convert_san_to_move(
+    board: &Chess,
+    san: &San,
+    original: &str,
+    index: usize,
+) -> Result<Move, ImportError> {
+    san.to_move(board).map_err(|_| ImportError::IllegalSan {
+        san: original.to_string(),
+        game: index,
+    })
+}
+
+fn store_opening_data_if_requested<S: Storage>(
+    store: &mut S,
+    metrics: &mut ImportMetrics,
+    owner: &str,
+    repertoire: &str,
+    context: &GameContext,
+    movement: &MoveContext,
+    san: &San,
+) {
+    if !context.include_in_trie {
+        return;
+    }
+    let parent = position_from_board(&context.board, context.ply);
+    let child = position_from_board(&movement.next_board, movement.child_ply);
+    metrics.note_position(store.upsert_position(child.clone()));
+    let edge = Edge::new(
+        parent.id,
+        &movement.uci,
+        &san.to_string(),
+        child.id,
+        context.source_hint.clone(),
+    );
+    metrics.note_edge(store.upsert_edge(edge.clone()));
+    metrics.note_repertoire(
+        store.upsert_repertoire_edge(RepertoireEdge::new(owner, repertoire, edge.id)),
+    );
+}
+
+fn finalize_tactic_if_requested<S: Storage>(
+    store: &mut S,
+    metrics: &mut ImportMetrics,
+    context: GameContext,
+) {
+    if let Some(tactic) = context.into_tactic() {
         metrics.note_tactic(store.upsert_tactic(tactic));
     }
-
-    Ok(())
 }
 
 fn parse_games(input: &str) -> Vec<RawGame> {
@@ -504,5 +669,187 @@ mod tests {
         // With fullmove 0 and saturating_sub: (0 - 1).saturating_sub() = 0
         // ply = 0 * 2 + 1 = 1
         assert_eq!(ply, 1);
+    }
+
+    #[test]
+    fn ensure_setup_requirement_for_fen_games_errors_without_setup() {
+        let mut config = IngestConfig::default();
+        config.require_setup_for_fen = true;
+        let mut game = RawGame::default();
+        game.tags.push(("FEN".into(), "fen".into()));
+        let err = ensure_setup_requirement_for_fen_games(&config, &game, Some("fen"))
+            .expect_err("missing setup should fail");
+        assert!(matches!(err, ImportError::MissingSetup { fen } if fen == "fen"));
+    }
+
+    #[test]
+    fn ensure_setup_requirement_for_fen_games_allows_explicit_setup() {
+        let mut config = IngestConfig::default();
+        config.require_setup_for_fen = true;
+        let mut game = RawGame::default();
+        game.tags.push(("FEN".into(), "fen".into()));
+        game.tags.push(("SetUp".into(), "1".into()));
+        assert!(ensure_setup_requirement_for_fen_games(&config, &game, Some("fen")).is_ok());
+    }
+
+    #[test]
+    fn load_initial_board_from_optional_fen_skips_when_configured() {
+        let mut config = IngestConfig::default();
+        config.skip_malformed_fen = true;
+        let board =
+            load_initial_board_from_optional_fen(Some("invalid"), &config).expect("ok result");
+        assert!(board.is_none());
+    }
+
+    #[test]
+    fn initialize_game_context_records_starting_position() {
+        let mut config = IngestConfig::default();
+        config.include_fen_in_trie = true;
+        let mut store = InMemoryStore::default();
+        let mut metrics = ImportMetrics::default();
+        let context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
+            .expect("context creation succeeds")
+            .expect("default board available");
+        assert!(context.include_in_trie);
+        assert_eq!(store.positions().len(), 1);
+        assert_eq!(metrics.opening_positions, 1);
+    }
+
+    #[test]
+    fn initialize_game_context_respects_skip_on_malformed_fen() {
+        let mut config = IngestConfig::default();
+        config.skip_malformed_fen = true;
+        let mut store = InMemoryStore::default();
+        let mut metrics = ImportMetrics::default();
+        let context = initialize_game_context(
+            &config,
+            &mut store,
+            &mut metrics,
+            Some("bad fen".into()),
+            None,
+        )
+        .expect("skip malformed");
+        assert!(context.is_none());
+        assert_eq!(metrics.opening_positions, 0);
+    }
+
+    #[test]
+    fn game_context_advance_tracks_ply_and_tactic_moves() {
+        let board = Chess::default();
+        let ply = board_to_ply(&board);
+        let mut context =
+            GameContext::new(board.clone(), ply, true, true, None, Some("fen".into()));
+        let san = parse_san("e4").expect("valid san");
+        let mv = san.to_move(&board).expect("legal move");
+        let movement = MoveContext::new(&board, mv);
+        context.advance(movement);
+        assert_eq!(context.ply, 1);
+        assert_eq!(context.pv_moves, vec!["e2e4".to_string()]);
+        assert_eq!(context.board.turn(), Color::Black);
+    }
+
+    #[test]
+    fn game_context_into_tactic_returns_none_when_disabled() {
+        let board = Chess::default();
+        let context = GameContext::new(board, 0, true, false, None, Some("fen".into()));
+        assert!(context.into_tactic().is_none());
+    }
+
+    #[test]
+    fn move_context_new_derives_child_state() {
+        let board = Chess::default();
+        let san = parse_san("e4").expect("valid san");
+        let mv = san.to_move(&board).expect("legal move");
+        let movement = MoveContext::new(&board, mv);
+        assert_eq!(movement.uci, "e2e4");
+        assert_eq!(movement.child_ply, 1);
+    }
+
+    #[test]
+    fn convert_san_to_move_reports_illegal_moves() {
+        let board = Chess::default();
+        let san = parse_san("Kxh8").expect("parse ok");
+        let err = convert_san_to_move(&board, &san, "Kxh8", 3).expect_err("illegal move");
+        assert!(matches!(err, ImportError::IllegalSan { game, .. } if game == 3));
+    }
+
+    #[test]
+    fn process_single_san_move_updates_metrics_and_context() {
+        let mut config = IngestConfig::default();
+        config.include_fen_in_trie = true;
+        let mut store = InMemoryStore::default();
+        let mut metrics = ImportMetrics::default();
+        let mut context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
+            .expect("context creation")
+            .expect("available");
+        process_single_san_move(
+            &mut store,
+            &mut metrics,
+            "owner",
+            "rep",
+            &mut context,
+            "e4",
+            0,
+        )
+        .expect("processing succeeds");
+        assert_eq!(metrics.opening_edges, 1);
+        assert_eq!(store.edges().len(), 1);
+        assert_eq!(context.ply, 1);
+    }
+
+    #[test]
+    fn execute_full_move_sequence_processes_all_moves() {
+        let mut config = IngestConfig::default();
+        config.include_fen_in_trie = true;
+        let mut store = InMemoryStore::default();
+        let mut metrics = ImportMetrics::default();
+        let mut context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
+            .expect("context")
+            .expect("available");
+        let mut game = RawGame::default();
+        game.moves = vec!["e4".into(), "e5".into()];
+        execute_full_move_sequence(
+            &mut store,
+            &mut metrics,
+            "owner",
+            "rep",
+            &game,
+            0,
+            &mut context,
+        )
+        .expect("processed");
+        assert_eq!(metrics.opening_edges, 2);
+    }
+
+    #[test]
+    fn finalize_tactic_if_requested_records_entry() {
+        let mut config = IngestConfig::default();
+        config.include_fen_in_trie = true;
+        config.tactic_from_fen = true;
+        let mut store = InMemoryStore::default();
+        let mut metrics = ImportMetrics::default();
+        let context = initialize_game_context(
+            &config,
+            &mut store,
+            &mut metrics,
+            Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".into()),
+            None,
+        )
+        .expect("context")
+        .expect("present");
+        finalize_tactic_if_requested(&mut store, &mut metrics, context);
+        assert_eq!(metrics.tactics, 1);
+        assert_eq!(store.tactics().len(), 1);
+    }
+
+    #[test]
+    fn play_moves_and_finalize_is_noop_when_context_absent() {
+        let mut store = InMemoryStore::default();
+        let mut metrics = ImportMetrics::default();
+        let game = RawGame::default();
+        assert!(
+            play_moves_and_finalize(&mut store, &mut metrics, "owner", "rep", &game, 0, None)
+                .is_ok()
+        );
     }
 }

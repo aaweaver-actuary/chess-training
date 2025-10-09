@@ -149,11 +149,17 @@ const App = (): JSX.Element => {
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isConsoleOpen]);
 
-  const handleOpenConsole = () => setIsConsoleOpen(true);
-  const handleCloseConsole = () => setIsConsoleOpen(false);
+  const handleOpenConsole = () => {
+    setIsConsoleOpen(true);
+  };
+  const handleCloseConsole = () => {
+    setIsConsoleOpen(false);
+  };
 
   return (
     <>
