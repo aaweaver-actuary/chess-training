@@ -102,7 +102,6 @@ impl<S: Storage> Importer<S> {
         }
     }
 
-    #[must_use]
     pub fn ingest_pgn_str(
         &mut self,
         owner: &str,
