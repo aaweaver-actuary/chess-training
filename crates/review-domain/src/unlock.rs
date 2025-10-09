@@ -39,3 +39,30 @@ impl UnlockDetail {
         Self { edge_id }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
+    }
+
+    #[test]
+    fn unlock_record_map_detail_transforms_payload() {
+        let record = UnlockRecord {
+            owner_id: "owner",
+            detail: UnlockDetail::new(7),
+            unlocked_on: naive_date(2023, 1, 1),
+        };
+        let mapped = record.map_detail(|detail| detail.edge_id + 1);
+        assert_eq!(mapped.detail, 8);
+        assert_eq!(mapped.owner_id, "owner");
+        assert_eq!(mapped.unlocked_on, naive_date(2023, 1, 1));
+    }
+
+    #[test]
+    fn unlock_detail_constructor_sets_edge_id() {
+        assert_eq!(UnlockDetail::new(99).edge_id, 99);
+    }
+}

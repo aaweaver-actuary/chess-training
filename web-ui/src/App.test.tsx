@@ -372,6 +372,25 @@ describe('App', () => {
     expect(screen.getByRole('dialog', { name: /Command console/i })).toBeInTheDocument();
   });
 
+  it('focuses the command input when the console opens via the colon key', async () => {
+    const user = setupUser();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    await user.keyboard(':ADD');
+
+    const input = await screen.findByRole('textbox', { name: /command input/i });
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue('ADD');
+  });
+
   it('closes the command console when the escape key is pressed', async () => {
     const user = setupUser();
     render(

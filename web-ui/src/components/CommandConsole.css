@@ -160,9 +160,23 @@
   color: var(--color-text-primary);
 }
 
-.command-console__placeholder {
-  font-size: 0.95rem;
+.command-console__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: 'Source Code Pro', 'Fira Code', monospace;
+  font-size: 1.1rem;
+  line-height: 1.4;
+  padding: 0;
+  outline: none;
+  caret-color: rgba(78, 115, 255, 0.95);
+}
+
+.command-console__input::placeholder {
   color: var(--color-text-muted);
+  opacity: 0.8;
 }
 
 @media (max-width: 600px) {
