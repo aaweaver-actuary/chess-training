@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import './App.css';
@@ -8,6 +8,7 @@ import { OpeningReviewPage } from './pages/OpeningReviewPage';
 import { ReviewPlanner } from './services/ReviewPlanner';
 import type { CardSummary, ReviewGrade } from './types/gateway';
 import { sessionStore } from './state/sessionStore';
+import { CommandConsole } from './components/CommandConsole';
 
 const planner = new ReviewPlanner();
 const baselineOverview = planner.buildOverview(sampleSnapshot);
@@ -104,6 +105,68 @@ const SessionRoutes = () => {
   );
 };
 
-const App = (): JSX.Element => <SessionRoutes />;
+const isTextEntryTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName;
+  if (target.isContentEditable) {
+    return true;
+  }
+
+  return tagName === 'INPUT' || tagName === 'TEXTAREA' || target.getAttribute('role') === 'textbox';
+};
+
+const App = (): JSX.Element => {
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isColonKey = event.key === ':' || (event.key === ';' && event.shiftKey);
+
+      if (isColonKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        if (isTextEntryTarget(event.target)) {
+          return;
+        }
+
+        event.preventDefault();
+        setIsConsoleOpen(true);
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        let shouldPreventDefault = false;
+        setIsConsoleOpen((open) => {
+          if (open) {
+            shouldPreventDefault = true;
+          }
+          return false;
+        });
+
+        if (shouldPreventDefault) {
+          event.preventDefault();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleOpenConsole = () => setIsConsoleOpen(true);
+  const handleCloseConsole = () => setIsConsoleOpen(false);
+
+  return (
+    <>
+      <SessionRoutes />
+      <CommandConsole
+        isOpen={isConsoleOpen}
+        onOpen={handleOpenConsole}
+        onClose={handleCloseConsole}
+      />
+    </>
+  );
+};
 
 export default App;
