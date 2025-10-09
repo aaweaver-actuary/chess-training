@@ -1,7 +1,7 @@
 //! Shared opening-specific data structures.
 
 /// Payload carried by opening review cards.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct OpeningCard {
     /// Identifier of the reviewed opening edge.
     pub edge_id: u64,
@@ -59,6 +59,13 @@ mod tests {
     fn opening_card_constructor_sets_fields() {
         let card = OpeningCard::new(42);
         assert_eq!(card.edge_id, 42);
+    }
+
+    #[test]
+    fn opening_card_is_copy() {
+        fn assert_impl_copy<T: Copy>() {}
+
+        assert_impl_copy::<OpeningCard>();
     }
 
     #[test]
