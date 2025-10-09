@@ -68,7 +68,7 @@
   border-radius: var(--radius-large) var(--radius-large) 0 0;
   box-shadow: 0 -24px 48px rgba(3, 6, 20, 0.55);
   color: var(--color-text-primary);
-  overflow: hidden;
+  overflow: visible;
   transform: translateY(100%);
   animation: command-console-slide-up 240ms ease-out forwards;
   position: relative;
