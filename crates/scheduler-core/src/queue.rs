@@ -6,7 +6,7 @@ use chrono::NaiveDate;
 use uuid::Uuid;
 
 use crate::config::SchedulerConfig;
-use crate::domain::{Card, CardKind, CardState, UnlockRecord};
+use crate::domain::{Card, CardKind, CardState, SchedulerUnlockDetail, UnlockRecord};
 use crate::store::CardStore;
 
 pub fn build_queue_for_day<S: CardStore>(
@@ -19,7 +19,7 @@ pub fn build_queue_for_day<S: CardStore>(
     let prior_unlocks = store.unlocked_on(owner_id, today);
     let mut unlocked = ExistingUnlocks::from_records(&prior_unlocks);
     extend_queue_with_unlocks(store, config, owner_id, today, &mut queue, &mut unlocked);
-    queue.sort_by(|a, b| (a.due, a.id).cmp(&(b.due, b.id)));
+    queue.sort_by(|a, b| (a.state.due, a.id).cmp(&(b.state.due, b.id)));
     queue
 }
 
@@ -32,9 +32,9 @@ impl ExistingUnlocks {
     fn from_records(records: &[UnlockRecord]) -> Self {
         let prefixes = records
             .iter()
-            .filter_map(|record| record.parent_prefix.clone())
+            .filter_map(|record| record.detail.parent_prefix.clone())
             .collect();
-        let ids = records.iter().map(|record| record.card_id).collect();
+        let ids = records.iter().map(|record| record.detail.card_id).collect();
         Self { prefixes, ids }
     }
 
@@ -69,10 +69,12 @@ fn extend_queue_with_unlocks<S: CardStore>(
         let parent_prefix = extract_prefix(&candidate);
         unlock_card(&mut candidate, config, today);
         store.record_unlock(UnlockRecord {
-            card_id: candidate.id,
             owner_id,
-            parent_prefix: parent_prefix.clone(),
-            day: today,
+            detail: SchedulerUnlockDetail {
+                card_id: candidate.id,
+                parent_prefix: parent_prefix.clone(),
+            },
+            unlocked_on: today,
         });
         unlocked.track_new_unlock(parent_prefix, candidate.id);
         store.upsert_card(candidate.clone());
@@ -85,21 +87,21 @@ fn skip_candidate(candidate: &Card, unlocked: &ExistingUnlocks) -> bool {
         return true;
     }
     match &candidate.kind {
-        CardKind::Opening { parent_prefix } => unlocked.contains_prefix(parent_prefix),
+        CardKind::Opening(opening) => unlocked.contains_prefix(&opening.parent_prefix),
         _ => true,
     }
 }
 
 fn unlock_card(card: &mut Card, config: &SchedulerConfig, today: NaiveDate) {
-    card.state = CardState::Learning;
-    card.interval_days = 0;
-    card.due = today;
-    card.ease_factor = config.initial_ease_factor;
+    card.state.stage = CardState::Learning;
+    card.state.interval_days = 0;
+    card.state.due = today;
+    card.state.ease_factor = config.initial_ease_factor;
 }
 
 fn extract_prefix(card: &Card) -> Option<String> {
     match &card.kind {
-        CardKind::Opening { parent_prefix } => Some(parent_prefix.clone()),
+        CardKind::Opening(opening) => Some(opening.parent_prefix.clone()),
         _ => None,
     }
 }
@@ -107,7 +109,7 @@ fn extract_prefix(card: &Card) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::CardKind;
+    use crate::domain::{new_card, CardKind, SchedulerOpeningCard, SchedulerUnlockDetail};
     use crate::store::InMemoryStore;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -116,11 +118,9 @@ mod tests {
 
     fn sample_opening(owner: Uuid, prefix: &str) -> Card {
         let config = SchedulerConfig::default();
-        Card::new(
+        new_card(
             owner,
-            CardKind::Opening {
-                parent_prefix: prefix.into(),
-            },
+            CardKind::Opening(SchedulerOpeningCard::new(prefix)),
             naive_date(2023, 1, 1),
             &config,
         )
@@ -134,10 +134,12 @@ mod tests {
         let existing = sample_opening(owner, "e4");
         store.upsert_card(existing.clone());
         store.record_unlock(UnlockRecord {
-            card_id: existing.id,
             owner_id: owner,
-            parent_prefix: Some("e4".into()),
-            day: naive_date(2023, 1, 1),
+            detail: SchedulerUnlockDetail {
+                card_id: existing.id,
+                parent_prefix: Some("e4".into()),
+            },
+            unlocked_on: naive_date(2023, 1, 1),
         });
         let new_candidate = sample_opening(owner, "e4");
         store.upsert_card(new_candidate.clone());
@@ -156,6 +158,6 @@ mod tests {
 
         let queue = build_queue_for_day(&mut store, &config, owner, naive_date(2023, 1, 1));
         assert_eq!(queue.len(), 1);
-        assert_eq!(queue[0].state, CardState::Learning);
+        assert_eq!(queue[0].state.stage, CardState::Learning);
     }
 }

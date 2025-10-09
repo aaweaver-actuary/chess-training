@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::model::{Edge, Position, RepertoireEdge, Tactic};
+use crate::model::{OpeningEdgeRecord, Position, RepertoireEdge, Tactic};
 
 /// Trait for abstracting storage of chess training data, such as positions, edges, repertoire edges, and tactics.
 ///
@@ -14,27 +14,27 @@ use crate::model::{Edge, Position, RepertoireEdge, Tactic};
 /// whether the item was newly added or replaced an existing entry.
 pub trait Storage {
     fn upsert_position(&mut self, position: Position) -> bool;
-    fn upsert_edge(&mut self, edge: Edge) -> bool;
+    fn upsert_edge(&mut self, edge: OpeningEdgeRecord) -> bool;
     fn upsert_repertoire_edge(&mut self, record: RepertoireEdge) -> bool;
     fn upsert_tactic(&mut self, tactic: Tactic) -> bool;
 }
 
 #[derive(Default)]
 /// An in-memory implementation of the `Storage` trait, primarily used for testing purposes.
-pub struct InMemoryStore {
+pub struct ImportInMemoryStore {
     positions: BTreeMap<u64, Position>,
-    edges: BTreeMap<u64, Edge>,
+    edges: BTreeMap<u64, OpeningEdgeRecord>,
     repertoire_edges: BTreeSet<(String, String, u64)>,
     tactics: BTreeMap<u64, Tactic>,
 }
 
-impl Storage for InMemoryStore {
+impl Storage for ImportInMemoryStore {
     fn upsert_position(&mut self, position: Position) -> bool {
         self.positions.insert(position.id, position).is_none()
     }
 
-    fn upsert_edge(&mut self, edge: Edge) -> bool {
-        self.edges.insert(edge.id, edge).is_none()
+    fn upsert_edge(&mut self, edge: OpeningEdgeRecord) -> bool {
+        self.edges.insert(edge.edge.id, edge).is_none()
     }
 
     fn upsert_repertoire_edge(&mut self, record: RepertoireEdge) -> bool {
@@ -47,7 +47,7 @@ impl Storage for InMemoryStore {
     }
 }
 
-impl InMemoryStore {
+impl ImportInMemoryStore {
     pub fn new() -> Self {
         Self::default()
     }
@@ -56,7 +56,7 @@ impl InMemoryStore {
         self.positions.values().cloned().collect()
     }
 
-    pub fn edges(&self) -> Vec<Edge> {
+    pub fn edges(&self) -> Vec<OpeningEdgeRecord> {
         self.edges.values().cloned().collect()
     }
 
@@ -85,11 +85,11 @@ mod tests {
 
     #[test]
     fn upsert_methods_report_insert_status() {
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let parent = sample_position(0);
         let child = sample_position(1);
-        let edge = Edge::new(parent.id, "e2e4", "e4", child.id, None);
-        let record = RepertoireEdge::new("owner", "rep", edge.id);
+        let edge = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
+        let record = RepertoireEdge::new("owner", "rep", edge.edge.id);
         let tactic = Tactic::new("fen", vec!["e2e4".into()], vec![], None);
 
         assert!(store.upsert_position(parent.clone()));
@@ -104,24 +104,24 @@ mod tests {
 
     #[test]
     fn repertoire_edges_accessor_round_trips_entries() {
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let parent = sample_position(0);
         let child = sample_position(1);
-        let edge = Edge::new(parent.id, "e2e4", "e4", child.id, None);
+        let edge = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
         store.upsert_edge(edge.clone());
-        store.upsert_repertoire_edge(RepertoireEdge::new("owner", "rep", edge.id));
+        store.upsert_repertoire_edge(RepertoireEdge::new("owner", "rep", edge.edge.id));
 
         let records = store.repertoire_edges();
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].owner, "owner");
         assert_eq!(records[0].repertoire_key, "rep");
-        assert_eq!(records[0].edge_id, edge.id);
+        assert_eq!(records[0].edge_id, edge.edge.id);
     }
 
     #[test]
     fn in_memory_store_default_is_the_same_as_new() {
-        let default_store = InMemoryStore::default();
-        let new_store = InMemoryStore::new();
+        let default_store = ImportInMemoryStore::default();
+        let new_store = ImportInMemoryStore::new();
         assert_eq!(default_store.positions.len(), new_store.positions.len());
         assert_eq!(default_store.edges.len(), new_store.edges.len());
         assert_eq!(

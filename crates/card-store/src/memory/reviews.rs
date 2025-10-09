@@ -2,7 +2,7 @@ use std::num::NonZeroU8;
 
 use chrono::{Duration, NaiveDate};
 
-use crate::model::{CardState, ReviewRequest};
+use crate::model::{ReviewRequest, StoredCardState};
 use crate::store::StoreError;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -14,7 +14,7 @@ pub(super) struct ReviewTransition {
 }
 
 pub(super) fn apply_review(
-    state: &mut CardState,
+    state: &mut StoredCardState,
     review: &ReviewRequest,
 ) -> Result<(), StoreError> {
     let transition = derive_review_transition(state, review)?;
@@ -23,7 +23,7 @@ pub(super) fn apply_review(
 }
 
 fn derive_review_transition(
-    state: &CardState,
+    state: &StoredCardState,
     review: &ReviewRequest,
 ) -> Result<ReviewTransition, StoreError> {
     validate_grade(review.grade)?;
@@ -73,7 +73,7 @@ fn ease_delta_for_grade(grade: u8) -> f32 {
 }
 
 fn finalize_transition(
-    state: &CardState,
+    state: &StoredCardState,
     review: &ReviewRequest,
     interval: NonZeroU8,
     ease: f32,
@@ -101,7 +101,7 @@ fn due_date_for_review(reviewed_on: NaiveDate, interval: NonZeroU8) -> NaiveDate
 }
 
 fn commit_review_transition(
-    state: &mut CardState,
+    state: &mut StoredCardState,
     reviewed_on: NaiveDate,
     transition: ReviewTransition,
 ) {
@@ -120,8 +120,8 @@ mod tests {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
     }
 
-    fn sample_state() -> CardState {
-        CardState::new(naive_date(2023, 1, 1), NonZeroU8::new(1).unwrap(), 2.5)
+    fn sample_state() -> StoredCardState {
+        StoredCardState::new(naive_date(2023, 1, 1), NonZeroU8::new(1).unwrap(), 2.5)
     }
 
     fn sample_review(grade: u8) -> ReviewRequest {

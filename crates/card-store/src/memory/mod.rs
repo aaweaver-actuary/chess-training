@@ -9,7 +9,7 @@ use chrono::NaiveDate;
 use crate::chess_position::ChessPosition;
 use crate::config::StorageConfig;
 use crate::model::{
-    Card, CardState, Edge, EdgeInput, ReviewRequest, UnlockRecord, card_id_for_opening,
+    Card, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord, card_id_for_opening,
 };
 use crate::store::{CardStore, StoreError};
 
@@ -127,7 +127,7 @@ impl CardStore for InMemoryCardStore {
     fn upsert_edge(&self, edge: EdgeInput) -> Result<Edge, StoreError> {
         self.ensure_position_exists(edge.parent_id)?;
         self.ensure_position_exists(edge.child_id)?;
-        let canonical = Edge::from_input(edge);
+        let canonical = edge.into_edge();
         let mut edges = self.edges_write()?;
         store_canonical_edge(&mut edges, canonical)
     }
@@ -136,7 +136,7 @@ impl CardStore for InMemoryCardStore {
         &self,
         owner_id: &str,
         edge: &Edge,
-        state: CardState,
+        state: StoredCardState,
     ) -> Result<Card, StoreError> {
         self.ensure_edge_exists(edge.id)?;
         let card_id = card_id_for_opening(owner_id, edge.id);
@@ -222,7 +222,7 @@ mod tests {
                 child_id: position.id,
             })
             .unwrap();
-        let state = CardState::new(
+        let state = StoredCardState::new(
             naive_date(2023, 1, 1),
             std::num::NonZeroU8::new(1).unwrap(),
             2.5,

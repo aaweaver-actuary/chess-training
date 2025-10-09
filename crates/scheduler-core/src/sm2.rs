@@ -12,9 +12,9 @@ pub(super) fn apply_sm2(
     config: &SchedulerConfig,
     today: NaiveDate,
 ) {
-    let previous_reviews = card.reviews;
-    let previous_interval = card.interval_days.max(1);
-    let ease = update_ease(card.ease_factor, grade, config);
+    let previous_reviews = card.state.reviews;
+    let previous_interval = card.state.interval_days.max(1);
+    let ease = update_ease(card.state.ease_factor, grade, config);
     let interval = interval_for_grade(previous_reviews, previous_interval, grade, ease);
     finalize_review(card, interval, ease, today, grade);
 }
@@ -77,13 +77,13 @@ fn finalize_review(
     grade: ReviewGrade,
 ) {
     let due = due_after_interval(today, interval);
-    card.due = due;
-    card.interval_days = interval;
-    card.ease_factor = ease;
-    card.reviews = card.reviews.saturating_add(1);
-    card.state = state_after_grade(card.state, grade);
+    card.state.due = due;
+    card.state.interval_days = interval;
+    card.state.ease_factor = ease;
+    card.state.reviews = card.state.reviews.saturating_add(1);
+    card.state.stage = state_after_grade(card.state.stage, grade);
     if matches!(grade, ReviewGrade::Again) {
-        card.lapses = card.lapses.saturating_add(1);
+        card.state.lapses = card.state.lapses.saturating_add(1);
     }
 }
 
@@ -107,21 +107,21 @@ fn state_after_grade(current: CardState, grade: ReviewGrade) -> CardState {
 mod tests {
     use super::*;
     use crate::config::SchedulerConfig;
-    use crate::domain::{CardKind, CardState};
+    use crate::domain::{new_card, CardKind, CardState, SchedulerTacticCard};
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
     }
 
-    fn sample_card(state: CardState) -> Card {
+    fn sample_card(stage: CardState) -> Card {
         let config = SchedulerConfig::default();
-        let mut card = Card::new(
+        let mut card = new_card(
             uuid::Uuid::new_v4(),
-            CardKind::Tactic,
+            CardKind::Tactic(SchedulerTacticCard::new()),
             naive_date(2023, 1, 1),
             &config,
         );
-        card.state = state;
+        card.state.stage = stage;
         card
     }
 
@@ -147,9 +147,9 @@ mod tests {
             &config,
             naive_date(2023, 1, 1),
         );
-        assert!(card.due >= naive_date(2023, 1, 2));
-        assert_eq!(card.state, CardState::Review);
-        assert_eq!(card.reviews, 1);
+        assert!(card.state.due >= naive_date(2023, 1, 2));
+        assert_eq!(card.state.stage, CardState::Review);
+        assert_eq!(card.state.reviews, 1);
     }
 
     #[test]
@@ -162,8 +162,8 @@ mod tests {
             &config,
             naive_date(2023, 1, 1),
         );
-        assert_eq!(card.state, CardState::Relearning);
-        assert_eq!(card.lapses, 1);
+        assert_eq!(card.state.stage, CardState::Relearning);
+        assert_eq!(card.state.lapses, 1);
     }
 
     #[test]

@@ -6,4 +6,4 @@ pub mod storage;
 
 pub use crate::config::IngestConfig;
 pub use crate::importer::{ImportError, Importer};
-pub use crate::storage::InMemoryStore;
+pub use crate::storage::ImportInMemoryStore;

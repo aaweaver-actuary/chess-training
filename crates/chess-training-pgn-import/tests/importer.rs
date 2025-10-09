@@ -1,6 +1,6 @@
 use chess_training_pgn_import::config::IngestConfig;
 use chess_training_pgn_import::importer::{ImportError, Importer};
-use chess_training_pgn_import::storage::InMemoryStore;
+use chess_training_pgn_import::storage::ImportInMemoryStore;
 
 fn sample_pgn() -> &'static str {
     r#"[Event "Opening"]
@@ -28,7 +28,7 @@ fn sample_pgn() -> &'static str {
 #[test]
 fn importer_builds_opening_trie_and_tactics() {
     let config = IngestConfig::default();
-    let store = InMemoryStore::default();
+    let store = ImportInMemoryStore::default();
     let mut importer = Importer::new(config, store);
 
     importer
@@ -52,7 +52,7 @@ fn importer_builds_opening_trie_and_tactics() {
     let edge_uci: Vec<_> = store
         .edges()
         .into_iter()
-        .map(|edge| edge.move_uci)
+        .map(|edge| edge.edge.move_uci)
         .collect();
     assert!(edge_uci.contains(&"e2e4".to_string()));
     assert!(edge_uci.contains(&"e7e5".to_string()));
@@ -80,7 +80,7 @@ fn importer_respects_require_setup_flag() {
         ..IngestConfig::default()
     };
 
-    let store = InMemoryStore::default();
+    let store = ImportInMemoryStore::default();
     let mut importer = Importer::new(config, store);
 
     let pgn = r#"[Event "Tactic"]

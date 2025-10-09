@@ -50,12 +50,13 @@ mod tests {
             1,
         )
         .unwrap();
-        let edge = Edge::from_input(EdgeInput {
+        let edge = EdgeInput {
             parent_id: parent.id,
             move_uci: "e2e4".into(),
             move_san: "e4".into(),
             child_id: child.id,
-        });
+        }
+        .into_edge();
         let mut edges = HashMap::new();
         edges.insert(edge.id, edge.clone());
 
@@ -75,12 +76,13 @@ mod tests {
             2,
         )
         .unwrap();
-        let first = Edge::from_input(EdgeInput {
+        let first = EdgeInput {
             parent_id: parent.id,
             move_uci: "e2e4".into(),
             move_san: "e4".into(),
             child_id: child.id,
-        });
+        }
+        .into_edge();
         let mut edges = HashMap::new();
         edges.insert(first.id, first);
 
@@ -89,12 +91,13 @@ mod tests {
             1,
         )
         .unwrap();
-        let conflicting = Edge::from_input(EdgeInput {
+        let conflicting = EdgeInput {
             parent_id: parent.id,
             move_uci: "e2e4".into(),
             move_san: "e4".into(),
             child_id: alternate_child.id,
-        });
+        }
+        .into_edge();
         let err = store_canonical_edge(&mut edges, conflicting).unwrap_err();
         assert!(matches!(err, StoreError::HashCollision { entity } if entity == "edge"));
     }

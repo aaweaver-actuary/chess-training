@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use crate::chess_position::ChessPosition;
 use crate::errors::PositionError;
-use crate::model::{Card, CardState, Edge, EdgeInput, ReviewRequest, UnlockRecord};
+use crate::model::{Card, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
 
 /// Unified error type returned by [`CardStore`] implementations.
 #[derive(Debug, Error, PartialEq)]
@@ -49,7 +49,7 @@ pub trait CardStore: Send + Sync + fmt::Debug {
         &self,
         owner_id: &str,
         edge: &Edge,
-        state: CardState,
+        state: StoredCardState,
     ) -> Result<Card, StoreError>;
     /// Fetch all due cards for an owner on or before `as_of`.
     fn fetch_due_cards(&self, owner_id: &str, as_of: NaiveDate) -> Result<Vec<Card>, StoreError>;

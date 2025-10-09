@@ -11,7 +11,7 @@ pub(super) fn insert_unlock_or_error(
         Ok(())
     } else {
         Err(StoreError::DuplicateUnlock {
-            edge: unlock.edge_id,
+            edge: unlock.detail.edge_id,
             day: unlock.unlocked_on,
         })
     }
@@ -20,6 +20,7 @@ pub(super) fn insert_unlock_or_error(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::UnlockDetail;
     use chrono::NaiveDate;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -31,7 +32,7 @@ mod tests {
         let mut unlocks = HashSet::new();
         let record = UnlockRecord {
             owner_id: "owner".into(),
-            edge_id: 7,
+            detail: UnlockDetail { edge_id: 7 },
             unlocked_on: naive_date(2023, 1, 1),
         };
         insert_unlock_or_error(&mut unlocks, record.clone()).expect("first insert succeeds");

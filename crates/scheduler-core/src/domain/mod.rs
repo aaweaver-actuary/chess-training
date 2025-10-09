@@ -3,23 +3,29 @@
 pub mod card;
 pub mod card_kind;
 pub mod card_state;
+pub mod sm2_state;
 
-pub use card::Card;
-pub use card_kind::CardKind;
+pub use card::{Card, new_card};
+pub use card_kind::{CardKind, SchedulerOpeningCard, SchedulerTacticCard};
 pub use card_state::CardState;
+pub use sm2_state::Sm2State;
 
 use chrono::NaiveDate;
 use uuid::Uuid;
 
 use crate::grade::ReviewGrade;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UnlockRecord {
+use review_domain::UnlockRecord as GenericUnlockRecord;
+
+/// Domain-specific payload stored for scheduler unlock events.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SchedulerUnlockDetail {
     pub card_id: Uuid,
-    pub owner_id: Uuid,
     pub parent_prefix: Option<String>,
-    pub day: NaiveDate,
 }
+
+/// Unlock events emitted by the scheduler.
+pub type UnlockRecord = GenericUnlockRecord<Uuid, SchedulerUnlockDetail>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReviewOutcome {
@@ -39,10 +45,15 @@ mod tests {
         let config = SchedulerConfig::default();
         let owner = Uuid::new_v4();
         let today = chrono::NaiveDate::from_ymd_opt(2023, 1, 1).unwrap();
-        let card = Card::new(owner, CardKind::Tactic, today, &config);
+        let card = new_card(
+            owner,
+            CardKind::Tactic(SchedulerTacticCard::new()),
+            today,
+            &config,
+        );
         assert_eq!(card.owner_id, owner);
-        assert_eq!(card.state, CardState::New);
-        assert_eq!(card.due, today);
-        assert_eq!(card.reviews, 0);
+        assert_eq!(card.state.stage, CardState::New);
+        assert_eq!(card.state.due, today);
+        assert_eq!(card.state.reviews, 0);
     }
 }
