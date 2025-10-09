@@ -107,9 +107,10 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
         </svg>
       </a>
       <chess-board
-        className="opening-review-board__board"
         data-testid="opening-review-board"
         ref={boardRef}
+        style={{ width: 'min(90vw, 560px)' }}
+        className="opening-review-board__board"
         position={card.position_fen}
       />
     </div>
