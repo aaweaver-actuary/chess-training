@@ -297,6 +297,62 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /Daily Review Summary/i })).toBeInTheDocument();
   });
 
+  it('allows importing a Danish Gambit line from the dashboard PGN tools', async () => {
+    const user = setupUser();
+
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    const hoverHandle = screen.getByLabelText(/open pgn import tools/i);
+    fireEvent.pointerEnter(hoverHandle);
+
+    const pasteOption = await screen.findByRole('button', { name: /paste pgn/i });
+    await user.click(pasteOption);
+
+    const pgnInput = await screen.findByLabelText(/pgn move input/i);
+    await user.type(pgnInput, '1.e4 e5 2.d4 exd4 3.c3');
+
+    const confirmButton = await screen.findByRole('button', {
+      name: /Add to Danish Gambit \(White\)/i,
+    });
+    await user.click(confirmButton);
+
+    const feedback = await screen.findByText(/Scheduled for/i);
+    expect(feedback).toHaveTextContent(/Danish Gambit/i);
+
+    const upcomingList = screen.getByRole('list', { name: /upcoming unlocks/i });
+    await waitFor(() => {
+      expect(within(upcomingList).getByText(/Danish Gambit \(White\)/i)).toBeInTheDocument();
+    });
+
+    expect(within(upcomingList).getByText(/Line: 1\.e4 e5 2\.d4 exd4 3\.c3/i)).toBeInTheDocument();
+
+    await user.type(pgnInput, '1.e4 e5 2.d4 exd4 3.c3');
+
+    const duplicateButton = await screen.findByRole('button', {
+      name: /Add to Danish Gambit \(White\)/i,
+    });
+    await user.click(duplicateButton);
+
+    const duplicateFeedback = await screen.findByText(/Already scheduled/i);
+    expect(duplicateFeedback).toHaveTextContent(/Already scheduled/i);
+
+    const danishEntries = within(upcomingList).getAllByText(/Danish Gambit \(White\)/i);
+    expect(danishEntries).toHaveLength(1);
+
+    await user.clear(pgnInput);
+    await waitFor(() => {
+      expect(pgnInput).toHaveValue('');
+    });
+  });
+
   it('opens the command console when the colon key is pressed', async () => {
     const user = setupUser();
     render(
