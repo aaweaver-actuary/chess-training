@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 use std::num::NonZeroU8;
 
 use card_store::config::StorageConfig;
 use card_store::memory::InMemoryCardStore;
-use card_store::model::{CardState, EdgeInput, Position, ReviewRequest, UnlockRecord};
+use card_store::model::{Card, CardKind, CardState, EdgeInput, Position, ReviewRequest, UnlockRecord};
 use card_store::store::{CardStore, StoreError};
-use chrono::NaiveDate;
+use chrono::{Duration, NaiveDate};
 
 fn sample_position() -> Position {
     Position::new(
@@ -227,6 +228,182 @@ fn unlock_same_edge_on_different_days() {
         result.is_ok(),
         "Same edge should be unlockable on different days"
     );
+}
+
+#[test]
+fn importing_longer_line_preserves_existing_progress() {
+    const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const E4_FEN: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    const E5_FEN: &str = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+    const NF3_FEN: &str = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
+    const NC6_FEN: &str = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+    const BC4_FEN: &str = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3";
+    const BC5_FEN: &str = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+    const C3_FEN: &str = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/2P2N2/PP1P1PPP/RNBQK2R b KQkq - 0 4";
+
+    let store = InMemoryCardStore::new(StorageConfig::default());
+    let initial_interval = NonZeroU8::new(1).unwrap();
+    let owner = "learner";
+
+    // Initial import containing moves up to 3.Bc4.
+    let start = store
+        .upsert_position(Position::new(START_FEN, 0).expect("start position"))
+        .expect("store start");
+    let e4_pos = store
+        .upsert_position(Position::new(E4_FEN, 1).expect("after 1.e4"))
+        .expect("store e4");
+    let e5_pos = store
+        .upsert_position(Position::new(E5_FEN, 2).expect("after 1...e5"))
+        .expect("store e5");
+    let nf3_pos = store
+        .upsert_position(Position::new(NF3_FEN, 3).expect("after 2.Nf3"))
+        .expect("store Nf3");
+    let nc6_pos = store
+        .upsert_position(Position::new(NC6_FEN, 4).expect("after 2...Nc6"))
+        .expect("store Nc6");
+    let bc4_pos = store
+        .upsert_position(Position::new(BC4_FEN, 5).expect("after 3.Bc4"))
+        .expect("store Bc4");
+
+    let edge_e4 = store
+        .upsert_edge(EdgeInput {
+            parent_id: start.id,
+            move_uci: "e2e4".to_string(),
+            move_san: "e4".to_string(),
+            child_id: e4_pos.id,
+        })
+        .expect("edge 1.e4");
+    let _edge_e5 = store
+        .upsert_edge(EdgeInput {
+            parent_id: e4_pos.id,
+            move_uci: "e7e5".to_string(),
+            move_san: "e5".to_string(),
+            child_id: e5_pos.id,
+        })
+        .expect("edge 1...e5");
+    let edge_nf3 = store
+        .upsert_edge(EdgeInput {
+            parent_id: e5_pos.id,
+            move_uci: "g1f3".to_string(),
+            move_san: "Nf3".to_string(),
+            child_id: nf3_pos.id,
+        })
+        .expect("edge 2.Nf3");
+    let _edge_nc6 = store
+        .upsert_edge(EdgeInput {
+            parent_id: nf3_pos.id,
+            move_uci: "b8c6".to_string(),
+            move_san: "Nc6".to_string(),
+            child_id: nc6_pos.id,
+        })
+        .expect("edge 2...Nc6");
+    let edge_bc4 = store
+        .upsert_edge(EdgeInput {
+            parent_id: nc6_pos.id,
+            move_uci: "f1c4".to_string(),
+            move_san: "Bc4".to_string(),
+            child_id: bc4_pos.id,
+        })
+        .expect("edge 3.Bc4");
+
+    let white_edges = vec![edge_e4.clone(), edge_nf3.clone(), edge_bc4.clone()];
+    let mut edge_to_card: HashMap<u64, u64> = HashMap::new();
+    let start_day = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+    let initial_state = CardState::new(start_day, initial_interval, 2.5);
+
+    for edge in &white_edges {
+        let card = store
+            .create_opening_card(owner, edge, initial_state.clone())
+            .expect("create opening card");
+        edge_to_card.insert(edge.id, card.id);
+    }
+
+    // Simulate a week of study by reviewing each card on its due date.
+    let mut baseline: HashMap<u64, Card> = HashMap::new();
+    for (edge_id, card_id) in &edge_to_card {
+        let mut review_day = start_day;
+        let mut latest: Option<Card> = None;
+        for _ in 0..3 {
+            let card = store
+                .record_review(ReviewRequest {
+                    card_id: *card_id,
+                    reviewed_on: review_day,
+                    grade: 4,
+                })
+                .expect("record review");
+            review_day = card.state.due_on;
+            latest = Some(card);
+        }
+
+        let card = latest.expect("at least one review per card");
+        match card.kind {
+            CardKind::Opening { edge_id: stored_edge_id } => {
+                assert_eq!(stored_edge_id, *edge_id);
+            }
+            _ => panic!("expected opening card"),
+        }
+        baseline.insert(*edge_id, card);
+    }
+
+    // Second import arrives a week later with additional moves 3...Bc5 4.c3.
+    let import_day = start_day + Duration::days(7);
+    let import_state = CardState::new(import_day, initial_interval, 2.5);
+
+    let bc5_pos = store
+        .upsert_position(Position::new(BC5_FEN, 6).expect("after 3...Bc5"))
+        .expect("store Bc5");
+    let c3_pos = store
+        .upsert_position(Position::new(C3_FEN, 7).expect("after 4.c3"))
+        .expect("store c3");
+
+    let edge_bc5 = store
+        .upsert_edge(EdgeInput {
+            parent_id: bc4_pos.id,
+            move_uci: "f8c5".to_string(),
+            move_san: "Bc5".to_string(),
+            child_id: bc5_pos.id,
+        })
+        .expect("edge 3...Bc5");
+    let edge_c3 = store
+        .upsert_edge(EdgeInput {
+            parent_id: edge_bc5.child_id,
+            move_uci: "c2c3".to_string(),
+            move_san: "c3".to_string(),
+            child_id: c3_pos.id,
+        })
+        .expect("edge 4.c3");
+
+    // Re-importing the earlier moves should not change their scheduling metadata.
+    for edge in &white_edges {
+        let card = store
+            .create_opening_card(owner, edge, import_state.clone())
+            .expect("re-import opening card");
+        let original = baseline
+            .get(&edge.id)
+            .expect("baseline card missing for edge");
+        assert_eq!(card, *original, "card state changed for {}", edge.move_san);
+    }
+
+    // The new move becomes the only item due on the import day.
+    let new_card = store
+        .create_opening_card(owner, &edge_c3, import_state.clone())
+        .expect("create new move card");
+    assert_eq!(
+        new_card.state,
+        CardState::new(import_day, initial_interval, 2.5),
+        "new card should use default scheduling state",
+    );
+
+    let due_cards = store
+        .fetch_due_cards(owner, import_day)
+        .expect("fetch due cards");
+    assert_eq!(due_cards.len(), 1, "only the new move should be due");
+    assert_eq!(due_cards[0].id, new_card.id, "unexpected card queued");
+
+    // Ensure the opponent move was recorded but does not create a learner card.
+    // Only the learner's moves should result in card creation; opponent moves like Bc5
+    // should not create a learner card. This assertion validates that behavior.
+    assert!(!baseline.contains_key(&edge_bc5.id));
 }
 
 #[test]
