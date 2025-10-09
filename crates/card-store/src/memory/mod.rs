@@ -49,7 +49,7 @@ impl InMemoryCardStore {
     }
 
     /// Number of unique positions currently stored. Useful for tests.
-    #[must_use]
+    #[must_use = "handle potential store errors when counting positions"]
     pub fn position_count(&self) -> Result<usize, StoreError> {
         Ok(self.positions_read()?.len())
     }

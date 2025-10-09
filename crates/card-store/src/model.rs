@@ -99,9 +99,6 @@ pub type UnlockDetail = GenericUnlockDetail;
 /// Unlock ledger entry representing newly released opening moves.
 pub type UnlockRecord = GenericUnlockRecord<String, UnlockDetail>;
 
-/// Unlock ledger entry representing newly released opening moves.
-pub type UnlockRecord = GenericUnlockRecord<String, UnlockDetail>;
-
 /// Deterministically compute a card identifier for an opening edge.
 #[must_use]
 pub fn card_id_for_opening(owner_id: &str, edge_id: u64) -> u64 {
