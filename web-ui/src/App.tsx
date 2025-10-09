@@ -16,6 +16,7 @@ import { sessionStore } from './state/sessionStore';
 import { CommandConsole } from './components/CommandConsole';
 import type { DetectedOpeningLine, ImportResult, ScheduledOpeningLine } from './types/repertoire';
 import { createCommandDispatcher } from './utils/commandDispatcher';
+import type { CommandDispatcher } from './utils/commandDispatcher';
 
 const planner = new ReviewPlanner();
 const baselineOverview = planner.buildOverview(sampleSnapshot);
@@ -84,6 +85,7 @@ const augmentOverviewWithImports = (
 type SessionRoutesProps = {
   importedLines: ScheduledOpeningLine[];
   onImportLine: (line: DetectedOpeningLine) => ImportResult;
+  commandDispatcher?: CommandDispatcher;
 };
 
 const useStartTimestamp = (card?: CardSummary) => {
@@ -102,7 +104,7 @@ const useSessionLifecycle = (start: (userId: string) => Promise<void>) => {
   }, [start]);
 };
 
-const SessionRoutes = ({ importedLines, onImportLine }: SessionRoutesProps) => {
+const SessionRoutes = ({ importedLines, onImportLine, commandDispatcher }: SessionRoutesProps) => {
   const session = useSessionState();
   const { stats, currentCard, start, submitGrade } = session;
   useSessionLifecycle(start);
@@ -137,6 +139,7 @@ const SessionRoutes = ({ importedLines, onImportLine }: SessionRoutesProps) => {
             openingPath="/review/opening"
             canStartOpening={canStartOpening}
             onImportLine={onImportLine}
+            commandDispatcher={commandDispatcher}
           />
         }
       />
@@ -251,7 +254,11 @@ const App = (): JSX.Element => {
 
   return (
     <>
-      <SessionRoutes importedLines={importedLines} onImportLine={handleImportLine} />
+      <SessionRoutes
+        importedLines={importedLines}
+        onImportLine={handleImportLine}
+        commandDispatcher={dispatcher}
+      />
       <CommandConsole
         isOpen={isConsoleOpen}
         onOpen={handleOpenConsole}

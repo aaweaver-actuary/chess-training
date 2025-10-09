@@ -6,7 +6,7 @@ import type { ImportResult } from '../../types/repertoire';
 import { PgnImportPane } from '../PgnImportPane';
 
 describe('PgnImportPane', () => {
-  it('collapses when the pointer leaves and the pane does not retain focus', async () => {
+  it('expands when the pointer enters the pane container', () => {
     render(
       <PgnImportPane
         onImportLine={() => ({
@@ -23,16 +23,73 @@ describe('PgnImportPane', () => {
       />,
     );
 
+    const pane = screen.getByRole('complementary', { name: /pgn import tools/i });
     const handle = screen.getByRole('button', { name: /open pgn import tools/i });
     expect(handle).toHaveAttribute('aria-expanded', 'false');
 
-    fireEvent.pointerEnter(handle);
+    fireEvent.pointerEnter(pane);
+
+    expect(handle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('remains expanded after the pointer leaves', () => {
+    render(
+      <PgnImportPane
+        onImportLine={() => ({
+          added: false,
+          line: {
+            id: 'test',
+            opening: 'Danish Gambit',
+            color: 'White',
+            moves: [],
+            display: '',
+            scheduledFor: new Date().toISOString(),
+          },
+        })}
+      />,
+    );
+
+    const pane = screen.getByRole('complementary', { name: /pgn import tools/i });
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+
+    fireEvent.pointerEnter(pane);
     expect(handle).toHaveAttribute('aria-expanded', 'true');
 
-    const pane = handle.closest('aside');
-    expect(pane).not.toBeNull();
+    fireEvent.pointerLeave(pane);
 
-    fireEvent.pointerLeave(pane as Element);
+    expect(handle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('collapses when clicking outside of the pane', async () => {
+    render(
+      <div>
+        <PgnImportPane
+          onImportLine={() => ({
+            added: false,
+            line: {
+              id: 'test',
+              opening: 'Danish Gambit',
+              color: 'White',
+              moves: [],
+              display: '',
+              scheduledFor: new Date().toISOString(),
+            },
+          })}
+        />
+        <button type="button">Outside</button>
+      </div>,
+    );
+
+    const pane = screen.getByRole('complementary', { name: /pgn import tools/i });
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    expect(handle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.pointerEnter(pane);
+    expect(handle).toHaveAttribute('aria-expanded', 'true');
+
+    const outsideButton = screen.getByRole('button', { name: 'Outside' });
+    fireEvent.pointerDown(outsideButton);
+    fireEvent.click(outsideButton);
 
     await waitFor(() => {
       expect(handle).toHaveAttribute('aria-expanded', 'false');
