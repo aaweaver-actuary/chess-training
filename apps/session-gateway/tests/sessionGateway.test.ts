@@ -279,19 +279,20 @@ describe('session gateway', () => {
     await gradeCard(baseUrl, sessionId, 'c123', 'Good');
 
     await new Promise((resolve) => setTimeout(resolve, 50));
-    const updateMessage = messages.find(
+    const initialUpdateMessage = messages.find(
       (msg) => (msg as { type: string }).type === 'UPDATE',
     );
-    expect(updateMessage).toBeTruthy();
-    expect(updateMessage).toMatchObject({
+    expect(initialUpdateMessage).toBeTruthy();
+    expect(initialUpdateMessage).toMatchObject({
       type: 'UPDATE',
       card: expect.objectContaining({ card_id: 'c456' }),
       stats: expect.objectContaining({ reviews_today: 1 }),
     });
     await wait();
-    const updateMessage = messages.find((msg) => (msg as { type: string }).type === 'UPDATE');
-    expect(updateMessage).toBeTruthy();
-    expect((updateMessage as { stats?: unknown })?.stats).toBeTruthy();
+    const allUpdateMessages = messages.filter((msg) => (msg as { type: string }).type === 'UPDATE');
+    const statsUpdateMessage = allUpdateMessages.length > 1 ? allUpdateMessages[1] : allUpdateMessages[0];
+    expect(statsUpdateMessage).toBeTruthy();
+    expect((statsUpdateMessage as { stats?: unknown })?.stats).toBeTruthy();
     socket.close();
     await waitForClose(socket);
   });
