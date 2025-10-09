@@ -107,7 +107,7 @@ impl<S: Storage> Importer<S> {
         repertoire: &str,
         pgn: &str,
     ) -> Result<(), ImportError> {
-        for (game_index, game) in parse_games(pgn)?.into_iter().enumerate() {
+        for (game_index, game) in parse_games(pgn).enumerate() {
             self.metrics.games_total += 1;
             process_game(
                 &self.config,
@@ -216,7 +216,7 @@ fn process_game<S: Storage>(
     Ok(())
 }
 
-fn parse_games(input: &str) -> Result<Vec<RawGame>, ImportError> {
+fn parse_games(input: &str) -> Vec<RawGame> {
     let mut games = Vec::new();
     let mut current = RawGame::default();
     let mut header_in_progress = false;
@@ -250,15 +250,16 @@ fn parse_games(input: &str) -> Result<Vec<RawGame>, ImportError> {
         games.push(current);
     }
 
-    Ok(games)
+    games
 }
 
 fn parse_tag(line: &str) -> Option<(String, String)> {
-    let mut parts = line.splitn(2, ' ');
-    let key = parts.next()?.trim_start_matches('[');
-    let value_part = parts.next()?.trim_end_matches(']');
-    let value = value_part.trim();
-    let value = value.strip_prefix('"')?.strip_suffix('"')?;
+    let trimmed = match line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+        Some(inner) => inner,
+        None => return None,
+    };
+    let (key, raw_value) = trimmed.split_once(' ')?;
+    let value = raw_value.trim().strip_prefix('"')?.strip_suffix('"')?;
     Some((key.to_string(), value.to_string()))
 }
 
@@ -348,6 +349,18 @@ mod tests {
     }
 
     #[test]
+    fn parse_tag_rejects_missing_quotes() {
+        assert_eq!(parse_tag("[Event Test]"), None);
+        assert_eq!(parse_tag("[Event \"Test]"), None);
+    }
+
+    #[test]
+    fn parse_tag_requires_closing_bracket_and_space() {
+        assert_eq!(parse_tag("[Malformed"), None);
+        assert_eq!(parse_tag("[Event\"Test\"]"), None);
+    }
+
+    #[test]
     fn sanitize_token_removes_results_and_markers() {
         assert_eq!(sanitize_token("1-0"), None);
         assert_eq!(sanitize_token("{comment}"), None);
@@ -367,23 +380,58 @@ mod tests {
     #[test]
     fn parse_games_splits_multiple_pgn_entries() {
         let pgn = "[Event \"Game\"]\n\n1. e4 e5\n\n[Event \"Second\"]\n1. d4 d5 *";
-        let games = parse_games(pgn).expect("parsing should succeed");
-        assert_eq!(games.len(), 2, "two games should be extracted");
+        let games = parse_games(pgn);
+        assert_eq!(games.len(), 2);
         assert_eq!(games[0].moves, vec!["e4".to_string(), "e5".to_string()]);
         assert_eq!(games[1].moves, vec!["d4".to_string(), "d5".to_string()]);
     }
 
     #[test]
+    fn parse_games_preserves_header_only_entries() {
+        let pgn = "[Event \"Header Only\"]";
+        let games = parse_games(pgn);
+
+        assert_eq!(games.len(), 1);
+        assert_eq!(games[0].tags.len(), 1);
+        assert!(games[0].moves.is_empty());
+    }
+
+    #[test]
+    fn parse_games_ignores_invalid_tags() {
+        let pgn = "[Malformed\n1. e4 e5 *";
+        let games = parse_games(pgn);
+
+        assert_eq!(games.len(), 1);
+        assert!(games[0].tags.is_empty());
+        let moves = &games[0].moves;
+        assert_eq!(moves.len(), 2);
+        assert_eq!(moves[0], "e4");
+        assert_eq!(moves[1], "e5");
+    }
+
+    #[test]
+    fn parse_games_returns_empty_without_content() {
+        let empty = parse_games("");
+        assert!(empty.is_empty());
+
+        let whitespace = parse_games(" \n\n\t  ");
+        assert!(whitespace.is_empty());
+    }
+
+    #[test]
     fn load_fen_reports_invalid_inputs() {
         let err = load_fen("not a fen").expect_err("invalid fen should fail");
-        assert!(matches!(err, ImportError::InvalidFen { .. }));
+        let is_invalid_fen = |error: &ImportError| matches!(error, ImportError::InvalidFen { .. });
+        assert!(is_invalid_fen(&err));
+        assert!(!is_invalid_fen(&ImportError::Pgn("pgn".to_string())));
     }
 
     #[test]
     fn load_fen_rejects_positions_missing_kings() {
         let err = load_fen("8/8/8/8/8/8/8/8 w - - 0 1")
             .expect_err("positions without kings should be invalid");
-        assert!(matches!(err, ImportError::InvalidFen { .. }));
+        let is_invalid_fen = |error: &ImportError| matches!(error, ImportError::InvalidFen { .. });
+        assert!(is_invalid_fen(&err));
     }
 
     #[test]

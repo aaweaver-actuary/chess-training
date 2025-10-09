@@ -39,7 +39,14 @@ fn cli_requires_at_least_one_input() {
         .into_ingest_config()
         .expect_err("conversion should fail when no inputs are provided");
 
-    assert!(matches!(err, ConfigError::NoInputs));
+    let is_no_inputs = |error: &ConfigError| matches!(error, ConfigError::NoInputs);
+    assert!(is_no_inputs(&err));
+    assert!(!is_no_inputs(&ConfigError::Io(
+        chess_training_pgn_import::errors::IoError {
+            path: PathBuf::from("/tmp/missing"),
+            source: std::io::Error::new(std::io::ErrorKind::Other, "other"),
+        }
+    )));
     assert_eq!(
         err.to_string(),
         "no PGN inputs were provided via CLI or config file",
@@ -288,5 +295,47 @@ max_rav_depth = 5
     assert_eq!(
         config.max_rav_depth, 5,
         "config file depth should be preserved without CLI overrides"
+    );
+}
+
+#[test]
+fn config_loader_handles_missing_optional_fields() {
+    let mut file = NamedTempFile::new().expect("temp config should be created");
+    writeln!(
+        file,
+        r#"
+include_fen_in_trie = true
+require_setup_for_fen = true
+"#
+    )
+    .expect("temp config should be writeable");
+    let path = file.into_temp_path();
+
+    let cli = CliArgs::try_parse_from([
+        "pgn-import",
+        "--config-file",
+        path.to_str().expect("path should be valid UTF-8"),
+        "--input",
+        "cli-only.pgn",
+    ])
+    .expect("CLI parsing should succeed with config defaults");
+
+    let (config, inputs) = cli
+        .into_ingest_config()
+        .expect("loader should allow missing optional fields");
+
+    assert_eq!(inputs, vec![PathBuf::from("cli-only.pgn")]);
+    assert!(
+        config.include_fen_in_trie,
+        "config flag should be respected when inputs are absent",
+    );
+    assert!(
+        config.require_setup_for_fen,
+        "config flag should be respected without CLI override",
+    );
+    assert_eq!(
+        config.max_rav_depth,
+        IngestConfig::default().max_rav_depth,
+        "missing max depth should keep the default",
     );
 }

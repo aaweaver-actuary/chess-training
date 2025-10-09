@@ -40,6 +40,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
     teachingArrowRef.current = extractTeachingArrow(card.meta);
 
     const board = boardRef.current;
+    /* c8 ignore next 3 -- React always assigns the ref before this effect runs */
     if (!board) {
       return;
     }

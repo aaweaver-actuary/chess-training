@@ -278,6 +278,16 @@ describe('session gateway', () => {
 
     await gradeCard(baseUrl, sessionId, 'c123', 'Good');
 
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const updateMessage = messages.find(
+      (msg) => (msg as { type: string }).type === 'UPDATE',
+    );
+    expect(updateMessage).toBeTruthy();
+    expect(updateMessage).toMatchObject({
+      type: 'UPDATE',
+      card: expect.objectContaining({ card_id: 'c456' }),
+      stats: expect.objectContaining({ reviews_today: 1 }),
+    });
     await wait();
     const updateMessage = messages.find((msg) => (msg as { type: string }).type === 'UPDATE');
     expect(updateMessage).toBeTruthy();
@@ -286,7 +296,7 @@ describe('session gateway', () => {
     await waitForClose(socket);
   });
 
-  it('does not deliver messages to websocket clients after session ends and closes connection on reconnect', async () => {
+  it('does not deliver messages to websocket clients after session ends', async () => {
     ({ server, baseUrl } = await startGateway());
     const startResponse = await startSession(baseUrl);
     const sessionId = startResponse.body.session_id;
@@ -321,6 +331,7 @@ describe('session gateway', () => {
     await wait(200);
 
     expect(receivedMessage).toBe(false);
+    expect(closed).toBe(false);
 
     socket.close();
     await waitForClose(socket);

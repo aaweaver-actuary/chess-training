@@ -3,10 +3,10 @@ test:
 	cargo clippy
 	cargo test --workspace
 	cargo llvm-cov -p chess-training-pgn-import --fail-under-functions 100 \
-		--fail-under-lines 100 \
-		--fail-under-regions 100 \
-		--show-missing-lines \
-		-vvv
+	        --fail-under-lines 100 \
+	        --fail-under-regions 100 \
+	        --show-missing-lines \
+	        -q
 	npm --prefix web-ui run format:check
 	npm --prefix web-ui run lint
 	npm --prefix web-ui run typecheck

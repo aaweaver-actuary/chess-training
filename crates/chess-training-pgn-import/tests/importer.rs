@@ -91,7 +91,11 @@ fn importer_respects_require_setup_flag() {
         .ingest_pgn_str("owner", "main", pgn)
         .expect_err("missing SetUp header should error");
 
-    assert!(matches!(err, ImportError::MissingSetup { .. }));
+    let is_missing_setup = |error: &ImportError| matches!(error, ImportError::MissingSetup { .. });
+    assert!(is_missing_setup(&err));
+    assert!(!is_missing_setup(&ImportError::InvalidFen {
+        fen: "fen".to_string(),
+    }));
 }
 
 #[test]
@@ -142,7 +146,12 @@ fn importer_reports_illegal_san_tokens() {
         .ingest_pgn_str("owner", "main", bad_san)
         .expect_err("invalid SAN token should error");
 
-    assert!(matches!(err, ImportError::Pgn(token) if token == "invalid"));
+    let is_pgn_error =
+        |error: &ImportError| matches!(error, ImportError::Pgn(token) if token == "invalid");
+    assert!(is_pgn_error(&err));
+    assert!(!is_pgn_error(&ImportError::MissingSetup {
+        fen: "fen".to_string(),
+    }));
 }
 
 #[test]
@@ -158,7 +167,11 @@ fn importer_reports_contextual_illegal_san() {
         .ingest_pgn_str("owner", "main", impossible_move)
         .expect_err("contextually illegal SAN should error");
 
-    assert!(matches!(err, ImportError::IllegalSan { san, game: 0 } if san == "Qh4"));
+    let is_illegal_san = |error: &ImportError| matches!(error, ImportError::IllegalSan { san, game: 0 } if san == "Qh4");
+    assert!(is_illegal_san(&err));
+    assert!(!is_illegal_san(&ImportError::InvalidFen {
+        fen: "fen".to_string(),
+    }));
 }
 
 #[test]
@@ -191,6 +204,20 @@ fn importer_does_not_emit_tactics_when_disabled() {
 }
 
 #[test]
+fn importer_ignores_empty_inputs() {
+    let mut importer = Importer::new_in_memory(IngestConfig::default());
+
+    importer
+        .ingest_pgn_str("owner", "main", " \n\n")
+        .expect("empty input should succeed");
+
+    let (_store, metrics) = importer.finalize();
+    assert_eq!(metrics.games_total, 0, "no games should be recorded");
+    assert_eq!(metrics.opening_edges, 0);
+    assert_eq!(metrics.tactics, 0);
+}
+
+#[test]
 fn importer_errors_on_invalid_fen_without_skip() {
     let mut importer = Importer::new_in_memory(IngestConfig::default());
 
@@ -205,5 +232,7 @@ fn importer_errors_on_invalid_fen_without_skip() {
         .ingest_pgn_str("owner", "main", malformed)
         .expect_err("invalid FEN should bubble up without skip flag");
 
-    assert!(matches!(err, ImportError::InvalidFen { .. }));
+    let is_invalid_fen = |error: &ImportError| matches!(error, ImportError::InvalidFen { .. });
+    assert!(is_invalid_fen(&err));
+    assert!(!is_invalid_fen(&ImportError::Pgn("pgn".to_string())));
 }

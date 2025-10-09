@@ -177,7 +177,7 @@ describe('session service', () => {
       expect.objectContaining({
         type: 'UPDATE',
         card: nextCard,
-        stats: expect.objectContaining({ reviews_today: 2 }),
+        stats: expect.objectContaining({ reviews_today: 2, avg_latency_ms: 750 }),
       }),
     );
   });

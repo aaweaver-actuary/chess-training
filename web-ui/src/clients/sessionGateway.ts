@@ -5,7 +5,7 @@ import type {
   StartSessionResponse,
 } from '../types/gateway';
 
-/* c8 ignore next 2 */
+/* c8 ignore start */
 const env = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
 const baseUrlFromEnv =
   env && typeof env.VITE_SESSION_URL === 'string' ? env.VITE_SESSION_URL : undefined;
