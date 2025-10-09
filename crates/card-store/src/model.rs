@@ -4,6 +4,8 @@ use std::num::NonZeroU8;
 
 use chrono::NaiveDate;
 
+use review_domain::{CardKind as GenericCardKind, UnlockRecord as GenericUnlockRecord};
+
 use crate::hash64;
 
 /// Input payload for inserting or updating an edge.
@@ -54,14 +56,22 @@ impl Edge {
     }
 }
 
-/// Classification of a card target.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CardKind {
-    /// Card reviewing an opening move (edge).
-    Opening { edge_id: u64 },
-    /// Card reviewing a tactic.
-    Tactic { tactic_id: u64 },
+/// Payload carried by opening cards in the store layer.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct OpeningCard {
+    /// Identifier of the reviewed edge.
+    pub edge_id: u64,
 }
+
+/// Payload carried by tactic cards in the store layer.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct TacticCard {
+    /// Identifier of the reviewed tactic.
+    pub tactic_id: u64,
+}
+
+/// Classification of a card target.
+pub type CardKind = GenericCardKind<OpeningCard, TacticCard>;
 
 /// Mutable scheduling state of a card.
 #[derive(Clone, Debug, PartialEq)]
@@ -127,16 +137,15 @@ pub struct ReviewRequest {
     pub grade: u8,
 }
 
-/// Unlock ledger entry representing newly released opening moves.
+/// Domain payload stored for each unlock record.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct UnlockRecord {
-    /// Owner/user identifier.
-    pub owner_id: String,
+pub struct UnlockDetail {
     /// Edge unlocked for the user.
     pub edge_id: u64,
-    /// Date on which the unlock occurred.
-    pub unlocked_on: NaiveDate,
 }
+
+/// Unlock ledger entry representing newly released opening moves.
+pub type UnlockRecord = GenericUnlockRecord<String, UnlockDetail>;
 
 /// Deterministically compute a card identifier for an opening edge.
 pub fn card_id_for_opening(owner_id: &str, edge_id: u64) -> u64 {

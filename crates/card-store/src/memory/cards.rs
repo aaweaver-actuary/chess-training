@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use chrono::NaiveDate;
 
-use crate::model::{Card, CardKind, CardState, Edge, ReviewRequest};
+use crate::model::{Card, CardKind, CardState, Edge, OpeningCard, ReviewRequest};
 use crate::store::StoreError;
 
 pub(super) fn store_opening_card(
@@ -54,7 +54,10 @@ fn validate_existing_opening_card(
     edge: &Edge,
 ) -> Result<(), StoreError> {
     if card.owner_id == owner_id
-        && matches!(card.kind, CardKind::Opening { edge_id } if edge_id == edge.id)
+        && matches!(
+            card.kind,
+            CardKind::Opening(ref opening) if opening.edge_id == edge.id
+        )
     {
         Ok(())
     } else {
@@ -66,7 +69,7 @@ fn build_opening_card(owner_id: &str, edge: &Edge, state: CardState, card_id: u6
     Card {
         id: card_id,
         owner_id: owner_id.to_string(),
-        kind: CardKind::Opening { edge_id: edge.id },
+        kind: CardKind::Opening(OpeningCard { edge_id: edge.id }),
         state,
     }
 }
@@ -128,7 +131,7 @@ mod tests {
             sample_card_state(naive_date(2023, 1, 1)),
             10,
         );
-        different_owner.kind = CardKind::Opening { edge_id: 99 };
+        different_owner.kind = CardKind::Opening(OpeningCard { edge_id: 99 });
         cards.insert(10, different_owner);
 
         let err = store_opening_card(

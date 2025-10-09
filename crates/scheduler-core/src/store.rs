@@ -60,16 +60,11 @@ impl CardStore for InMemoryStore {
             .cloned()
             .collect();
         candidates.sort_by(|a, b| match (&a.kind, &b.kind) {
-            (
-                CardKind::Opening {
-                    parent_prefix: a_prefix,
-                },
-                CardKind::Opening {
-                    parent_prefix: b_prefix,
-                },
-            ) => (a_prefix, &a.id).cmp(&(b_prefix, &b.id)),
-            (CardKind::Opening { .. }, _) => std::cmp::Ordering::Less,
-            (_, CardKind::Opening { .. }) => std::cmp::Ordering::Greater,
+            (CardKind::Opening(a_opening), CardKind::Opening(b_opening)) => {
+                (&a_opening.parent_prefix, &a.id).cmp(&(&b_opening.parent_prefix, &b.id))
+            }
+            (CardKind::Opening(_), _) => std::cmp::Ordering::Less,
+            (_, CardKind::Opening(_)) => std::cmp::Ordering::Greater,
             _ => a.id.cmp(&b.id),
         });
         candidates
@@ -82,7 +77,7 @@ impl CardStore for InMemoryStore {
     fn unlocked_on(&self, owner_id: Uuid, day: NaiveDate) -> Vec<UnlockRecord> {
         self.unlock_log
             .iter()
-            .filter(|record| record.owner_id == owner_id && record.day == day)
+            .filter(|record| record.owner_id == owner_id && record.unlocked_on == day)
             .cloned()
             .collect()
     }
@@ -92,6 +87,7 @@ impl CardStore for InMemoryStore {
 mod tests {
     use super::*;
     use crate::config::SchedulerConfig;
+    use crate::domain::{TacticCard, UnlockDetail};
     use chrono::NaiveDate;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -104,7 +100,7 @@ mod tests {
         let owner = Uuid::new_v4();
         let mut card = Card::new(
             owner,
-            CardKind::Tactic,
+            CardKind::Tactic(TacticCard::new()),
             naive_date(2023, 1, 1),
             &SchedulerConfig::default(),
         );
@@ -121,13 +117,13 @@ mod tests {
         let owner = Uuid::new_v4();
         let new_card = Card::new(
             owner,
-            CardKind::Tactic,
+            CardKind::Tactic(TacticCard::new()),
             naive_date(2023, 1, 1),
             &SchedulerConfig::default(),
         );
         let mut review_card = Card::new(
             owner,
-            CardKind::Tactic,
+            CardKind::Tactic(TacticCard::new()),
             naive_date(2023, 1, 1),
             &SchedulerConfig::default(),
         );
@@ -143,10 +139,12 @@ mod tests {
         let mut store = InMemoryStore::new();
         let owner = Uuid::new_v4();
         let record = UnlockRecord {
-            card_id: Uuid::new_v4(),
             owner_id: owner,
-            parent_prefix: Some("e4".into()),
-            day: naive_date(2023, 1, 1),
+            detail: UnlockDetail {
+                card_id: Uuid::new_v4(),
+                parent_prefix: Some("e4".into()),
+            },
+            unlocked_on: naive_date(2023, 1, 1),
         };
         store.record_unlock(record.clone());
         let logs = store.unlocked_on(owner, naive_date(2023, 1, 1));

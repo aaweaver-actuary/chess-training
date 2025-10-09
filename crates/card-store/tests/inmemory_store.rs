@@ -4,7 +4,9 @@ use std::num::NonZeroU8;
 use card_store::chess_position::ChessPosition;
 use card_store::config::StorageConfig;
 use card_store::memory::InMemoryCardStore;
-use card_store::model::{Card, CardKind, CardState, EdgeInput, ReviewRequest, UnlockRecord};
+use card_store::model::{
+    Card, CardKind, CardState, EdgeInput, ReviewRequest, UnlockDetail, UnlockRecord,
+};
 use card_store::store::{CardStore, StoreError};
 use chrono::{Duration, NaiveDate};
 
@@ -198,7 +200,7 @@ fn unlock_records_are_unique_per_day() {
     let edge_id = 42;
     let record = UnlockRecord {
         owner_id: "andy".to_string(),
-        edge_id,
+        detail: UnlockDetail { edge_id },
         unlocked_on: date,
     };
 
@@ -218,12 +220,12 @@ fn unlock_same_edge_on_different_days() {
 
     let record1 = UnlockRecord {
         owner_id: "andy".to_string(),
-        edge_id,
+        detail: UnlockDetail { edge_id },
         unlocked_on: day1,
     };
     let record2 = UnlockRecord {
         owner_id: "andy".to_string(),
-        edge_id,
+        detail: UnlockDetail { edge_id },
         unlocked_on: day2,
     };
 
@@ -342,10 +344,8 @@ fn importing_longer_line_preserves_existing_progress() {
 
         let card = latest.expect("at least one review per card");
         match card.kind {
-            CardKind::Opening {
-                edge_id: stored_edge_id,
-            } => {
-                assert_eq!(stored_edge_id, *edge_id);
+            CardKind::Opening(ref opening) => {
+                assert_eq!(opening.edge_id, *edge_id);
             }
             _ => panic!("expected opening card"),
         }
@@ -422,12 +422,12 @@ fn unlock_different_edges_on_same_day() {
 
     let record1 = UnlockRecord {
         owner_id: "andy".to_string(),
-        edge_id: edge_id1,
+        detail: UnlockDetail { edge_id: edge_id1 },
         unlocked_on: date,
     };
     let record2 = UnlockRecord {
         owner_id: "andy".to_string(),
-        edge_id: edge_id2,
+        detail: UnlockDetail { edge_id: edge_id2 },
         unlocked_on: date,
     };
 

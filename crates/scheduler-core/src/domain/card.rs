@@ -34,12 +34,11 @@ impl Card {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::OpeningCard;
 
     fn common_setup() -> (Uuid, CardKind, NaiveDate, SchedulerConfig) {
         let owner_id = Uuid::new_v4();
-        let kind = CardKind::Opening {
-            parent_prefix: "e4".to_string(),
-        };
+        let kind = CardKind::Opening(OpeningCard::new("e4"));
         let today = NaiveDate::from_ymd_opt(2024, 6, 1).unwrap();
         let config = SchedulerConfig {
             initial_ease_factor: 2.5,
@@ -68,9 +67,7 @@ mod tests {
         let (owner_id, _kind, _today, _config) = common_setup();
         let card = Card::new(
             owner_id,
-            CardKind::Opening {
-                parent_prefix: "e4".to_string(),
-            },
+            CardKind::Opening(OpeningCard::new("e4")),
             NaiveDate::from_ymd_opt(2024, 6, 1).unwrap(),
             &SchedulerConfig::default(),
         );

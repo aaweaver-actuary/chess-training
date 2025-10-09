@@ -53,7 +53,7 @@ impl<S: CardStore> Scheduler<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{CardKind, CardState};
+    use crate::domain::{CardKind, CardState, TacticCard};
     use crate::store::InMemoryStore;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -65,7 +65,12 @@ mod tests {
         let mut store = InMemoryStore::new();
         let config = SchedulerConfig::default();
         let owner = Uuid::new_v4();
-        let mut card = Card::new(owner, CardKind::Tactic, naive_date(2023, 1, 1), &config);
+        let mut card = Card::new(
+            owner,
+            CardKind::Tactic(TacticCard::new()),
+            naive_date(2023, 1, 1),
+            &config,
+        );
         card.state = CardState::Review;
         store.upsert_card(card.clone());
         let mut scheduler = Scheduler::new(store, config.clone());

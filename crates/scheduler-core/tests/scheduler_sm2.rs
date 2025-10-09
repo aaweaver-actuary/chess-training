@@ -1,4 +1,5 @@
 use chrono::NaiveDate;
+use scheduler_core::domain::{OpeningCard, TacticCard};
 use scheduler_core::{
     Card, CardKind, CardState, CardStore, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig,
     build_queue_for_day,
@@ -21,7 +22,7 @@ fn relearning_fixture() -> RelearningFixture {
     let owner = Uuid::new_v4();
     let today = date(2024, 2, 2);
 
-    let mut card = Card::new(owner, CardKind::Tactic, today, &config);
+    let mut card = Card::new(owner, CardKind::Tactic(TacticCard::new()), today, &config);
     card.state = CardState::Relearning;
     card.interval_days = 1;
     card.due = today;
@@ -45,7 +46,7 @@ fn sm2_good_review_promotes_new_card() {
     let config = SchedulerConfig::default();
     let owner = Uuid::new_v4();
     let today = date(2024, 1, 1);
-    let card = Card::new(owner, CardKind::Tactic, today, &config);
+    let card = Card::new(owner, CardKind::Tactic(TacticCard::new()), today, &config);
     let card_id = card.id;
     store.upsert_card(card);
 
@@ -74,7 +75,7 @@ fn sm2_again_resets_interval_and_ease() {
     let owner = Uuid::new_v4();
     let today = date(2024, 2, 2);
 
-    let mut card = Card::new(owner, CardKind::Tactic, today, &config);
+    let mut card = Card::new(owner, CardKind::Tactic(TacticCard::new()), today, &config);
     card.state = CardState::Review;
     card.interval_days = 10;
     card.due = today;
@@ -104,7 +105,7 @@ fn unlocks_one_opening_per_prefix_per_day() {
     let today = date(2024, 3, 3);
 
     // Existing due review card.
-    let mut due_card = Card::new(owner, CardKind::Tactic, today, &config);
+    let mut due_card = Card::new(owner, CardKind::Tactic(TacticCard::new()), today, &config);
     due_card.state = CardState::Review;
     due_card.due = today;
     store.upsert_card(due_card.clone());
@@ -112,25 +113,19 @@ fn unlocks_one_opening_per_prefix_per_day() {
     // Unlock candidates.
     let opening_a1 = Card::new(
         owner,
-        CardKind::Opening {
-            parent_prefix: "e4 e5".to_string(),
-        },
+        CardKind::Opening(OpeningCard::new("e4 e5")),
         today,
         &config,
     );
     let opening_a2 = Card::new(
         owner,
-        CardKind::Opening {
-            parent_prefix: "e4 e5".to_string(),
-        },
+        CardKind::Opening(OpeningCard::new("e4 e5")),
         today,
         &config,
     );
     let opening_b = Card::new(
         owner,
-        CardKind::Opening {
-            parent_prefix: "d4 d5".to_string(),
-        },
+        CardKind::Opening(OpeningCard::new("d4 d5")),
         today,
         &config,
     );
@@ -152,7 +147,7 @@ fn unlocks_one_opening_per_prefix_per_day() {
     let prefixes: Vec<_> = unlocked
         .iter()
         .map(|card| match &card.kind {
-            CardKind::Opening { parent_prefix } => parent_prefix.clone(),
+            CardKind::Opening(opening) => opening.parent_prefix.clone(),
             _ => panic!("expected opening"),
         })
         .collect();
