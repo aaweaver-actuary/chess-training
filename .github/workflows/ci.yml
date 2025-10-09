@@ -52,6 +52,7 @@ jobs:
         run: cargo test -p ${{ matrix.crate }} --release --all-features -- --nocapture
       - name: Enforce coverage (${{ matrix.crate }})
         run: |
+          mkdir -p target/llvm-cov
           cargo llvm-cov \
             --package ${{ matrix.crate }} \
             --release \
