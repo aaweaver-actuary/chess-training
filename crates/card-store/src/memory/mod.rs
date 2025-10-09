@@ -49,6 +49,10 @@ impl InMemoryCardStore {
     }
 
     /// Number of unique positions currently stored. Useful for tests.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::PoisonedLock`] when the underlying position lock is poisoned.
     #[must_use = "handle potential store errors when counting positions"]
     pub fn position_count(&self) -> Result<usize, StoreError> {
         Ok(self.positions_read()?.len())
@@ -160,13 +164,14 @@ impl CardStore for InMemoryCardStore {
 
     fn record_unlock(&self, unlock: UnlockRecord) -> Result<(), StoreError> {
         let mut unlocks = self.unlocks_write()?;
-        insert_unlock_or_error(&mut unlocks, unlock)
+        insert_unlock_or_error(&mut unlocks, &unlock)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::UnlockDetail;
     use chrono::NaiveDate;
     use std::panic::catch_unwind;
 
@@ -190,6 +195,20 @@ mod tests {
         )
         .expect("valid FEN");
         let err = store.upsert_position(position).unwrap_err();
+        assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "positions"));
+    }
+
+    #[test]
+    fn position_count_reports_poisoned_lock() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+
+        let result = catch_unwind(|| {
+            let _guard = store.positions.write().unwrap();
+            panic!("poison");
+        });
+        assert!(result.is_err());
+
+        let err = store.position_count().unwrap_err();
         assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "positions"));
     }
 
@@ -241,5 +260,24 @@ mod tests {
             .unwrap();
         assert_eq!(updated.id, card.id);
         assert!(updated.state.last_reviewed_on.is_some());
+    }
+
+    #[test]
+    fn record_unlock_reports_poisoned_lock() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+
+        let result = catch_unwind(|| {
+            let _guard = store.unlocks.write().unwrap();
+            panic!("poison");
+        });
+        assert!(result.is_err());
+
+        let unlock = UnlockRecord {
+            owner_id: "owner".to_string(),
+            detail: UnlockDetail::new(42),
+            unlocked_on: naive_date(2023, 1, 3),
+        };
+        let err = store.record_unlock(unlock).unwrap_err();
+        assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "unlocks"));
     }
 }

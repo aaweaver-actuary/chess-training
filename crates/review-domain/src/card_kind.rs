@@ -37,3 +37,51 @@ impl<Opening, Tactic> CardKind<Opening, Tactic> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn map_opening_transforms_opening_variant() {
+        let card = CardKind::Opening("line".to_string());
+        let mapped = card.map_opening(|opening| opening.len());
+        assert!(matches!(mapped, CardKind::Opening(4)));
+    }
+
+    #[test]
+    fn map_opening_leaves_tactic_variant_untouched() {
+        let card: CardKind<&str, _> = CardKind::Tactic("fork");
+        let mapped = card.map_opening(|opening| opening.len());
+        assert!(matches!(mapped, CardKind::Tactic("fork")));
+    }
+
+    #[test]
+    fn map_tactic_transforms_tactic_variant() {
+        let card = CardKind::Tactic("pin".to_string());
+        let mapped = card.map_tactic(|tactic| tactic.len());
+        assert!(matches!(mapped, CardKind::Tactic(3)));
+    }
+
+    #[test]
+    fn map_tactic_leaves_opening_variant_untouched() {
+        let card: CardKind<_, &str> = CardKind::Opening("Najdorf");
+        let mapped = card.map_tactic(|tactic| tactic.len());
+        assert!(matches!(mapped, CardKind::Opening("Najdorf")));
+    }
+
+    #[test]
+    fn as_ref_preserves_payload_references() {
+        let tactic = String::from("skewer");
+        let card = CardKind::Tactic(tactic.clone());
+        assert!(matches!(
+            card.as_ref(),
+            CardKind::Tactic(reference) if *reference == "skewer"
+        ));
+        let opening = CardKind::Opening(String::from("Ruy Lopez"));
+        assert!(matches!(
+            opening.as_ref(),
+            CardKind::Opening(reference) if *reference == "Ruy Lopez"
+        ));
+    }
+}

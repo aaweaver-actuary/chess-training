@@ -110,3 +110,64 @@ pub fn card_id_for_opening(owner_id: &str, edge_id: u64) -> u64 {
 pub fn card_id_for_tactic(owner_id: &str, tactic_id: u64) -> u64 {
     hash64(&[owner_id.as_bytes(), &tactic_id.to_be_bytes()])
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+    use review_domain::CardKind as GenericCardKind;
+
+    #[test]
+    fn card_id_for_tactic_depends_on_inputs() {
+        let base = card_id_for_tactic("owner", 42);
+        assert_ne!(base, card_id_for_tactic("owner", 43));
+        assert_ne!(base, card_id_for_tactic("other", 42));
+    }
+
+    #[test]
+    fn card_kind_helpers_cover_review_domain_types() {
+        let opening = OpeningCard::new(7);
+        let mapped_opening = CardKind::Opening(opening.clone())
+            .map_opening(|card| OpeningCard::new(card.edge_id + 1));
+        assert!(matches!(
+            mapped_opening,
+            CardKind::Opening(card) if card.edge_id == 8
+        ));
+        assert!(matches!(
+            GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(13))
+                .map_opening(|card| OpeningCard::new(card.edge_id + 1)),
+            GenericCardKind::Tactic(tactic) if tactic.tactic_id == 13
+        ));
+
+        let tactic_kind = CardKind::Tactic(TacticCard::new(11));
+        assert!(matches!(
+            tactic_kind.clone().map_tactic(|payload| payload.tactic_id + 1),
+            GenericCardKind::Tactic(identifier) if identifier == 12
+        ));
+        assert!(matches!(
+            tactic_kind.as_ref(),
+            GenericCardKind::Tactic(payload) if payload.tactic_id == 11
+        ));
+        assert!(matches!(
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(opening.clone())
+                .map_tactic(|card| card.tactic_id + 1),
+            GenericCardKind::Opening(card) if card.edge_id == opening.edge_id
+        ));
+        assert!(matches!(
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(opening.clone()).as_ref(),
+            GenericCardKind::Opening(reference) if reference.edge_id == opening.edge_id
+        ));
+
+        let edge = OpeningEdge::new(1, 2, 3, "e2e4", "e4");
+        assert_eq!(edge.move_uci, "e2e4");
+        assert_eq!(edge.move_san, "e4");
+
+        let unlock = UnlockRecord {
+            owner_id: String::from("owner"),
+            detail: UnlockDetail::new(9),
+            unlocked_on: NaiveDate::from_ymd_opt(2023, 1, 1).expect("valid date"),
+        };
+        let mapped_unlock = unlock.map_detail(|detail| detail.edge_id + 1);
+        assert_eq!(mapped_unlock.detail, 10);
+    }
+}
