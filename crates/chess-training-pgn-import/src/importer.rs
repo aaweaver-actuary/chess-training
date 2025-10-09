@@ -516,6 +516,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn new_in_memory_preserves_config() {
+        let config = IngestConfig {
+            tactic_from_fen: false,
+            include_fen_in_trie: true,
+            require_setup_for_fen: true,
+            skip_malformed_fen: true,
+            max_rav_depth: 12,
+        };
+
+        let importer = Importer::new_in_memory(config.clone());
+
+        assert_eq!(importer.config, config);
+        assert_eq!(importer.metrics, ImportMetrics::default());
+    }
+
+    #[test]
+    fn new_in_memory_initializes_default_store() {
+        let importer = Importer::new_in_memory(IngestConfig::default());
+
+        let Importer { store, metrics, .. } = importer;
+
+        assert!(store.positions().is_empty());
+        assert!(store.edges().is_empty());
+        assert!(store.tactics().is_empty());
+        assert_eq!(metrics, ImportMetrics::default());
+    }
+
+    #[test]
     fn parse_tag_reads_key_value_pairs() {
         let tag = parse_tag("[Event \"Test\"]");
         assert_eq!(tag, Some(("Event".into(), "Test".into())));
