@@ -401,6 +401,8 @@ fn importing_longer_line_preserves_existing_progress() {
     assert_eq!(due_cards[0].id, new_card.id, "unexpected card queued");
 
     // Ensure the opponent move was recorded but does not create a learner card.
+    // Only the learner's moves should result in card creation; opponent moves like Bc5
+    // should not create a learner card. This assertion validates that behavior.
     assert!(!baseline.contains_key(&edge_bc5.id));
 }
 
