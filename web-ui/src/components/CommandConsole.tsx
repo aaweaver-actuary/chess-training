@@ -142,18 +142,20 @@ export const CommandConsole = ({ isOpen, onOpen, onClose, onExecuteCommand }: Co
             aria-label="Command console"
             aria-modal="true"
           >
-            <button
-              type="button"
-              className="command-console__close"
-              onClick={onClose}
-              aria-label="Close command console"
-            >
-              ×
-            </button>
             <div className="command-console__container">
               <div className="command-console__header">
-                <span className="command-console__title">Command Console</span>
-                <span className="command-console__hint">Press Esc or click × to close</span>
+                <div className="command-console__header-content">
+                  <span className="command-console__title">Command Console</span>
+                  <span className="command-console__hint">Press Esc or click × to close</span>
+                </div>
+                <button
+                  type="button"
+                  className="command-console__close"
+                  onClick={onClose}
+                  aria-label="Close command console"
+                >
+                  ×
+                </button>
               </div>
               <form className="command-console__body" onSubmit={handleSubmit}>
                 <span className="command-console__prompt">$:</span>

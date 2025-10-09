@@ -401,6 +401,25 @@ describe('App', () => {
     });
   });
 
+  it('keeps the command console close button within the header so it remains visible', async () => {
+    const user = setupUser();
+
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const launcher = screen.getByRole('button', { name: /open command console/i });
+    await user.click(launcher);
+
+    const consoleDialog = await screen.findByRole('dialog', { name: /command console/i });
+    const closeButton = within(consoleDialog).getByRole('button', { name: /close command console/i });
+
+    expect(closeButton).toHaveClass('command-console__close');
+    expect(closeButton.closest('.command-console__header')).not.toBeNull();
+  });
+
   it('opens the command console for key events dispatched from window targets', async () => {
     render(
       <MemoryRouter>

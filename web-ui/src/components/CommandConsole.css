@@ -87,9 +87,6 @@
 }
 
 .command-console__close {
-  position: absolute;
-  top: -1.375rem;
-  right: -1.375rem;
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 50%;
@@ -103,6 +100,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  flex-shrink: 0;
   transition:
     transform 160ms ease,
     background 160ms ease,
@@ -123,11 +121,18 @@
 .command-console__header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 1rem;
   font-size: 0.85rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-soft);
+}
+
+.command-console__header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .command-console__title {
