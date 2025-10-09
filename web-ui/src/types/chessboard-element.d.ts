@@ -1,4 +1,5 @@
 import type { DetailedHTMLProps, HTMLAttributes } from 'react';
+import type * as React from 'react';
 
 type ChessBoardElementProps = DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & {
   position?: string;
@@ -6,8 +7,8 @@ type ChessBoardElementProps = DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTM
 
 declare module 'react/jsx-runtime' {
   namespace JSX {
-    interface IntrinsicElements {
+    type IntrinsicElements = React.JSX.IntrinsicElements & {
       'chess-board': ChessBoardElementProps;
-    }
+    };
   }
 }
