@@ -197,7 +197,7 @@ fn responses_unlock_after_first_move_review() {
     store.set_day(day2);
     let day_two_queue = build_queue_for_day(&mut store, &config, owner, day2);
 
-    assert_eq!(day_two_queue.len(), 3, "review plus two new responses");
+    assert_eq!(day_two_queue.len(), 3, "first move due for review plus two newly unlocked responses");
     let due_ids: BTreeSet<Uuid> = day_two_queue.iter().map(|card| card.id).collect();
     assert!(due_ids.contains(&first_move_id), "first move should be due");
     assert!(
