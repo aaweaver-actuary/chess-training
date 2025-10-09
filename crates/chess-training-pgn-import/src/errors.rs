@@ -125,6 +125,9 @@ mod tests {
 
         assert_eq!(error.path(), path.as_path());
         assert_eq!(error.io_error().kind(), io::ErrorKind::NotFound);
+        let source = error.source().unwrap();
+        let io_source = source.downcast_ref::<io::Error>().unwrap();
+        assert_eq!(io_source.kind(), io::ErrorKind::NotFound);
     }
 
     #[test]
