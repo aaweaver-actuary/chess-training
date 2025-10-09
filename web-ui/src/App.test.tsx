@@ -183,4 +183,69 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: /Daily Review Summary/i })).toBeInTheDocument();
   });
+
+  it('opens the command console when the colon key is pressed', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByRole('dialog', { name: /Command console/i })).not.toBeInTheDocument();
+
+    await user.keyboard(':');
+
+    expect(screen.getByRole('dialog', { name: /Command console/i })).toBeInTheDocument();
+  });
+
+  it('closes the command console when the escape key is pressed', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    // Open the console
+    await user.keyboard(':');
+    expect(screen.getByRole('dialog', { name: /Command console/i })).toBeInTheDocument();
+
+    // Close with escape
+    await user.keyboard('{Escape}');
+
+    // Wait for the console to be removed from the DOM (after animation)
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: /Command console/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('does not close the command console with escape if it is already closed', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByRole('dialog', { name: /Command console/i })).not.toBeInTheDocument();
+
+    // Press escape when console is closed - should do nothing
+    await user.keyboard('{Escape}');
+
+    // Console should still be closed
+    expect(screen.queryByRole('dialog', { name: /Command console/i })).not.toBeInTheDocument();
+  });
 });
