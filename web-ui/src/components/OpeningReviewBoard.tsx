@@ -133,7 +133,7 @@ function extractTeachingArrow(meta?: CardSummary['meta']): string | null {
   const lineReviewsValue = meta['line_reviews'];
   const lineReviews = Number(lineReviewsValue);
 
-  if (!Number.isNaN(lineReviews) && lineReviews > 0) {
+  if (Number.isFinite(lineReviews) && lineReviews > 0) {
     return null;
   }
 
