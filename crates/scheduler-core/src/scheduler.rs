@@ -22,7 +22,7 @@ impl<S: CardStore> Scheduler<S> {
         Self { store, config }
     }
 
-    #[must_use]
+    #[must_use = "handle potential errors when reviewing a card"]
     pub fn review(
         &mut self,
         card_id: Uuid,
