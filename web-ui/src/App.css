@@ -342,6 +342,16 @@
   z-index: 3;
 }
 
+@media (max-width: 600px) {
+  .lichess-shortcut {
+    top: 8px;
+    right: 8px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+}
+
 .lichess-shortcut::before {
   opacity: 1;
 }
