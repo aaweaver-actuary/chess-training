@@ -58,7 +58,7 @@ export const BlankBoardPage: FC = () => {
     gameRef.current = new Chess();
 
     const getBoardPosition = () =>
-      gameRef.current.history({ verbose: true }).length === 0 ? START_POSITION : gameRef.current.fen();
+      gameRef.current.history().length === 0 ? START_POSITION : gameRef.current.fen();
 
     const syncBoard = () => {
       const position = getBoardPosition();
