@@ -60,7 +60,7 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  }, [isOpen, isRendered]);
+  }, [isOpen]);
 
   const overlayClassName = useMemo(() => {
     const classNames = ['command-console-overlay'];
