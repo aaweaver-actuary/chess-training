@@ -11,6 +11,7 @@ use super::Sm2State;
 pub type Card = GenericCard<Uuid, Uuid, CardKind, Sm2State>;
 
 /// Constructs a new scheduler card with SM-2 defaults.
+#[must_use]
 pub fn new_card(
     owner_id: Uuid,
     kind: CardKind,

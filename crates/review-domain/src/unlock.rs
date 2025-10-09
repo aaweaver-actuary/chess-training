@@ -15,6 +15,7 @@ pub struct UnlockRecord<Owner, Detail> {
 
 impl<Owner, Detail> UnlockRecord<Owner, Detail> {
     /// Maps the domain-specific payload to a different type while preserving metadata.
+    #[must_use]
     pub fn map_detail<D2>(self, mapper: impl FnOnce(Detail) -> D2) -> UnlockRecord<Owner, D2> {
         UnlockRecord {
             owner_id: self.owner_id,
@@ -33,6 +34,7 @@ pub struct UnlockDetail {
 
 impl UnlockDetail {
     /// Creates a new unlock detail payload.
+    #[must_use]
     pub fn new(edge_id: u64) -> Self {
         Self { edge_id }
     }

@@ -48,22 +48,27 @@ impl Storage for ImportInMemoryStore {
 }
 
 impl ImportInMemoryStore {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    #[must_use]
     pub fn positions(&self) -> Vec<Position> {
         self.positions.values().cloned().collect()
     }
 
+    #[must_use]
     pub fn edges(&self) -> Vec<OpeningEdgeRecord> {
         self.edges.values().cloned().collect()
     }
 
+    #[must_use]
     pub fn tactics(&self) -> Vec<Tactic> {
         self.tactics.values().cloned().collect()
     }
 
+    #[must_use]
     pub fn repertoire_edges(&self) -> Vec<RepertoireEdge> {
         self.repertoire_edges
             .iter()

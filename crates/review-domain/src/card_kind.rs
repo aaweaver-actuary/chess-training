@@ -11,6 +11,7 @@ pub enum CardKind<Opening, Tactic> {
 
 impl<Opening, Tactic> CardKind<Opening, Tactic> {
     /// Maps the opening payload to a different type while leaving the tactic payload untouched.
+    #[must_use]
     pub fn map_opening<O2>(self, mapper: impl FnOnce(Opening) -> O2) -> CardKind<O2, Tactic> {
         match self {
             CardKind::Opening(opening) => CardKind::Opening(mapper(opening)),
@@ -19,6 +20,7 @@ impl<Opening, Tactic> CardKind<Opening, Tactic> {
     }
 
     /// Maps the tactic payload to a different type while leaving the opening payload untouched.
+    #[must_use]
     pub fn map_tactic<T2>(self, mapper: impl FnOnce(Tactic) -> T2) -> CardKind<Opening, T2> {
         match self {
             CardKind::Opening(opening) => CardKind::Opening(opening),
@@ -27,6 +29,7 @@ impl<Opening, Tactic> CardKind<Opening, Tactic> {
     }
 
     /// Returns references to the payload without moving the value.
+    #[must_use]
     pub fn as_ref(&self) -> CardKind<&Opening, &Tactic> {
         match self {
             CardKind::Opening(opening) => CardKind::Opening(opening),

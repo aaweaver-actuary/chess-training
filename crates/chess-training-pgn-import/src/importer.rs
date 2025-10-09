@@ -93,6 +93,7 @@ pub struct Importer<S: Storage> {
 }
 
 impl<S: Storage> Importer<S> {
+    #[must_use]
     pub fn new(config: IngestConfig, store: S) -> Self {
         Self {
             config,
@@ -101,6 +102,7 @@ impl<S: Storage> Importer<S> {
         }
     }
 
+    #[must_use]
     pub fn ingest_pgn_str(
         &mut self,
         owner: &str,
@@ -122,12 +124,14 @@ impl<S: Storage> Importer<S> {
         Ok(())
     }
 
+    #[must_use]
     pub fn finalize(self) -> (S, ImportMetrics) {
         (self.store, self.metrics)
     }
 }
 
 impl Importer<ImportInMemoryStore> {
+    #[must_use]
     pub fn new_in_memory(config: IngestConfig) -> Self {
         Self::new(config, ImportInMemoryStore::default())
     }

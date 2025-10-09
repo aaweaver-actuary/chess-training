@@ -23,6 +23,7 @@ pub struct InMemoryStore {
 }
 
 impl InMemoryStore {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -87,7 +88,7 @@ impl CardStore for InMemoryStore {
 mod tests {
     use super::*;
     use crate::config::SchedulerConfig;
-    use crate::domain::{new_card, SchedulerTacticCard, SchedulerUnlockDetail};
+    use crate::domain::{SchedulerTacticCard, SchedulerUnlockDetail, new_card};
     use chrono::NaiveDate;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {

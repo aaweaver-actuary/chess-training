@@ -31,6 +31,7 @@ impl EdgeInput {
     ///
     /// The canonical form computes a deterministic edge ID from the parent position and move,
     /// and returns an [`OpeningEdge`] with normalized fields.
+    #[must_use]
     pub fn into_edge(self) -> Edge {
         let id = hash64(&[&self.parent_id.to_be_bytes(), self.move_uci.as_bytes()]);
         Edge {
@@ -66,6 +67,7 @@ pub struct StoredCardState {
 
 impl StoredCardState {
     /// Creates a new [`StoredCardState`] with sensible defaults.
+    #[must_use]
     pub fn new(due_on: NaiveDate, interval: NonZeroU8, ease_factor: f32) -> Self {
         Self {
             due_on,
@@ -101,11 +103,13 @@ pub type UnlockRecord = GenericUnlockRecord<String, UnlockDetail>;
 pub type UnlockRecord = GenericUnlockRecord<String, UnlockDetail>;
 
 /// Deterministically compute a card identifier for an opening edge.
+#[must_use]
 pub fn card_id_for_opening(owner_id: &str, edge_id: u64) -> u64 {
     hash64(&[owner_id.as_bytes(), &edge_id.to_be_bytes()])
 }
 
 /// Deterministically compute a card identifier for a tactic.
+#[must_use]
 pub fn card_id_for_tactic(owner_id: &str, tactic_id: u64) -> u64 {
     hash64(&[owner_id.as_bytes(), &tactic_id.to_be_bytes()])
 }

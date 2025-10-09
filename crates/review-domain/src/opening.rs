@@ -9,6 +9,7 @@ pub struct OpeningCard {
 
 impl OpeningCard {
     /// Creates a new `OpeningCard` payload.
+    #[must_use]
     pub fn new(edge_id: u64) -> Self {
         Self { edge_id }
     }
@@ -32,6 +33,7 @@ pub struct OpeningEdge {
 
 impl OpeningEdge {
     /// Builds a new opening edge.
+    #[must_use]
     pub fn new(
         id: u64,
         parent_id: u64,

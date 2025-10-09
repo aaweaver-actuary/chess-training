@@ -9,6 +9,7 @@ pub struct TacticCard {
 
 impl TacticCard {
     /// Creates a new `TacticCard` payload.
+    #[must_use]
     pub fn new(tactic_id: u64) -> Self {
         Self { tactic_id }
     }

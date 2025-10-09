@@ -195,6 +195,7 @@ impl CliArgs {
     }
 
     /// Attempts to parse CLI arguments using the custom command definition.
+    #[must_use]
     pub fn try_parse_from<I, T>(iterator: I) -> ClapResult<Self>
     where
         I: IntoIterator<Item = T>,
@@ -206,6 +207,7 @@ impl CliArgs {
     }
 
     /// Converts the parsed CLI arguments into the runtime configuration and remaining inputs.
+    #[must_use]
     pub fn into_ingest_config(self) -> ConfigResult<(IngestConfig, Vec<PathBuf>)> {
         let CliArgs {
             inputs,

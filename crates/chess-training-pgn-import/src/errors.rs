@@ -12,11 +12,13 @@ pub struct IoError {
 
 impl IoError {
     /// Returns the path that failed to load.
+    #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
     }
 
     /// Returns the underlying IO error that caused the failure.
+    #[must_use]
     pub fn io_error(&self) -> &io::Error {
         &self.source
     }
@@ -48,11 +50,13 @@ pub struct ParseError {
 
 impl ParseError {
     /// Returns the path of the configuration file that failed to parse.
+    #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
     }
 
     /// Returns the underlying TOML parse error.
+    #[must_use]
     pub fn toml_error(&self) -> &toml::de::Error {
         &self.source
     }
