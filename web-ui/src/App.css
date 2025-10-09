@@ -400,27 +400,19 @@
 }
 
 .blank-board-page {
+  position: fixed;
+  inset: 0;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-gap-large);
   align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
-.blank-board {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  align-items: center;
-  text-align: center;
-}
-
-.blank-board h1 {
-  margin: 0;
-  font-size: 2rem;
-}
-
-.blank-board chess-board {
-  width: min(90vw, 560px);
+.blank-board-page chess-board {
+  width: min(100vw, 100vh);
+  height: min(100vw, 100vh);
+  max-width: min(100vw, 100vh);
+  max-height: min(100vw, 100vh);
 }
 
 .empty-state {

@@ -151,7 +151,7 @@ const SessionRoutes = ({ importedLines, onImportLine }: SessionRoutesProps) => {
           />
         }
       />
-      <Route path="/tools/board" element={<BlankBoardPage backPath="/dashboard" />} />
+      <Route path="/tools/board" element={<BlankBoardPage />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
