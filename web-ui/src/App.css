@@ -352,7 +352,7 @@
 }
 
 @media (max-width: 600px) {
-  .floating-action.lichess-shortcut {
+  .lichess-shortcut {
     --floating-action-edge-offset: calc(var(--space-gap-small) / 2);
     --floating-action-size: 3rem;
     --floating-action-icon-size: 1.375rem;
