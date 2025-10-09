@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -161,6 +161,116 @@ describe('App', () => {
     expect(within(dueCard as HTMLElement).getByText('0')).toBeInTheDocument();
     expect(screen.getByText(/100% complete/i)).toBeInTheDocument();
   });
+  it('toggles the command console with keyboard shortcuts', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    const launcher = screen.getByRole('button', { name: /open command console/i });
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    await user.keyboard('{Shift>}{;}');
+    expect(screen.getByRole('button', { name: /open command console/i })).toBe(launcher);
+
+    input.blur();
+    input.remove();
+
+    const editable = document.createElement('div');
+    editable.contentEditable = 'true';
+    Object.defineProperty(editable, 'isContentEditable', { value: true });
+    document.body.appendChild(editable);
+    editable.focus();
+
+    fireEvent.keyDown(editable, { key: ';', shiftKey: true });
+    expect(screen.getByRole('button', { name: /open command console/i })).toBe(launcher);
+
+    editable.remove();
+
+    await user.keyboard('{Shift>}{;}');
+
+    await waitFor(() => {
+      const closeButtons = screen.getAllByRole('button', { name: /close command console/i });
+      expect(closeButtons.length).toBeGreaterThan(0);
+    });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /open command console/i })).toBeInTheDocument();
+    });
+  });
+
+  it('opens and closes the command console with the launcher button', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    const launcher = screen.getByRole('button', { name: /open command console/i });
+    expect(launcher).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(launcher);
+
+    await waitFor(() => {
+      const closeButtons = screen.getAllByRole('button', { name: /close command console/i });
+      expect(closeButtons).toHaveLength(2);
+    });
+
+    const [toggleButton] = screen.getAllByRole('button', { name: /close command console/i });
+    expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(toggleButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /open command console/i })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+    });
+  });
+
+  it('opens the command console for key events dispatched from window targets', async () => {
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    const launcher = screen.getByRole('button', { name: /open command console/i });
+    expect(launcher).toHaveAttribute('aria-expanded', 'false');
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: ';', shiftKey: true, bubbles: true }),
+      );
+    });
+
+    await waitFor(() => {
+      const closeButtons = screen.getAllByRole('button', { name: /close command console/i });
+      expect(closeButtons).toHaveLength(2);
+    });
+  });
+
   it('allows navigating between the dashboard and the opening review board', async () => {
     const user = userEvent.setup();
     render(
