@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import { BlankBoardPage } from '../BlankBoardPage';
 
+// The duplication bug originally surfaced after dragging the same illegal move
+// several times; attempting it three times covers that regression scenario.
+const ILLEGAL_MOVE_ATTEMPTS = 3;
+
 describe('BlankBoardPage', () => {
   const renderPage = () => render(<BlankBoardPage />);
 
@@ -146,7 +150,7 @@ describe('BlankBoardPage', () => {
 
     expect(board).toHaveAttribute('position', expectedPosition);
 
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let attempt = 0; attempt < ILLEGAL_MOVE_ATTEMPTS; attempt += 1) {
       board.dispatchEvent(
         new CustomEvent('drop', {
           detail: { source: 'a4', target: 'a5' },
