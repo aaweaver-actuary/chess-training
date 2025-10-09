@@ -27,7 +27,7 @@ impl ChessPosition {
         let fen = fen.into();
         let parts: Vec<&str> = fen.split(' ').collect();
         if parts.len() != 6 || parts.iter().any(|segment| segment.is_empty()) {
-            return Err(PositionError::InvalidSideToMove);
+            return Err(PositionError::MalformedFen);
         }
 
         let side_to_move = parts[1]
