@@ -1,6 +1,7 @@
 //! In-memory implementation of the [`CardStore`](crate::store::CardStore) trait organized by
 //! storage concern for readability.
 
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
@@ -116,7 +117,7 @@ impl CardStore for InMemoryCardStore {
     fn upsert_position(&self, position: Position) -> Result<Position, StoreError> {
         let canonical = canonicalize_position_for_storage(position)?;
         let mut positions = self.positions_write()?;
-        store_canonical_position(&mut *positions, canonical)
+        store_canonical_position(&mut positions, canonical)
     }
 
     fn upsert_edge(&self, edge: EdgeInput) -> Result<Edge, StoreError> {
@@ -124,7 +125,7 @@ impl CardStore for InMemoryCardStore {
         self.ensure_position_exists(edge.child_id)?;
         let canonical = Edge::from_input(edge);
         let mut edges = self.edges_write()?;
-        store_canonical_edge(&mut *edges, canonical)
+        store_canonical_edge(&mut edges, canonical)
     }
 
     fn create_opening_card(
@@ -136,7 +137,7 @@ impl CardStore for InMemoryCardStore {
         self.ensure_edge_exists(edge.id)?;
         let card_id = card_id_for_opening(owner_id, edge.id);
         let mut cards = self.cards_write()?;
-        store_opening_card(&mut *cards, owner_id, edge, state, card_id)
+        store_opening_card(&mut cards, owner_id, edge, state, card_id)
     }
 
     fn fetch_due_cards(&self, owner_id: &str, as_of: NaiveDate) -> Result<Vec<Card>, StoreError> {
