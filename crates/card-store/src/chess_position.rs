@@ -43,7 +43,7 @@ impl ChessPosition {
                     ..='8' | 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p'
             )
         }) {
-            return Err(PositionError::InvalidSideToMove);
+            return Err(PositionError::InvalidPiecePlacement);
         }
         let id = hash64(&[fen.as_bytes()]);
         Ok(Self {

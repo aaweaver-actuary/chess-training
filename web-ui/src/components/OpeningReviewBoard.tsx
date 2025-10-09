@@ -1,11 +1,13 @@
 import type { JSX } from 'react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Move } from 'chess.js';
 import { Chess } from 'chess.js';
 
 import type { CardSummary, ReviewGrade } from '../types/gateway';
 
 import 'chessboard-element';
+import type { ChessBoardElement } from 'chessboard-element';
+import './OpeningReviewBoard.css';
 
 type Props = {
   card: CardSummary;
@@ -23,16 +25,69 @@ type DropEvent = CustomEvent<DropDetail | undefined>;
 const GOOD_RESULT: ReviewGrade = 'Good';
 const MISS_RESULT: ReviewGrade = 'Again';
 
+const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
+const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'] as const;
+const OVERLAY_SQUARES = RANKS.flatMap((rank) => FILES.map((file) => `${file}${rank}`));
+
 export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
   const boardRef = useRef<HTMLElement | null>(null);
   const gameRef = useRef(new Chess(card.position_fen));
   const expectedMovesRef = useRef<string[]>(card.expected_moves_uci ?? []);
   const startedAtRef = useRef<number>(performance.now());
   const teachingArrowRef = useRef<string | null>(extractTeachingArrow(card.meta));
+  const errorTimeoutRef = useRef<number | null>(null);
+  const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
+  const [legalTargets, setLegalTargets] = useState<string[]>([]);
+  const [errorSquare, setErrorSquare] = useState<string | null>(null);
+  const selectedSquareRef = useRef<string | null>(null);
+
+  const setSelectedSquareState = (square: string | null) => {
+    setSelectedSquare(square);
+    const board = boardRef.current;
+    if (!board) {
+      return;
+    }
+
+    if (square) {
+      board.setAttribute('data-selected-square', square);
+    } else {
+      board.removeAttribute('data-selected-square');
+    }
+  };
+
+  const setErrorSquareState = (square: string | null) => {
+    setErrorSquare(square);
+    const board = boardRef.current;
+    if (!board) {
+      return;
+    }
+
+    if (square) {
+      board.setAttribute('data-error-square', square);
+    } else {
+      board.removeAttribute('data-error-square');
+    }
+  };
+
   const lichessAnalysisUrl = useMemo(
     () => `https://lichess.org/analysis/standard/${encodeURIComponent(card.position_fen)}`,
     [card.position_fen],
   );
+
+  useEffect(() => {
+    selectedSquareRef.current = selectedSquare;
+  }, [selectedSquare]);
+
+  useEffect(() => {
+    setSelectedSquareState(null);
+    setLegalTargets([]);
+    setErrorSquareState(null);
+
+    if (errorTimeoutRef.current !== null) {
+      window.clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = null;
+    }
+  }, [card]);
 
   useEffect(() => {
     expectedMovesRef.current = card.expected_moves_uci ?? [];
@@ -41,7 +96,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
     gameRef.current = game;
     teachingArrowRef.current = extractTeachingArrow(card.meta);
 
-    const board = boardRef.current;
+    const board = boardRef.current as (ChessBoardElement | null) & HTMLElement;
     /* c8 ignore next 3 -- React always assigns the ref before this effect runs */
     if (!board) {
       return;
@@ -51,15 +106,35 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
     updateTeachingArrow(board, teachingArrowRef.current);
     board.removeAttribute('data-error-square');
 
-    const handleDrop = (event: Event) => {
-      const { detail } = event as DropEvent;
-      if (!detail) {
+    const clearErrorHighlight = () => {
+      if (errorTimeoutRef.current !== null) {
+        window.clearTimeout(errorTimeoutRef.current);
+        errorTimeoutRef.current = null;
+      }
+      setErrorSquareState(null);
+    };
+
+    const showErrorHighlight = (square: string | null) => {
+      if (!square) {
         return;
       }
 
+      if (errorTimeoutRef.current !== null) {
+        window.clearTimeout(errorTimeoutRef.current);
+      }
+
+      setErrorSquareState(square);
+      errorTimeoutRef.current = window.setTimeout(() => {
+        setErrorSquareState(null);
+        errorTimeoutRef.current = null;
+      }, 900);
+    };
+
+    const attemptMove = (detail: DropDetail) => {
       const move = applyMove(gameRef.current, detail);
       if (!move) {
-        return;
+        showErrorHighlight(detail.target);
+        return false;
       }
 
       const uci = toUci(move);
@@ -69,22 +144,86 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
       board.setAttribute('position', gameRef.current.fen());
 
       if (grade === GOOD_RESULT) {
-        board.removeAttribute('data-error-square');
+        clearErrorHighlight();
         teachingArrowRef.current = null;
         board.removeAttribute('data-teaching-arrow');
       } else {
-        board.setAttribute('data-error-square', detail.target);
+        showErrorHighlight(detail.target);
         updateTeachingArrow(board, teachingArrowRef.current);
       }
 
       onResult(grade, latency);
+      return true;
+    };
+
+    const handleDrop = (event: Event) => {
+      const { detail } = event as DropEvent;
+      if (!detail) {
+        return;
+      }
+
+      if (attemptMove(detail)) {
+        setSelectedSquareState(null);
+        setLegalTargets([]);
+      }
+    };
+
+    const handleBoardClick = (event: Event) => {
+      const square = extractSquareFromEvent(event);
+      if (!square) {
+        return;
+      }
+
+      const selected = selectedSquareRef.current;
+
+      if (selected) {
+        if (square === selected) {
+          setSelectedSquareState(null);
+          setLegalTargets([]);
+          return;
+        }
+
+        const moves = gameRef.current.moves({ square: selected, verbose: true });
+        const targetMove = moves.find((move) => move.to === square);
+
+        if (!targetMove) {
+          showErrorHighlight(square);
+          return;
+        }
+
+        const detail: DropDetail = { source: selected, target: square };
+        if (targetMove.promotion) {
+          detail.promotion = targetMove.promotion;
+        }
+
+        if (attemptMove(detail)) {
+          setSelectedSquareState(null);
+          setLegalTargets([]);
+        }
+
+        return;
+      }
+
+      const moves = gameRef.current.moves({ square, verbose: true });
+      if (moves.length === 0) {
+        showErrorHighlight(square);
+        return;
+      }
+
+      setSelectedSquareState(square);
+      setLegalTargets(moves.map((move) => move.to));
     };
 
     board.addEventListener('drop', handleDrop);
+    board.addEventListener('click', handleBoardClick);
     return () => {
       board.removeEventListener('drop', handleDrop);
+      board.removeEventListener('click', handleBoardClick);
+      clearErrorHighlight();
     };
   }, [card, onResult]);
+
+  const legalTargetSet = useMemo(() => new Set(legalTargets), [legalTargets]);
 
   return (
     <div className="opening-review-board">
@@ -109,15 +248,54 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
           <path d="M7 2C7 2 8 4 8 6C8 8 6 10 6 12C6 14 8 16 10 16C12 16 14 14 14 12C14 10 12 8 12 6C12 4 13 2 13 2H7ZM10 18C8.34315 18 7 19.3431 7 21H13C13 19.3431 11.6569 18 10 18Z" />
         </svg>
       </a>
-      <chess-board
-        data-testid="opening-review-board"
-        ref={boardRef}
-        style={{ width: 'min(90vw, 560px)' }}
-        className="opening-review-board__board"
-        position={card.position_fen}
-      />
+      <div className="opening-review-board__board-wrapper" style={{ width: 'min(90vw, 560px)' }}>
+        <chess-board
+          data-testid="opening-review-board"
+          ref={boardRef}
+          className="opening-review-board__board"
+          position={card.position_fen}
+        />
+        <div className="opening-review-board__overlay" data-testid="opening-review-board-overlay">
+          {OVERLAY_SQUARES.map((square) => {
+            const isSelected = square === selectedSquare;
+            const isTarget = legalTargetSet.has(square);
+            const isError = square === errorSquare;
+
+            const states = [
+              isSelected ? 'opening-review-board__overlay-square--selected' : '',
+              isTarget ? 'opening-review-board__overlay-square--target' : '',
+              isError ? 'opening-review-board__overlay-square--error' : '',
+            ].filter(Boolean);
+
+            const className = ['opening-review-board__overlay-square', ...states].join(' ');
+
+            return (
+              <div
+                key={square}
+                aria-hidden="true"
+                className={className}
+                data-overlay-square={square}
+              />
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
+}
+
+function extractSquareFromEvent(event: Event): string | null {
+  const path = event.composedPath();
+  for (const target of path) {
+    if (target instanceof HTMLElement) {
+      const square = target.getAttribute('data-square');
+      if (square) {
+        return square;
+      }
+    }
+  }
+
+  return null;
 }
 
 function applyMove(game: Chess, detail: DropDetail): Move | null {
