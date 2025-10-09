@@ -4,7 +4,7 @@ use shakmaty::{CastlingMode, Chess, Color, EnPassantMode, Move, Position};
 
 use crate::config::IngestConfig;
 use crate::model::{OpeningEdgeRecord, Position as ModelPosition, RepertoireEdge, Tactic};
-use crate::storage::{ImportInMemoryStore, Storage};
+use crate::storage::{ImportInMemoryStore, Storage, UpsertOutcome};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Tracks various metrics during the import process.
@@ -27,26 +27,26 @@ pub struct ImportMetrics {
 }
 
 impl ImportMetrics {
-    fn note_position(&mut self, inserted: bool) {
-        if inserted {
+    fn note_position(&mut self, outcome: UpsertOutcome) {
+        if outcome.is_inserted() {
             self.opening_positions += 1;
         }
     }
 
-    fn note_edge(&mut self, inserted: bool) {
-        if inserted {
+    fn note_edge(&mut self, outcome: UpsertOutcome) {
+        if outcome.is_inserted() {
             self.opening_edges += 1;
         }
     }
 
-    fn note_repertoire(&mut self, inserted: bool) {
-        if inserted {
+    fn note_repertoire(&mut self, outcome: UpsertOutcome) {
+        if outcome.is_inserted() {
             self.repertoire_edges += 1;
         }
     }
 
-    fn note_tactic(&mut self, inserted: bool) {
-        if inserted {
+    fn note_tactic(&mut self, outcome: UpsertOutcome) {
+        if outcome.is_inserted() {
             self.tactics += 1;
         }
     }
@@ -610,20 +610,20 @@ mod tests {
     #[test]
     fn metrics_only_increment_when_inserted() {
         let mut metrics = ImportMetrics::default();
-        metrics.note_position(false);
-        metrics.note_edge(false);
-        metrics.note_repertoire(false);
-        metrics.note_tactic(false);
+        metrics.note_position(UpsertOutcome::Replaced);
+        metrics.note_edge(UpsertOutcome::Replaced);
+        metrics.note_repertoire(UpsertOutcome::Replaced);
+        metrics.note_tactic(UpsertOutcome::Replaced);
 
         assert_eq!(metrics.opening_positions, 0);
         assert_eq!(metrics.opening_edges, 0);
         assert_eq!(metrics.repertoire_edges, 0);
         assert_eq!(metrics.tactics, 0);
 
-        metrics.note_position(true);
-        metrics.note_edge(true);
-        metrics.note_repertoire(true);
-        metrics.note_tactic(true);
+        metrics.note_position(UpsertOutcome::Inserted);
+        metrics.note_edge(UpsertOutcome::Inserted);
+        metrics.note_repertoire(UpsertOutcome::Inserted);
+        metrics.note_tactic(UpsertOutcome::Inserted);
 
         assert_eq!(metrics.opening_positions, 1);
         assert_eq!(metrics.opening_edges, 1);

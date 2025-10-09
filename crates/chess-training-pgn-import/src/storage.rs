@@ -7,16 +7,42 @@ use crate::model::{OpeningEdgeRecord, Position, RepertoireEdge, Tactic};
 /// The `upsert_*` methods insert or update the given item in the storage.
 ///
 /// # Return value semantics
-/// Each `upsert_*` method returns `true` if the item was newly inserted, and `false` if it replaced an existing item.
+/// Each `upsert_*` method returns an [`UpsertOutcome`] describing whether the item was newly inserted or replaced an existing
+/// item.
 ///
 /// # Expected behavior
 /// Implementors should ensure that the storage is updated with the provided item, and that the return value accurately reflects
 /// whether the item was newly added or replaced an existing entry.
 pub trait Storage {
-    fn upsert_position(&mut self, position: Position) -> bool;
-    fn upsert_edge(&mut self, edge: OpeningEdgeRecord) -> bool;
-    fn upsert_repertoire_edge(&mut self, record: RepertoireEdge) -> bool;
-    fn upsert_tactic(&mut self, tactic: Tactic) -> bool;
+    fn upsert_position(&mut self, position: Position) -> UpsertOutcome;
+    fn upsert_edge(&mut self, edge: OpeningEdgeRecord) -> UpsertOutcome;
+    fn upsert_repertoire_edge(&mut self, record: RepertoireEdge) -> UpsertOutcome;
+    fn upsert_tactic(&mut self, tactic: Tactic) -> UpsertOutcome;
+}
+
+#[must_use]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+/// Indicates whether an upsert operation inserted a new record or replaced an existing one.
+pub enum UpsertOutcome {
+    /// The record did not previously exist in storage and was inserted.
+    Inserted,
+    /// The record replaced an existing entry in storage.
+    Replaced,
+}
+
+impl UpsertOutcome {
+    #[must_use]
+    pub const fn is_inserted(self) -> bool {
+        matches!(self, Self::Inserted)
+    }
+
+    pub const fn from_bool(inserted: bool) -> Self {
+        if inserted {
+            Self::Inserted
+        } else {
+            Self::Replaced
+        }
+    }
 }
 
 #[derive(Default)]
@@ -29,21 +55,23 @@ pub struct ImportInMemoryStore {
 }
 
 impl Storage for ImportInMemoryStore {
-    fn upsert_position(&mut self, position: Position) -> bool {
-        self.positions.insert(position.id, position).is_none()
+    fn upsert_position(&mut self, position: Position) -> UpsertOutcome {
+        UpsertOutcome::from_bool(self.positions.insert(position.id, position).is_none())
     }
 
-    fn upsert_edge(&mut self, edge: OpeningEdgeRecord) -> bool {
-        self.edges.insert(edge.edge.id, edge).is_none()
+    fn upsert_edge(&mut self, edge: OpeningEdgeRecord) -> UpsertOutcome {
+        UpsertOutcome::from_bool(self.edges.insert(edge.edge.id, edge).is_none())
     }
 
-    fn upsert_repertoire_edge(&mut self, record: RepertoireEdge) -> bool {
-        self.repertoire_edges
-            .insert((record.owner, record.repertoire_key, record.edge_id))
+    fn upsert_repertoire_edge(&mut self, record: RepertoireEdge) -> UpsertOutcome {
+        UpsertOutcome::from_bool(
+            self.repertoire_edges
+                .insert((record.owner, record.repertoire_key, record.edge_id)),
+        )
     }
 
-    fn upsert_tactic(&mut self, tactic: Tactic) -> bool {
-        self.tactics.insert(tactic.id, tactic).is_none()
+    fn upsert_tactic(&mut self, tactic: Tactic) -> UpsertOutcome {
+        UpsertOutcome::from_bool(self.tactics.insert(tactic.id, tactic).is_none())
     }
 }
 
@@ -97,14 +125,14 @@ mod tests {
         let record = RepertoireEdge::new("owner", "rep", edge.edge.id);
         let tactic = Tactic::new("fen", vec!["e2e4".into()], vec![], None);
 
-        assert!(store.upsert_position(parent.clone()));
-        assert!(!store.upsert_position(parent));
-        assert!(store.upsert_edge(edge.clone()));
-        assert!(!store.upsert_edge(edge.clone()));
-        assert!(store.upsert_repertoire_edge(record.clone()));
-        assert!(!store.upsert_repertoire_edge(record));
-        assert!(store.upsert_tactic(tactic.clone()));
-        assert!(!store.upsert_tactic(tactic));
+        assert!(store.upsert_position(parent.clone()).is_inserted());
+        assert!(!store.upsert_position(parent).is_inserted());
+        assert!(store.upsert_edge(edge.clone()).is_inserted());
+        assert!(!store.upsert_edge(edge.clone()).is_inserted());
+        assert!(store.upsert_repertoire_edge(record.clone()).is_inserted());
+        assert!(!store.upsert_repertoire_edge(record).is_inserted());
+        assert!(store.upsert_tactic(tactic.clone()).is_inserted());
+        assert!(!store.upsert_tactic(tactic).is_inserted());
     }
 
     #[test]
@@ -113,8 +141,10 @@ mod tests {
         let parent = sample_position(0);
         let child = sample_position(1);
         let edge = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
-        store.upsert_edge(edge.clone());
-        store.upsert_repertoire_edge(RepertoireEdge::new("owner", "rep", edge.edge.id));
+        assert!(store.upsert_edge(edge.clone()).is_inserted());
+        assert!(store
+            .upsert_repertoire_edge(RepertoireEdge::new("owner", "rep", edge.edge.id))
+            .is_inserted());
 
         let records = store.repertoire_edges();
         assert_eq!(records.len(), 1);
