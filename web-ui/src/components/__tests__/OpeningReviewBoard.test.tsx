@@ -6,6 +6,10 @@ import type { CardSummary } from '../../types/gateway';
 import { OpeningReviewBoard } from '../OpeningReviewBoard';
 
 describe('OpeningReviewBoard', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   const baseCard: CardSummary = {
     card_id: 'card-1',
     kind: 'Opening',
@@ -135,6 +139,18 @@ describe('OpeningReviewBoard', () => {
       expected_moves_uci: ['d7d8q'],
     };
     render(<OpeningReviewBoard card={promotionCard} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+
+    board.dispatchEvent(
+      new CustomEvent('drop', {
+        detail: { source: 'd7', target: 'd8', promotion: 'q' },
+      }),
+    );
+
+    expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
+  });
+
   it('shows a teaching arrow for the first move of a new line', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={italianStart} onResult={onResult} />);
@@ -165,11 +181,6 @@ describe('OpeningReviewBoard', () => {
 
     board.dispatchEvent(
       new CustomEvent('drop', {
-        detail: { source: 'd7', target: 'd8', promotion: 'q' },
-      }),
-    );
-
-    expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
         detail: { source: 'g1', target: 'f3', piece: 'wN' },
       }),
     );
