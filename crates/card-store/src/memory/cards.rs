@@ -4,6 +4,7 @@ use chrono::NaiveDate;
 
 use crate::model::{Card, CardKind, Edge, OpeningCard, ReviewRequest, StoredCardState};
 use crate::store::StoreError;
+use review_domain::CardKind as GenericCardKind;
 
 pub(super) fn store_opening_card(
     cards: &mut HashMap<u64, Card>,
@@ -55,8 +56,8 @@ fn validate_existing_opening_card(
 ) -> Result<(), StoreError> {
     if card.owner_id == owner_id
         && matches!(
-            card.kind,
-            CardKind::Opening(ref opening) if opening.edge_id == edge.id
+            card.kind.as_ref(),
+            GenericCardKind::Opening(opening) if opening.edge_id == edge.id
         )
     {
         Ok(())
