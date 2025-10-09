@@ -1,0 +1,11 @@
+{
+  "name": "chess-training-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "format": "npm run format --prefix web-ui && npm run format --prefix apps/session-gateway",
+    "lint": "npm run lint --prefix web-ui -- --max-warnings=0 && npm run lint --prefix apps/session-gateway -- --max-warnings=0",
+    "typecheck": "npm run typecheck --prefix web-ui && npm run typecheck --prefix apps/session-gateway",
+    "test:coverage": "npm run test:coverage --prefix web-ui && npm run test:coverage --prefix apps/session-gateway"
+  }
+}
