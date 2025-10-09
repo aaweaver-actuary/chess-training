@@ -313,7 +313,8 @@
   box-shadow: none;
 }
 
-.nav-link-disabled::before {
+/* Reduce the gradient border opacity when disabled (requires .floating-action to be present) */
+.floating-action.nav-link-disabled::before {
   opacity: 0.5;
 }
 
