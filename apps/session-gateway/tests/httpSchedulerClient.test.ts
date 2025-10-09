@@ -92,10 +92,10 @@ describe('http scheduler client', () => {
   it('treats missing queue payloads as empty results', async () => {
     const fetchMock = vi.fn();
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
-    const client = createHttpSchedulerClient({
-      baseUrl: 'http://scheduler.test',
-      fetchImpl: fetchMock,
-    });
+    const client = createClient(fetchMock);
+    await expect(client.fetchQueue('user-1')).resolves.toEqual([]);
+  });
+
   it('returns an empty queue when the scheduler omits the queue field', async () => {
     const fetchMock = vi.fn();
     // Response missing the 'queue' field

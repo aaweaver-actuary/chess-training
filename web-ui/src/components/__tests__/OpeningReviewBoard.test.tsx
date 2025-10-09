@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Chess } from 'chess.js';
 
 import type { CardSummary } from '../../types/gateway';
@@ -35,7 +35,7 @@ describe('OpeningReviewBoard', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
 
-    const shortcut = screen.getByRole('link', { name: /open position on lichess/i });
+    const shortcut = screen.getByRole('link', { name: /analyze this position on lichess/i });
     expect(shortcut).toHaveAttribute(
       'href',
       `https://lichess.org/analysis/standard/${encodeURIComponent(baseCard.position_fen)}`,
@@ -135,6 +135,18 @@ describe('OpeningReviewBoard', () => {
       expected_moves_uci: ['d7d8q'],
     };
     render(<OpeningReviewBoard card={promotionCard} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+
+    board.dispatchEvent(
+      new CustomEvent('drop', {
+        detail: { source: 'd7', target: 'd8', promotion: 'q' },
+      }),
+    );
+
+    expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
+  });
+
   it('shows a teaching arrow for the first move of a new line', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={italianStart} onResult={onResult} />);
@@ -142,6 +154,32 @@ describe('OpeningReviewBoard', () => {
     const board = screen.getByTestId('opening-review-board');
 
     expect(board.getAttribute('data-teaching-arrow')).toBe('e2e4');
+  });
+
+  it('omits the teaching arrow when the metadata does not provide a string value', () => {
+    const onResult = vi.fn();
+    const numericTeachingMeta: CardSummary = {
+      ...baseCard,
+      meta: { teaching_move_uci: 42 },
+    };
+
+    render(<OpeningReviewBoard card={numericTeachingMeta} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+    expect(board.hasAttribute('data-teaching-arrow')).toBe(false);
+  });
+
+  it('suppresses the teaching arrow once the line has existing reviews', () => {
+    const onResult = vi.fn();
+    const reviewedLineCard: CardSummary = {
+      ...baseCard,
+      meta: { teaching_move_uci: 'c2c4', line_reviews: 3 },
+    };
+
+    render(<OpeningReviewBoard card={reviewedLineCard} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+    expect(board.hasAttribute('data-teaching-arrow')).toBe(false);
   });
 
   it('updates the teaching arrow when presenting the follow-up move', () => {
@@ -165,14 +203,11 @@ describe('OpeningReviewBoard', () => {
 
     board.dispatchEvent(
       new CustomEvent('drop', {
-        detail: { source: 'd7', target: 'd8', promotion: 'q' },
-      }),
-    );
-
-    expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
         detail: { source: 'g1', target: 'f3', piece: 'wN' },
       }),
     );
+
+    expect(onResult).toHaveBeenCalledWith('Again', expect.any(Number));
 
     expect(board.getAttribute('data-error-square')).toBe('f3');
     expect(board.getAttribute('data-teaching-arrow')).toBe('e2e4');
