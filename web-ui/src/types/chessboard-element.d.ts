@@ -6,8 +6,8 @@ type ChessBoardElementProps = DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTM
 
 declare module 'react/jsx-runtime' {
   namespace JSX {
-    interface IntrinsicElements {
+    type IntrinsicElements = {
       'chess-board': ChessBoardElementProps;
-    }
+    };
   }
 }

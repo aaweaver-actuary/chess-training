@@ -33,8 +33,7 @@ describe('sessionGateway', () => {
       }),
     );
     const firstCall = fetchMock.mock.calls[0];
-    expect(firstCall).not.toBeUndefined();
-    const init = Array.isArray(firstCall) ? firstCall[1] : undefined;
+    const init = firstCall[1];
     expect(init).toBeDefined();
     const headers = init?.headers;
     expect(headers).toBeInstanceOf(Headers);
@@ -69,8 +68,7 @@ describe('sessionGateway', () => {
       }),
     );
     const gradeCall = fetchMock.mock.calls[0];
-    expect(gradeCall).not.toBeUndefined();
-    const [, gradeInit] = gradeCall as Parameters<typeof fetch>;
+    const [, gradeInit] = gradeCall;
     expect(gradeInit).toBeDefined();
     const gradeHeaders = gradeInit?.headers;
     expect(gradeHeaders).toBeInstanceOf(Headers);

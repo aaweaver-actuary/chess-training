@@ -181,12 +181,28 @@ const App = (): JSX.Element => {
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const [importedLines, setImportedLines] = useState<ScheduledOpeningLine[]>([]);
   const navigate = useNavigate();
-  const dispatcher = useMemo(
+  const dispatcher: CommandDispatcher = useMemo(
     () =>
       createCommandDispatcher({
-        onUnknownCommand: (input) => window.alert(input),
+        onUnknownCommand: (input) => {
+          window.alert(input);
+        },
+        commands: [
+          {
+            command: 'cb',
+            handler: () => {
+              void navigate('/tools/board');
+            },
+          },
+          {
+            command: 'db',
+            handler: () => {
+              void navigate('/dashboard');
+            },
+          },
+        ],
       }),
-    [],
+    [navigate],
   );
 
   useEffect(() => {
@@ -234,15 +250,6 @@ const App = (): JSX.Element => {
   const handleCloseConsole = () => {
     setIsConsoleOpen(false);
   };
-
-  useEffect(() => {
-    dispatcher.register('cb', () => {
-      navigate('/tools/board');
-    });
-    dispatcher.register('db', () => {
-      navigate('/dashboard');
-    });
-  }, [dispatcher, navigate]);
 
   const handleExecuteCommand = useCallback(
     async (input: string) => {

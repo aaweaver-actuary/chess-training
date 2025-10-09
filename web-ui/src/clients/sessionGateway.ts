@@ -20,7 +20,8 @@ const toRequestInit = (init: RequestConfig): RequestInit => {
     return normalizeConfig(init);
   }
 
-  const { body, ...rest } = init;
+  const rest = { ...init };
+  delete rest.body;
   return rest;
 };
 
