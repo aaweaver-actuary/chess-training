@@ -288,6 +288,7 @@ describe('session gateway', () => {
       card: expect.objectContaining({ card_id: 'c456' }),
       stats: expect.objectContaining({ reviews_today: 1 }),
     });
+    expect((updateMessage as { stats?: unknown })?.stats).toBeTruthy();
     await wait();
     const allUpdateMessages = messages.filter((msg) => (msg as { type: string }).type === 'UPDATE');
     const statsUpdateMessage = allUpdateMessages.length > 1 ? allUpdateMessages[1] : allUpdateMessages[0];

@@ -6,6 +6,10 @@ import type { CardSummary } from '../../types/gateway';
 import { OpeningReviewBoard } from '../OpeningReviewBoard';
 
 describe('OpeningReviewBoard', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   const baseCard: CardSummary = {
     card_id: 'card-1',
     kind: 'Opening',
