@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use scheduler_core::{
-    build_queue_for_day, Card, CardKind, CardState, CardStore, InMemoryStore, ReviewGrade,
-    Scheduler, SchedulerConfig,
+    Card, CardKind, CardState, CardStore, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig,
+    build_queue_for_day,
 };
 use uuid::Uuid;
 
@@ -67,8 +67,10 @@ fn sm2_good_review_promotes_new_card() {
 #[test]
 fn sm2_again_resets_interval_and_ease() {
     let mut store = InMemoryStore::new();
-    let mut config = SchedulerConfig::default();
-    config.ease_minimum = 1.5;
+    let config = SchedulerConfig {
+        ease_minimum: 1.5,
+        ..SchedulerConfig::default()
+    };
     let owner = Uuid::new_v4();
     let today = date(2024, 2, 2);
 
