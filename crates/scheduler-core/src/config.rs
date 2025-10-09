@@ -26,9 +26,9 @@ mod tests {
     #[test]
     fn default_configuration_matches_expected_values() {
         let config = SchedulerConfig::default();
-        assert_eq!(config.initial_ease_factor, 2.5);
-        assert_eq!(config.ease_minimum, 1.3);
-        assert_eq!(config.ease_maximum, 2.8);
+        assert!((config.initial_ease_factor - 2.5).abs() <= f32::EPSILON);
+        assert!((config.ease_minimum - 1.3).abs() <= f32::EPSILON);
+        assert!((config.ease_maximum - 2.8).abs() <= f32::EPSILON);
         assert_eq!(config.learning_steps_minutes, vec![1, 10]);
     }
 }

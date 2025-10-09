@@ -49,7 +49,7 @@ fn hard_interval(previous_reviews: u32, previous_interval: u32) -> u32 {
     match previous_reviews {
         0 => 1,
         1 => 4,
-        _ => (((previous_interval as f32) * 1.2).round() as u32).max(1),
+        _ => scaled_interval(previous_interval, 1.2),
     }
 }
 
@@ -57,7 +57,7 @@ fn good_interval(previous_reviews: u32, previous_interval: u32, ease: f32) -> u3
     match previous_reviews {
         0 => 1,
         1 => 6,
-        _ => (((previous_interval as f32) * ease).round() as u32).max(1),
+        _ => scaled_interval(previous_interval, f64::from(ease)),
     }
 }
 
@@ -65,8 +65,18 @@ fn easy_interval(previous_reviews: u32, previous_interval: u32, ease: f32) -> u3
     match previous_reviews {
         0 => 1,
         1 => 6,
-        _ => (((previous_interval as f32) * (ease * 1.3)).round() as u32).max(1),
+        _ => scaled_interval(previous_interval, f64::from(ease) * 1.3_f64),
     }
+}
+
+fn scaled_interval(previous_interval: u32, factor: f64) -> u32 {
+    let scaled = f64::from(previous_interval) * factor;
+    if !scaled.is_finite() {
+        return u32::MAX;
+    }
+    let rounded = scaled.round();
+    let clamped = rounded.clamp(1.0, f64::from(u32::MAX));
+    clamped as u32
 }
 
 fn finalize_review(
@@ -98,7 +108,7 @@ fn state_after_grade(current: CardState, grade: ReviewGrade) -> CardState {
         ReviewGrade::Again => CardState::Relearning,
         ReviewGrade::Hard | ReviewGrade::Good | ReviewGrade::Easy => match current {
             CardState::New | CardState::Learning | CardState::Relearning => CardState::Review,
-            current_state => current_state,
+            CardState::Review => CardState::Review,
         },
     }
 }
