@@ -107,7 +107,7 @@ impl<S: Storage> Importer<S> {
         repertoire: &str,
         pgn: &str,
     ) -> Result<(), ImportError> {
-        for (game_index, game) in parse_games(pgn).into_iter().enumerate() {
+        for (game_index, game) in parse_games(pgn).enumerate() {
             self.metrics.games_total += 1;
             process_game(
                 &self.config,
