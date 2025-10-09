@@ -124,7 +124,7 @@ mod tests {
         };
 
         assert_eq!(error.path(), path.as_path());
-        assert_eq!(error.source().kind(), io::ErrorKind::NotFound);
+        assert_eq!(error.io_error().kind(), io::ErrorKind::NotFound);
     }
 
     #[test]
