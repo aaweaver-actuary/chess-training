@@ -9,8 +9,9 @@ pub enum PositionError {
     /// The FEN string was missing or contained an invalid side-to-move field.
     #[error("malformed FEN: missing or invalid side-to-move field")]
     InvalidSideToMove,
+    /// The FEN string contained an invalid piece placement field.
     #[error("malformed FEN: invalid piece placement field")]
-    MalformedFen,
+    InvalidPiecePlacement,
 }
 #[cfg(test)]
 mod tests {
@@ -69,5 +70,26 @@ mod tests {
     fn position_error_invalid_side_to_move_implements_eq_trait() {
         fn assert_eq_trait<T: Eq>() {}
         assert_eq_trait::<PositionError>();
+    }
+
+    #[test]
+    fn position_error_invalid_piece_placement_debug_output_is_correct() {
+        let err = PositionError::InvalidPiecePlacement;
+        let debug_str = format!("{err:?}");
+        assert!(debug_str.contains("InvalidPiecePlacement"));
+    }
+
+    #[test]
+    fn position_error_invalid_piece_placement_display_output_is_correct() {
+        let err = PositionError::InvalidPiecePlacement;
+        let display_str = format!("{err}");
+        assert_eq!(display_str, "malformed FEN: invalid piece placement field");
+    }
+
+    #[test]
+    fn position_error_invalid_piece_placement_partial_eq_returns_true_for_same_variant() {
+        let err1 = PositionError::InvalidPiecePlacement;
+        let err2 = PositionError::InvalidPiecePlacement;
+        assert_eq!(err1, err2);
     }
 }
