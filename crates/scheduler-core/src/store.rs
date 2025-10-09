@@ -23,6 +23,7 @@ pub struct InMemoryStore {
 }
 
 impl InMemoryStore {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

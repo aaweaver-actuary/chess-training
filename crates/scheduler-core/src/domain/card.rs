@@ -17,6 +17,7 @@ pub struct Card {
 }
 
 impl Card {
+    #[must_use]
     pub fn new(owner_id: Uuid, kind: CardKind, today: NaiveDate, config: &SchedulerConfig) -> Self {
         Self {
             id: Uuid::new_v4(),

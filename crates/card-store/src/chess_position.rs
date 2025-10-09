@@ -16,7 +16,10 @@ pub struct ChessPosition {
 impl ChessPosition {
     /// Creates a new [`Position`] using a deterministic hash of the FEN as the identifier.
     ///
-    /// Returns [`Err`] when the FEN omits or provides an invalid side-to-move field.
+    /// # Errors
+    ///
+    /// Returns [`PositionError::InvalidSideToMove`] when the FEN omits or provides an invalid
+    /// side-to-move field.
     pub fn new(fen: impl Into<String>, ply: u32) -> Result<Self, PositionError> {
         let fen = fen.into();
         let side_to_move = fen

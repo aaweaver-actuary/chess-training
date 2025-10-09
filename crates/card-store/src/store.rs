@@ -41,10 +41,22 @@ pub enum StoreError {
 /// Persistence abstraction used across services.
 pub trait CardStore: Send + Sync + fmt::Debug {
     /// Insert or update a [`Position`]. Returns the stored record.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] when the persistence layer cannot upsert the position.
     fn upsert_position(&self, position: ChessPosition) -> Result<ChessPosition, StoreError>;
     /// Insert or update an [`Edge`]. Returns the stored record.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] when the persistence layer cannot upsert the edge.
     fn upsert_edge(&self, edge: EdgeInput) -> Result<Edge, StoreError>;
     /// Create or fetch an opening card for the given owner and edge.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] when the card could not be created or retrieved.
     fn create_opening_card(
         &self,
         owner_id: &str,
@@ -52,9 +64,21 @@ pub trait CardStore: Send + Sync + fmt::Debug {
         state: CardState,
     ) -> Result<Card, StoreError>;
     /// Fetch all due cards for an owner on or before `as_of`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] when the data source fails to return due cards.
     fn fetch_due_cards(&self, owner_id: &str, as_of: NaiveDate) -> Result<Vec<Card>, StoreError>;
     /// Record a review and return the updated card state.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] when the review could not be persisted.
     fn record_review(&self, review: ReviewRequest) -> Result<Card, StoreError>;
     /// Record a newly unlocked opening edge.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] when the unlock cannot be persisted.
     fn record_unlock(&self, unlock: UnlockRecord) -> Result<(), StoreError>;
 }

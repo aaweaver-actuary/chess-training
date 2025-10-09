@@ -29,7 +29,7 @@ fn derive_review_transition(
     validate_grade(review.grade)?;
     let interval = interval_after_grade(state.interval, review.grade);
     let ease = ease_after_grade(state.ease_factor, review.grade);
-    finalize_transition(state, review, interval, ease)
+    Ok(finalize_transition(state, review, interval, ease))
 }
 
 fn validate_grade(grade: u8) -> Result<(), StoreError> {
@@ -77,15 +77,15 @@ fn finalize_transition(
     review: &ReviewRequest,
     interval: NonZeroU8,
     ease: f32,
-) -> Result<ReviewTransition, StoreError> {
+) -> ReviewTransition {
     let streak = next_streak(state.consecutive_correct, review.grade);
     let due_on = due_date_for_review(review.reviewed_on, interval);
-    Ok(ReviewTransition {
+    ReviewTransition {
         interval,
         ease,
         streak,
         due_on,
-    })
+    }
 }
 
 fn next_streak(current: u32, grade: u8) -> u32 {
@@ -193,7 +193,7 @@ mod tests {
         let state = sample_state();
         let review = sample_review(3);
         let interval = NonZeroU8::new(2).unwrap();
-        let transition = finalize_transition(&state, &review, interval, 2.3).expect("valid");
+        let transition = finalize_transition(&state, &review, interval, 2.3);
         assert_eq!(transition.interval, interval);
         assert_eq!(transition.ease, 2.3);
         assert_eq!(transition.due_on, naive_date(2023, 1, 3));
