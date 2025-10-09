@@ -394,9 +394,33 @@
 
   /* Disable pointer events on any absolutely positioned overlays 
      that might cover the board on small screens */
-  .opening-review > :not(chess-board) {
+.opening-review > :not(chess-board) {
     pointer-events: none;
   }
+}
+
+.blank-board-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-large);
+  align-items: center;
+}
+
+.blank-board {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+  text-align: center;
+}
+
+.blank-board h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.blank-board chess-board {
+  width: min(90vw, 560px);
 }
 
 .empty-state {

@@ -102,6 +102,12 @@ impl<S: Storage> Importer<S> {
         }
     }
 
+    /// Ingests one or more PGN games from the provided string into the configured storage.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any parsed game violates the configured import constraints or
+    /// fails PGN validation.
     pub fn ingest_pgn_str(
         &mut self,
         owner: &str,
@@ -116,7 +122,7 @@ impl<S: Storage> Importer<S> {
                 &mut self.metrics,
                 owner,
                 repertoire,
-                game,
+                &game,
                 game_index,
             )?;
         }
@@ -142,15 +148,15 @@ fn process_game<S: Storage>(
     metrics: &mut ImportMetrics,
     owner: &str,
     repertoire: &str,
-    game: RawGame,
+    game: &RawGame,
     index: usize,
 ) -> Result<(), ImportError> {
     let fen_tag = game.tag("FEN").map(str::to_string);
-    ensure_setup_requirement_for_fen_games(config, &game, fen_tag.as_deref())?;
+    ensure_setup_requirement_for_fen_games(config, game, fen_tag.as_deref())?;
     let source_hint = game.tag("Event").map(str::to_string);
     let context =
         initialize_game_context(config, store, metrics, fen_tag.clone(), source_hint.clone())?;
-    play_moves_and_finalize(store, metrics, owner, repertoire, &game, index, context)?;
+    play_moves_and_finalize(store, metrics, owner, repertoire, game, index, context)?;
     Ok(())
 }
 
@@ -327,16 +333,16 @@ fn process_single_san_move<S: Storage>(
     index: usize,
 ) -> Result<(), ImportError> {
     let san = parse_san(san_text)?;
-    let mv = convert_san_to_move(&context.board, &san, san_text, index)?;
+    let mv = convert_san_to_move(&context.board, san, san_text, index)?;
     let movement = MoveContext::new(&context.board, mv);
-    store_opening_data_if_requested(store, metrics, owner, repertoire, context, &movement, &san);
+    store_opening_data_if_requested(store, metrics, owner, repertoire, context, &movement, san);
     context.advance(movement);
     Ok(())
 }
 
 fn convert_san_to_move(
     board: &Chess,
-    san: &San,
+    san: San,
     original: &str,
     index: usize,
 ) -> Result<Move, ImportError> {
@@ -353,7 +359,7 @@ fn store_opening_data_if_requested<S: Storage>(
     repertoire: &str,
     context: &GameContext,
     movement: &MoveContext,
-    san: &San,
+    san: San,
 ) {
     if !context.include_in_trie {
         return;
@@ -477,7 +483,7 @@ fn move_to_uci(board: &Chess, mv: Move) -> String {
 
 fn board_to_ply(board: &Chess) -> u32 {
     let base = board.fullmoves().get().saturating_sub(1);
-    base * 2 + if board.turn() == Color::Black { 1 } else { 0 }
+    base * 2 + u32::from(board.turn() == Color::Black)
 }
 
 fn position_from_board(board: &Chess, ply: u32) -> ModelPosition {
@@ -784,7 +790,7 @@ mod tests {
     fn convert_san_to_move_reports_illegal_moves() {
         let board = Chess::default();
         let san = parse_san("Kxh8").expect("parse ok");
-        let err = convert_san_to_move(&board, &san, "Kxh8", 3).expect_err("illegal move");
+        let err = convert_san_to_move(&board, san, "Kxh8", 3).expect_err("illegal move");
         assert!(matches!(err, ImportError::IllegalSan { game, .. } if game == 3));
     }
 

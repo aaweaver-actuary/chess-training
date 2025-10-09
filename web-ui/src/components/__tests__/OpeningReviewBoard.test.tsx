@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Chess } from 'chess.js';
+import type { Move } from 'chess.js';
 
 import type { CardSummary } from '../../types/gateway';
 import { OpeningReviewBoard } from '../OpeningReviewBoard';
@@ -99,7 +100,7 @@ describe('OpeningReviewBoard', () => {
   it('ignores invalid moves emitted by the board element', () => {
     const onResult = vi.fn();
     const moveSpy = vi.spyOn(Chess.prototype, 'move');
-    moveSpy.mockReturnValueOnce(null);
+    moveSpy.mockImplementationOnce(() => null as unknown as Move);
 
     render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
 

@@ -1,6 +1,7 @@
 //! SM-2 scheduling logic extracted into focused helper functions.
 
 use chrono::{Duration, NaiveDate};
+use num_traits::ToPrimitive;
 
 use crate::config::SchedulerConfig;
 use crate::domain::{Card, CardState};
@@ -76,7 +77,7 @@ fn scaled_interval(previous_interval: u32, factor: f64) -> u32 {
     }
     let rounded = scaled.round();
     let clamped = rounded.clamp(1.0, f64::from(u32::MAX));
-    clamped as u32
+    clamped.to_u32().expect("clamped value should always fit in u32")
 }
 
 fn finalize_review(
@@ -103,13 +104,10 @@ fn due_after_interval(today: NaiveDate, interval: u32) -> NaiveDate {
         .unwrap_or(today)
 }
 
-fn state_after_grade(current: CardState, grade: ReviewGrade) -> CardState {
+fn state_after_grade(_current: CardState, grade: ReviewGrade) -> CardState {
     match grade {
         ReviewGrade::Again => CardState::Relearning,
-        ReviewGrade::Hard | ReviewGrade::Good | ReviewGrade::Easy => match current {
-            CardState::New | CardState::Learning | CardState::Relearning => CardState::Review,
-            CardState::Review => CardState::Review,
-        },
+        ReviewGrade::Hard | ReviewGrade::Good | ReviewGrade::Easy => CardState::Review,
     }
 }
 
@@ -117,7 +115,7 @@ fn state_after_grade(current: CardState, grade: ReviewGrade) -> CardState {
 mod tests {
     use super::*;
     use crate::config::SchedulerConfig;
-    use crate::domain::{new_card, CardKind, CardState, SchedulerTacticCard};
+    use crate::domain::{CardKind, CardState, SchedulerTacticCard, new_card};
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
