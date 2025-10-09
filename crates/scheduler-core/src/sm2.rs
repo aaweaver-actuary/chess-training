@@ -117,7 +117,7 @@ fn state_after_grade(current: CardState, grade: ReviewGrade) -> CardState {
 mod tests {
     use super::*;
     use crate::config::SchedulerConfig;
-    use crate::domain::{CardKind, CardState, SchedulerTacticCard, new_card};
+    use crate::domain::{new_card, CardKind, CardState, SchedulerTacticCard};
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
