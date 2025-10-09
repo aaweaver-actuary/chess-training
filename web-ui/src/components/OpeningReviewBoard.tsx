@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Move } from 'chess.js';
+import type { Move, Square } from 'chess.js';
 import { Chess } from 'chess.js';
 
 import type { CardSummary, ReviewGrade } from '../types/gateway';
@@ -15,8 +15,8 @@ type Props = {
 };
 
 type DropDetail = {
-  source: string;
-  target: string;
+  source: Square;
+  target: Square;
   promotion?: string;
 };
 
@@ -27,7 +27,10 @@ const MISS_RESULT: ReviewGrade = 'Again';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'] as const;
-const OVERLAY_SQUARES = RANKS.flatMap((rank) => FILES.map((file) => `${file}${rank}`));
+const OVERLAY_SQUARES: Square[] = RANKS.flatMap((rank) =>
+  FILES.map((file) => `${file}${rank}` as Square),
+);
+const OVERLAY_SQUARE_SET = new Set<Square>(OVERLAY_SQUARES);
 
 export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
   const boardRef = useRef<ChessBoardElement | null>(null);
@@ -36,12 +39,12 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
   const startedAtRef = useRef<number>(performance.now());
   const teachingArrowRef = useRef<string | null>(extractTeachingArrow(card.meta));
   const errorTimeoutRef = useRef<number | null>(null);
-  const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
-  const [legalTargets, setLegalTargets] = useState<string[]>([]);
-  const [errorSquare, setErrorSquare] = useState<string | null>(null);
-  const selectedSquareRef = useRef<string | null>(null);
+  const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
+  const [legalTargets, setLegalTargets] = useState<Square[]>([]);
+  const [errorSquare, setErrorSquare] = useState<Square | null>(null);
+  const selectedSquareRef = useRef<Square | null>(null);
 
-  const setSelectedSquareState = (square: string | null) => {
+  const setSelectedSquareState = (square: Square | null) => {
     setSelectedSquare(square);
     const board = boardRef.current;
     if (!board) {
@@ -55,7 +58,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
     }
   };
 
-  const setErrorSquareState = (square: string | null) => {
+  const setErrorSquareState = (square: Square | null) => {
     setErrorSquare(square);
     const board = boardRef.current;
     if (!board) {
@@ -114,7 +117,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
       setErrorSquareState(null);
     };
 
-    const showErrorHighlight = (square: string | null) => {
+    const showErrorHighlight = (square: Square | null) => {
       if (!square) {
         return;
       }
@@ -224,7 +227,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
     };
   }, [card, onResult]);
 
-  const legalTargetSet = useMemo(() => new Set(legalTargets), [legalTargets]);
+  const legalTargetSet = useMemo(() => new Set<Square>(legalTargets), [legalTargets]);
 
   return (
     <div className="opening-review-board">
@@ -285,12 +288,12 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
   );
 }
 
-function extractSquareFromEvent(event: Event): string | null {
+function extractSquareFromEvent(event: Event): Square | null {
   const path = event.composedPath();
   for (const target of path) {
     if (target instanceof HTMLElement) {
       const squareAttribute = target.dataset.square;
-      if (typeof squareAttribute === 'string' && squareAttribute.length > 0) {
+      if (isSquare(squareAttribute)) {
         return squareAttribute;
       }
     }
@@ -301,6 +304,10 @@ function extractSquareFromEvent(event: Event): string | null {
 
 function applyMove(game: Chess, detail: DropDetail): Move | null {
   return game.move({ from: detail.source, to: detail.target, promotion: detail.promotion ?? 'q' });
+}
+
+function isSquare(value: unknown): value is Square {
+  return typeof value === 'string' && OVERLAY_SQUARE_SET.has(value as Square);
 }
 
 function extractTeachingArrow(meta?: CardSummary['meta']): string | null {

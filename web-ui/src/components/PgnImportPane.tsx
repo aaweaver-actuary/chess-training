@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import './PgnImportPane.css';
 import type { DetectedOpeningLine, ImportResult } from '../types/repertoire';
 import { formatUnlockDate, UNLOCK_DATE_FALLBACK_LABEL } from '../utils/formatUnlockDate';
-import type { CommandDispatcher } from '../utils/commandDispatcher';
+import type { CommandDispatcher, CommandHandler } from '../utils/commandDispatcher';
 
 type PgnImportPaneProps = {
   onImportLine: (line: DetectedOpeningLine) => ImportResult;
@@ -199,9 +199,12 @@ export const PgnImportPane = ({
       return;
     }
 
-    commandDispatcher.register('x', () => {
+    const handler: CommandHandler = () => {
       collapsePane();
-    });
+      return undefined;
+    };
+
+    commandDispatcher.register('x', handler);
     return () => {
       commandDispatcher.unregister?.('x');
     };

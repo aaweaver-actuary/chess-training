@@ -14,14 +14,17 @@ const BASE_URL: string = baseUrlFromEnv ?? 'http://localhost:3000';
 type JsonShape<T> = T;
 
 type RequestConfig = Omit<RequestInit, 'body'> & { body?: Record<string, unknown> };
+type RequestConfigWithBody = RequestConfig & { body: Record<string, unknown> };
+
+const hasBody = (config: RequestConfig): config is RequestConfigWithBody =>
+  typeof config.body === 'object' && config.body !== null;
 
 const toRequestInit = (init: RequestConfig): RequestInit => {
-  if (init.body) {
+  if (hasBody(init)) {
     return normalizeConfig(init);
   }
 
-  const rest = { ...init };
-  delete rest.body;
+  const { body: _ignored, ...rest } = init;
   return rest;
 };
 
@@ -34,12 +37,13 @@ async function request<T>(path: string, init?: RequestConfig): Promise<JsonShape
   return (await response.json()) as T;
 }
 
-function normalizeConfig(init: RequestConfig): RequestInit {
+function normalizeConfig(init: RequestConfigWithBody): RequestInit {
   const headers = new Headers(init.headers);
   headers.set('content-type', 'application/json');
+  const { body, headers: _headers, ...rest } = init;
   return {
-    ...init,
-    body: JSON.stringify(init.body),
+    ...rest,
+    body: JSON.stringify(body),
     headers,
   } satisfies RequestInit;
 }
