@@ -37,7 +37,10 @@ describe('BlankBoardPage', () => {
       }),
     );
 
-    expect(board).toHaveAttribute('position', 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1');
+    expect(board).toHaveAttribute(
+      'position',
+      'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+    );
   });
 
   it('restores the previous position when an illegal move is attempted', () => {

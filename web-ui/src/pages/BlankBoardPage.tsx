@@ -57,7 +57,6 @@ export const BlankBoardPage: FC = () => {
       return;
     }
 
-
     const getBoardPosition = () =>
       gameRef.current.history().length === 0 ? START_POSITION : gameRef.current.fen();
 
@@ -203,7 +202,12 @@ export const BlankBoardPage: FC = () => {
 
   return (
     <main className="blank-board-page" aria-label="Sandbox board" style={shellStyle}>
-      <chess-board ref={boardRef} data-testid="sandbox-board" position={START_POSITION} style={boardStyle} />
+      <chess-board
+        ref={boardRef}
+        data-testid="sandbox-board"
+        position={START_POSITION}
+        style={boardStyle}
+      />
     </main>
   );
 };

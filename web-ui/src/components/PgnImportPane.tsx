@@ -89,7 +89,10 @@ const buildScheduledMessage = (result: ImportResult): FeedbackState => {
   };
 };
 
-export const PgnImportPane = ({ onImportLine, commandDispatcher }: PgnImportPaneProps): JSX.Element => {
+export const PgnImportPane = ({
+  onImportLine,
+  commandDispatcher,
+}: PgnImportPaneProps): JSX.Element => {
   const containerRef = useRef<HTMLElement | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPasteMode, setIsPasteMode] = useState(false);

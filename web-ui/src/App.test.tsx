@@ -35,9 +35,8 @@ function createDefaultStats(): SessionStats {
 vi.mock('./state/sessionStore', () => {
   const listeners = new Set<(state: MockSessionState) => void>();
   const start: StartMock = vi.fn<(userId: string) => Promise<void>>();
-  const submitGrade: SubmitGradeMock = vi.fn<
-    (grade: ReviewGrade, latency: number) => Promise<void>
-  >();
+  const submitGrade: SubmitGradeMock =
+    vi.fn<(grade: ReviewGrade, latency: number) => Promise<void>>();
   const nextCard: NextCardMock = vi.fn<(card?: CardSummary) => void>();
   const state: MockSessionState = {
     sessionId: 's1',
@@ -206,7 +205,9 @@ describe('App', () => {
       const input = await screen.findByRole('textbox', { name: /command input/i });
       await user.type(input, 'db{Enter}');
 
-      const dashboardHeading = await screen.findByRole('heading', { name: /Daily Review Summary/i });
+      const dashboardHeading = await screen.findByRole('heading', {
+        name: /Daily Review Summary/i,
+      });
       expect(dashboardHeading).toBeInTheDocument();
 
       expect(alertSpy).not.toHaveBeenCalled();
@@ -442,7 +443,9 @@ describe('App', () => {
     await user.click(launcher);
 
     const consoleDialog = await screen.findByRole('dialog', { name: /command console/i });
-    const closeButton = within(consoleDialog).getByRole('button', { name: /close command console/i });
+    const closeButton = within(consoleDialog).getByRole('button', {
+      name: /close command console/i,
+    });
 
     expect(closeButton).toHaveClass('command-console__close');
     expect(closeButton.closest('.command-console__header')).not.toBeNull();

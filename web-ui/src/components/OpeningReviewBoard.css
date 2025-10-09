@@ -28,7 +28,9 @@
 .opening-review-board__overlay-square {
   background-color: transparent;
   opacity: 0;
-  transition: background-color 180ms ease, opacity 180ms ease;
+  transition:
+    background-color 180ms ease,
+    opacity 180ms ease;
 }
 
 .opening-review-board__overlay-square--selected {

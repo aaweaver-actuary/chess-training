@@ -12,7 +12,12 @@ type CommandConsoleProps = {
 
 const CONSOLE_ANIMATION_DURATION_MS = 240;
 
-export const CommandConsole = ({ isOpen, onOpen, onClose, onExecuteCommand }: CommandConsoleProps) => {
+export const CommandConsole = ({
+  isOpen,
+  onOpen,
+  onClose,
+  onExecuteCommand,
+}: CommandConsoleProps) => {
   const [isRendered, setIsRendered] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
   const [command, setCommand] = useState('');
