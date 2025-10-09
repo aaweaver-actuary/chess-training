@@ -50,3 +50,24 @@ impl OpeningEdge {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn opening_card_constructor_sets_fields() {
+        let card = OpeningCard::new(42);
+        assert_eq!(card.edge_id, 42);
+    }
+
+    #[test]
+    fn opening_edge_constructor_copies_inputs() {
+        let edge = OpeningEdge::new(1, 2, 3, "e2e4", String::from("e4"));
+        assert_eq!(edge.id, 1);
+        assert_eq!(edge.parent_id, 2);
+        assert_eq!(edge.child_id, 3);
+        assert_eq!(edge.move_uci, "e2e4");
+        assert_eq!(edge.move_san, "e4");
+    }
+}
