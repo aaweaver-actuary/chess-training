@@ -23,3 +23,17 @@ impl<Owner, Detail> UnlockRecord<Owner, Detail> {
         }
     }
 }
+
+/// Domain payload stored for each unlock record.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct UnlockDetail {
+    /// Identifier of the unlocked opening edge.
+    pub edge_id: u64,
+}
+
+impl UnlockDetail {
+    /// Creates a new unlock detail payload.
+    pub fn new(edge_id: u64) -> Self {
+        Self { edge_id }
+    }
+}

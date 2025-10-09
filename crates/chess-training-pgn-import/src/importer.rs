@@ -3,8 +3,8 @@ use shakmaty::san::San;
 use shakmaty::{CastlingMode, Chess, Color, EnPassantMode, Move, Position};
 
 use crate::config::IngestConfig;
-use crate::model::{Edge, Position as ModelPosition, RepertoireEdge, Tactic};
-use crate::storage::{InMemoryStore, Storage};
+use crate::model::{OpeningEdgeRecord, Position as ModelPosition, RepertoireEdge, Tactic};
+use crate::storage::{ImportInMemoryStore, Storage};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Tracks various metrics during the import process.
@@ -76,9 +76,9 @@ pub enum ImportError {
 /// # Basic usage
 ///
 /// ```
-/// use chess_training_pgn_import::{Importer, InMemoryStore, IngestConfig};
+/// use chess_training_pgn_import::{Importer, ImportInMemoryStore, IngestConfig};
 /// let config = IngestConfig::default();
-/// let store = InMemoryStore::new();
+/// let store = ImportInMemoryStore::new();
 /// let mut importer = Importer::new(config, store);
 /// let pgn_str = r#"[Event "Example"]
 /// 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O
@@ -127,9 +127,9 @@ impl<S: Storage> Importer<S> {
     }
 }
 
-impl Importer<InMemoryStore> {
+impl Importer<ImportInMemoryStore> {
     pub fn new_in_memory(config: IngestConfig) -> Self {
-        Self::new(config, InMemoryStore::default())
+        Self::new(config, ImportInMemoryStore::default())
     }
 }
 
@@ -358,7 +358,7 @@ fn store_opening_data_if_requested<S: Storage>(
     let parent = position_from_board(&context.board, context.ply);
     let child = position_from_board(&movement.next_board, movement.child_ply);
     metrics.note_position(store.upsert_position(child.clone()));
-    let edge = Edge::new(
+    let edge = OpeningEdgeRecord::new(
         parent.id,
         &movement.uci,
         &san.to_string(),
@@ -366,9 +366,11 @@ fn store_opening_data_if_requested<S: Storage>(
         context.source_hint.clone(),
     );
     metrics.note_edge(store.upsert_edge(edge.clone()));
-    metrics.note_repertoire(
-        store.upsert_repertoire_edge(RepertoireEdge::new(owner, repertoire, edge.id)),
-    );
+    metrics.note_repertoire(store.upsert_repertoire_edge(RepertoireEdge::new(
+        owner,
+        repertoire,
+        edge.edge.id,
+    )));
 }
 
 fn finalize_tactic_if_requested<S: Storage>(
@@ -713,7 +715,7 @@ mod tests {
             include_fen_in_trie: true,
             ..Default::default()
         };
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
             .expect("context creation succeeds")
@@ -729,7 +731,7 @@ mod tests {
             skip_malformed_fen: true,
             ..Default::default()
         };
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let context = initialize_game_context(
             &config,
@@ -789,7 +791,7 @@ mod tests {
             include_fen_in_trie: true,
             ..Default::default()
         };
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let mut context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
             .expect("context creation")
@@ -815,7 +817,7 @@ mod tests {
             include_fen_in_trie: true,
             ..Default::default()
         };
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let mut context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
             .expect("context")
@@ -844,7 +846,7 @@ mod tests {
             tactic_from_fen: true,
             ..Default::default()
         };
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let context = initialize_game_context(
             &config,
@@ -862,7 +864,7 @@ mod tests {
 
     #[test]
     fn play_moves_and_finalize_is_noop_when_context_absent() {
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let game = RawGame::default();
         assert!(

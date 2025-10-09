@@ -6,7 +6,7 @@ use chrono::NaiveDate;
 use uuid::Uuid;
 
 use crate::config::SchedulerConfig;
-use crate::domain::{Card, CardKind, CardState, UnlockDetail, UnlockRecord};
+use crate::domain::{Card, CardKind, CardState, SchedulerUnlockDetail, UnlockRecord};
 use crate::store::CardStore;
 
 pub fn build_queue_for_day<S: CardStore>(
@@ -19,7 +19,7 @@ pub fn build_queue_for_day<S: CardStore>(
     let prior_unlocks = store.unlocked_on(owner_id, today);
     let mut unlocked = ExistingUnlocks::from_records(&prior_unlocks);
     extend_queue_with_unlocks(store, config, owner_id, today, &mut queue, &mut unlocked);
-    queue.sort_by(|a, b| (a.due, a.id).cmp(&(b.due, b.id)));
+    queue.sort_by(|a, b| (a.state.due, a.id).cmp(&(b.state.due, b.id)));
     queue
 }
 
@@ -70,7 +70,7 @@ fn extend_queue_with_unlocks<S: CardStore>(
         unlock_card(&mut candidate, config, today);
         store.record_unlock(UnlockRecord {
             owner_id,
-            detail: UnlockDetail {
+            detail: SchedulerUnlockDetail {
                 card_id: candidate.id,
                 parent_prefix: parent_prefix.clone(),
             },
@@ -93,10 +93,10 @@ fn skip_candidate(candidate: &Card, unlocked: &ExistingUnlocks) -> bool {
 }
 
 fn unlock_card(card: &mut Card, config: &SchedulerConfig, today: NaiveDate) {
-    card.state = CardState::Learning;
-    card.interval_days = 0;
-    card.due = today;
-    card.ease_factor = config.initial_ease_factor;
+    card.state.stage = CardState::Learning;
+    card.state.interval_days = 0;
+    card.state.due = today;
+    card.state.ease_factor = config.initial_ease_factor;
 }
 
 fn extract_prefix(card: &Card) -> Option<String> {
@@ -109,7 +109,7 @@ fn extract_prefix(card: &Card) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{CardKind, OpeningCard};
+    use crate::domain::{new_card, CardKind, SchedulerOpeningCard, SchedulerUnlockDetail};
     use crate::store::InMemoryStore;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -118,9 +118,9 @@ mod tests {
 
     fn sample_opening(owner: Uuid, prefix: &str) -> Card {
         let config = SchedulerConfig::default();
-        Card::new(
+        new_card(
             owner,
-            CardKind::Opening(OpeningCard::new(prefix)),
+            CardKind::Opening(SchedulerOpeningCard::new(prefix)),
             naive_date(2023, 1, 1),
             &config,
         )
@@ -135,7 +135,7 @@ mod tests {
         store.upsert_card(existing.clone());
         store.record_unlock(UnlockRecord {
             owner_id: owner,
-            detail: UnlockDetail {
+            detail: SchedulerUnlockDetail {
                 card_id: existing.id,
                 parent_prefix: Some("e4".into()),
             },
@@ -158,6 +158,6 @@ mod tests {
 
         let queue = build_queue_for_day(&mut store, &config, owner, naive_date(2023, 1, 1));
         assert_eq!(queue.len(), 1);
-        assert_eq!(queue[0].state, CardState::Learning);
+        assert_eq!(queue[0].state.stage, CardState::Learning);
     }
 }

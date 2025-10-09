@@ -5,7 +5,7 @@ use card_store::chess_position::ChessPosition;
 use card_store::config::StorageConfig;
 use card_store::memory::InMemoryCardStore;
 use card_store::model::{
-    Card, CardKind, CardState, EdgeInput, ReviewRequest, UnlockDetail, UnlockRecord,
+    Card, CardKind, EdgeInput, ReviewRequest, StoredCardState, UnlockDetail, UnlockRecord,
 };
 use card_store::store::{CardStore, StoreError};
 use chrono::{Duration, NaiveDate};
@@ -53,7 +53,7 @@ fn setup_card_for_review(
         .create_opening_card(
             "andy",
             &edge,
-            CardState::new(review_date, initial_interval, initial_ease),
+            StoredCardState::new(review_date, initial_interval, initial_ease),
         )
         .unwrap();
 
@@ -177,14 +177,14 @@ fn due_cards_filter_out_future_entries() {
         .create_opening_card(
             "andy",
             &edge,
-            CardState::new(past, NonZeroU8::new(1).unwrap(), 2.5),
+            StoredCardState::new(past, NonZeroU8::new(1).unwrap(), 2.5),
         )
         .unwrap();
     store
         .create_opening_card(
             "andy",
             &edge,
-            CardState::new(future, NonZeroU8::new(1).unwrap(), 2.5),
+            StoredCardState::new(future, NonZeroU8::new(1).unwrap(), 2.5),
         )
         .unwrap();
 
@@ -316,7 +316,7 @@ fn importing_longer_line_preserves_existing_progress() {
     let white_edges = vec![edge_e4.clone(), edge_nf3.clone(), edge_bc4.clone()];
     let mut edge_to_card: HashMap<u64, u64> = HashMap::new();
     let start_day = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
-    let initial_state = CardState::new(start_day, initial_interval, 2.5);
+    let initial_state = StoredCardState::new(start_day, initial_interval, 2.5);
 
     for edge in &white_edges {
         let card = store
@@ -354,7 +354,7 @@ fn importing_longer_line_preserves_existing_progress() {
 
     // Second import arrives a week later with additional moves 3...Bc5 4.c3.
     let import_day = start_day + Duration::days(7);
-    let import_state = CardState::new(import_day, initial_interval, 2.5);
+    let import_state = StoredCardState::new(import_day, initial_interval, 2.5);
 
     let bc5_pos = store
         .upsert_position(ChessPosition::new(BC5_FEN, 6).expect("after 3...Bc5"))
@@ -397,7 +397,7 @@ fn importing_longer_line_preserves_existing_progress() {
         .expect("create new move card");
     assert_eq!(
         new_card.state,
-        CardState::new(import_day, initial_interval, 2.5),
+        StoredCardState::new(import_day, initial_interval, 2.5),
         "new card should use default scheduling state",
     );
 

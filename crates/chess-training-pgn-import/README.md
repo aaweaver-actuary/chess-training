@@ -161,7 +161,7 @@ pgn-import \
 
 ```rust
 use pgn_import::{
-    IngestConfig, Importer, Storage, InMemoryStore, SideFilter,
+    IngestConfig, Importer, Storage, ImportInMemoryStore, SideFilter,
 };
 
 #[tokio::main]
@@ -177,7 +177,7 @@ async fn main() -> anyhow::Result<()> {
         dedupe_transpositions: true,
     };
 
-    let mut store = InMemoryStore::default(); // or PostgresStore::connect(dsn).await?
+    let mut store = ImportInMemoryStore::default(); // or PostgresStore::connect(dsn).await?
     let mut importer = Importer::new(cfg, &mut store);
 
     importer.ingest_pgn_path("./data/italian_and_scandi.pgn").await?;
@@ -210,15 +210,19 @@ pub struct Position {
 }
 ```
 
-### Edge (Move)
+### Opening edge record
 
 ```rust
-pub struct Edge {
-    pub id: u64,                 // stable hash of (parent_id, move_uci)
+pub struct OpeningEdge {
+    pub id: u64,          // stable hash of (parent_id, move_uci)
     pub parent_id: u64,
-    pub move_uci: String,        // e2e4, g1f3, etc.
-    pub move_san: String,        // e4, Nf3, etc. (canonicalized)
     pub child_id: u64,
+    pub move_uci: String, // e2e4, g1f3, etc.
+    pub move_san: String, // e4, Nf3, etc. (canonicalized)
+}
+
+pub struct OpeningEdgeRecord {
+    pub edge: OpeningEdge,
     pub source_hint: Option<String>, // optional: PGN src or tag
 }
 ```
@@ -465,7 +469,7 @@ pub trait Storage {
 ### In-memory reference
 
 ```rust
-pub struct InMemoryStore {
+pub struct ImportInMemoryStore {
     positions: hashbrown::HashMap<String, Position>,            // fen -> Position
     edges: hashbrown::HashMap<(u64, String), Edge>,             // (parent_id, uci) -> Edge
     repertoire_edges: hashbrown::HashSet<(String, String, u64)>,// (owner, rep_key, edge_id)

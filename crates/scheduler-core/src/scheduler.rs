@@ -31,7 +31,7 @@ impl<S: CardStore> Scheduler<S> {
             .store
             .get_card(card_id)
             .ok_or(SchedulerError::CardNotFound(card_id))?;
-        let previous_due = card.due;
+        let previous_due = card.state.due;
         apply_sm2(&mut card, grade, &self.config, today);
         self.store.upsert_card(card.clone());
         Ok(ReviewOutcome {
@@ -53,7 +53,7 @@ impl<S: CardStore> Scheduler<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{CardKind, CardState, TacticCard};
+    use crate::domain::{new_card, CardKind, CardState, SchedulerTacticCard};
     use crate::store::InMemoryStore;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -65,20 +65,20 @@ mod tests {
         let mut store = InMemoryStore::new();
         let config = SchedulerConfig::default();
         let owner = Uuid::new_v4();
-        let mut card = Card::new(
+        let mut card = new_card(
             owner,
-            CardKind::Tactic(TacticCard::new()),
+            CardKind::Tactic(SchedulerTacticCard::new()),
             naive_date(2023, 1, 1),
             &config,
         );
-        card.state = CardState::Review;
+        card.state.stage = CardState::Review;
         store.upsert_card(card.clone());
         let mut scheduler = Scheduler::new(store, config.clone());
         let outcome = scheduler
             .review(card.id, ReviewGrade::Good, naive_date(2023, 1, 1))
             .expect("card exists");
         assert_eq!(outcome.grade, ReviewGrade::Good);
-        assert!(outcome.card.due >= naive_date(2023, 1, 2));
+        assert!(outcome.card.state.due >= naive_date(2023, 1, 2));
     }
 
     #[test]

@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use chrono::NaiveDate;
 
-use crate::model::{Card, CardKind, CardState, Edge, OpeningCard, ReviewRequest};
+use crate::model::{Card, CardKind, Edge, OpeningCard, ReviewRequest, StoredCardState};
 use crate::store::StoreError;
 
 pub(super) fn store_opening_card(
     cards: &mut HashMap<u64, Card>,
     owner_id: &str,
     edge: &Edge,
-    state: CardState,
+    state: StoredCardState,
     card_id: u64,
 ) -> Result<Card, StoreError> {
     match cards.entry(card_id) {
@@ -65,7 +65,7 @@ fn validate_existing_opening_card(
     }
 }
 
-fn build_opening_card(owner_id: &str, edge: &Edge, state: CardState, card_id: u64) -> Card {
+fn build_opening_card(owner_id: &str, edge: &Edge, state: StoredCardState, card_id: u64) -> Card {
     Card {
         id: card_id,
         owner_id: owner_id.to_string(),
@@ -84,8 +84,8 @@ mod tests {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
     }
 
-    fn sample_card_state(due_on: NaiveDate) -> CardState {
-        CardState::new(due_on, NonZeroU8::new(1).unwrap(), 2.5)
+    fn sample_card_state(due_on: NaiveDate) -> StoredCardState {
+        StoredCardState::new(due_on, NonZeroU8::new(1).unwrap(), 2.5)
     }
 
     fn sample_edge(id: u64) -> Edge {
