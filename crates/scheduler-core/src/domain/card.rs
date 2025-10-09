@@ -5,24 +5,20 @@ use review_domain::Card as GenericCard;
 
 use crate::{CardKind, CardState, SchedulerConfig};
 
-use super::Sm2State;
-
-/// Concrete card type used by the scheduler.
-pub type Card = GenericCard<Uuid, Uuid, CardKind, Sm2State>;
-
-/// Constructs a new scheduler card with SM-2 defaults.
-#[must_use]
-pub fn new_card(
-    owner_id: Uuid,
-    kind: CardKind,
-    today: NaiveDate,
-    config: &SchedulerConfig,
-) -> Card {
-    Card {
-        id: Uuid::new_v4(),
-        owner_id,
-        kind,
-        state: Sm2State::new(CardState::New, today, config.initial_ease_factor),
+impl Card {
+    #[must_use]
+    pub fn new(owner_id: Uuid, kind: CardKind, today: NaiveDate, config: &SchedulerConfig) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            owner_id,
+            kind,
+            state: CardState::New,
+            ease_factor: config.initial_ease_factor,
+            interval_days: 0,
+            due: today,
+            lapses: 0,
+            reviews: 0,
+        }
     }
 }
 

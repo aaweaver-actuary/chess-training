@@ -66,7 +66,21 @@ fn easy_interval(previous_reviews: u32, previous_interval: u32, ease: f32) -> u3
     match previous_reviews {
         0 => 1,
         1 => 6,
-        _ => scaled_interval(previous_interval, f64::from(ease) * 1.3_f64),
+        _ => scaled_interval(previous_interval, ease * 1.3),
+    }
+}
+
+fn scaled_interval(previous_interval: u32, multiplier: f32) -> u32 {
+    let product = f64::from(previous_interval) * f64::from(multiplier);
+    let rounded = if product.is_finite() {
+        product.round()
+    } else {
+        1.0
+    };
+    let clamped = rounded.clamp(1.0, f64::from(u32::MAX));
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    {
+        clamped as u32
     }
 }
 
