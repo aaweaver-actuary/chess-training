@@ -127,8 +127,8 @@ mod tests {
     #[test]
     fn card_kind_helpers_cover_review_domain_types() {
         let opening = OpeningCard::new(7);
-        let mapped_opening = CardKind::Opening(opening)
-            .map_opening(|card| OpeningCard::new(card.edge_id + 1));
+        let mapped_opening =
+            CardKind::Opening(opening).map_opening(|card| OpeningCard::new(card.edge_id + 1));
         assert!(matches!(
             mapped_opening,
             CardKind::Opening(card) if card.edge_id == 8
