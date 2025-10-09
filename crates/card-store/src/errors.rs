@@ -6,6 +6,8 @@ pub enum PositionError {
     /// The FEN string was missing or contained an invalid side-to-move field.
     #[error("malformed FEN: missing or invalid side-to-move field")]
     InvalidSideToMove,
+    #[error("malformed FEN: invalid piece placement field")]
+    MalformedFen,
 }
 #[cfg(test)]
 mod tests {

@@ -73,12 +73,12 @@ mod tests {
     #[test]
     fn as_ref_preserves_payload_references() {
         let tactic = String::from("skewer");
-        let card = CardKind::Tactic(tactic.clone());
+        let card: CardKind<(), String> = CardKind::Tactic(tactic.clone());
         assert!(matches!(
             card.as_ref(),
             CardKind::Tactic(reference) if *reference == "skewer"
         ));
-        let opening = CardKind::Opening(String::from("Ruy Lopez"));
+        let opening: CardKind<String, ()> = CardKind::Opening(String::from("Ruy Lopez"));
         assert!(matches!(
             opening.as_ref(),
             CardKind::Opening(reference) if *reference == "Ruy Lopez"
