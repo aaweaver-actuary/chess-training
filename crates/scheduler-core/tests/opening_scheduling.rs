@@ -1,4 +1,5 @@
 use chrono::NaiveDate;
+use scheduler_core::domain::OpeningCard;
 use scheduler_core::{
     Card, CardKind, CardState, CardStore, ReviewGrade, Scheduler, SchedulerConfig, UnlockRecord,
     build_queue_for_day,
@@ -76,16 +77,11 @@ impl CardStore for TimedStore {
             .cloned()
             .collect();
         candidates.sort_by(|a, b| match (&a.kind, &b.kind) {
-            (
-                CardKind::Opening {
-                    parent_prefix: a_prefix,
-                },
-                CardKind::Opening {
-                    parent_prefix: b_prefix,
-                },
-            ) => (a_prefix, &a.id).cmp(&(b_prefix, &b.id)),
-            (CardKind::Opening { .. }, _) => std::cmp::Ordering::Less,
-            (_, CardKind::Opening { .. }) => std::cmp::Ordering::Greater,
+            (CardKind::Opening(a_opening), CardKind::Opening(b_opening)) => {
+                (&a_opening.parent_prefix, &a.id).cmp(&(&b_opening.parent_prefix, &b.id))
+            }
+            (CardKind::Opening(_), _) => std::cmp::Ordering::Less,
+            (_, CardKind::Opening(_)) => std::cmp::Ordering::Greater,
             _ => a.id.cmp(&b.id),
         });
         candidates
@@ -98,7 +94,7 @@ impl CardStore for TimedStore {
     fn unlocked_on(&self, owner_id: Uuid, day: NaiveDate) -> Vec<UnlockRecord> {
         self.unlock_log
             .iter()
-            .filter(|record| record.owner_id == owner_id && record.day == day)
+            .filter(|record| record.owner_id == owner_id && record.unlocked_on == day)
             .cloned()
             .collect()
     }
@@ -113,17 +109,13 @@ fn shared_first_move_is_unlocked_only_once() {
 
     let first_line = Card::new(
         owner,
-        CardKind::Opening {
-            parent_prefix: "start".to_string(),
-        },
+        CardKind::Opening(OpeningCard::new("start")),
         day1,
         &config,
     );
     let alternate_line = Card::new(
         owner,
-        CardKind::Opening {
-            parent_prefix: "start".to_string(),
-        },
+        CardKind::Opening(OpeningCard::new("start")),
         day1,
         &config,
     );
@@ -154,9 +146,7 @@ fn responses_unlock_after_first_move_review() {
 
     let first_move = Card::new(
         owner,
-        CardKind::Opening {
-            parent_prefix: "start".to_string(),
-        },
+        CardKind::Opening(OpeningCard::new("start")),
         day1,
         &config,
     );
@@ -164,17 +154,13 @@ fn responses_unlock_after_first_move_review() {
 
     let scandinavian = Card::new(
         owner,
-        CardKind::Opening {
-            parent_prefix: "start e4 vs d5".to_string(),
-        },
+        CardKind::Opening(OpeningCard::new("start e4 vs d5")),
         day1,
         &config,
     );
     let open_game = Card::new(
         owner,
-        CardKind::Opening {
-            parent_prefix: "start e4 vs e5".to_string(),
-        },
+        CardKind::Opening(OpeningCard::new("start e4 vs e5")),
         day1,
         &config,
     );

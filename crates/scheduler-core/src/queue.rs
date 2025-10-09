@@ -6,7 +6,7 @@ use chrono::NaiveDate;
 use uuid::Uuid;
 
 use crate::config::SchedulerConfig;
-use crate::domain::{Card, CardKind, CardState, UnlockRecord};
+use crate::domain::{Card, CardKind, CardState, UnlockDetail, UnlockRecord};
 use crate::store::CardStore;
 
 pub fn build_queue_for_day<S: CardStore>(
@@ -32,9 +32,9 @@ impl ExistingUnlocks {
     fn from_records(records: &[UnlockRecord]) -> Self {
         let prefixes = records
             .iter()
-            .filter_map(|record| record.parent_prefix.clone())
+            .filter_map(|record| record.detail.parent_prefix.clone())
             .collect();
-        let ids = records.iter().map(|record| record.card_id).collect();
+        let ids = records.iter().map(|record| record.detail.card_id).collect();
         Self { prefixes, ids }
     }
 
@@ -69,10 +69,12 @@ fn extend_queue_with_unlocks<S: CardStore>(
         let parent_prefix = extract_prefix(&candidate);
         unlock_card(&mut candidate, config, today);
         store.record_unlock(UnlockRecord {
-            card_id: candidate.id,
             owner_id,
-            parent_prefix: parent_prefix.clone(),
-            day: today,
+            detail: UnlockDetail {
+                card_id: candidate.id,
+                parent_prefix: parent_prefix.clone(),
+            },
+            unlocked_on: today,
         });
         unlocked.track_new_unlock(parent_prefix, candidate.id);
         store.upsert_card(candidate.clone());
@@ -85,7 +87,7 @@ fn skip_candidate(candidate: &Card, unlocked: &ExistingUnlocks) -> bool {
         return true;
     }
     match &candidate.kind {
-        CardKind::Opening { parent_prefix } => unlocked.contains_prefix(parent_prefix),
+        CardKind::Opening(opening) => unlocked.contains_prefix(&opening.parent_prefix),
         _ => true,
     }
 }
@@ -99,7 +101,7 @@ fn unlock_card(card: &mut Card, config: &SchedulerConfig, today: NaiveDate) {
 
 fn extract_prefix(card: &Card) -> Option<String> {
     match &card.kind {
-        CardKind::Opening { parent_prefix } => Some(parent_prefix.clone()),
+        CardKind::Opening(opening) => Some(opening.parent_prefix.clone()),
         _ => None,
     }
 }
@@ -107,7 +109,7 @@ fn extract_prefix(card: &Card) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::CardKind;
+    use crate::domain::{CardKind, OpeningCard};
     use crate::store::InMemoryStore;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -118,9 +120,7 @@ mod tests {
         let config = SchedulerConfig::default();
         Card::new(
             owner,
-            CardKind::Opening {
-                parent_prefix: prefix.into(),
-            },
+            CardKind::Opening(OpeningCard::new(prefix)),
             naive_date(2023, 1, 1),
             &config,
         )
@@ -134,10 +134,12 @@ mod tests {
         let existing = sample_opening(owner, "e4");
         store.upsert_card(existing.clone());
         store.record_unlock(UnlockRecord {
-            card_id: existing.id,
             owner_id: owner,
-            parent_prefix: Some("e4".into()),
-            day: naive_date(2023, 1, 1),
+            detail: UnlockDetail {
+                card_id: existing.id,
+                parent_prefix: Some("e4".into()),
+            },
+            unlocked_on: naive_date(2023, 1, 1),
         });
         let new_candidate = sample_opening(owner, "e4");
         store.upsert_card(new_candidate.clone());

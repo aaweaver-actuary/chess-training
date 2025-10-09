@@ -107,7 +107,7 @@ fn state_after_grade(current: CardState, grade: ReviewGrade) -> CardState {
 mod tests {
     use super::*;
     use crate::config::SchedulerConfig;
-    use crate::domain::{CardKind, CardState};
+    use crate::domain::{CardKind, CardState, TacticCard};
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
@@ -117,7 +117,7 @@ mod tests {
         let config = SchedulerConfig::default();
         let mut card = Card::new(
             uuid::Uuid::new_v4(),
-            CardKind::Tactic,
+            CardKind::Tactic(TacticCard::new()),
             naive_date(2023, 1, 1),
             &config,
         );

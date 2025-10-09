@@ -3,6 +3,7 @@
 //! Run with: `cargo run -p scheduler-core --example quickstart`
 
 use chrono::NaiveDate;
+use scheduler_core::domain::{OpeningCard, TacticCard};
 use scheduler_core::{
     Card, CardKind, CardStore, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig,
 };
@@ -22,16 +23,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a new opening card
     let card1 = Card::new(
         owner_id,
-        CardKind::Opening {
-            parent_prefix: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string(),
-        },
+        CardKind::Opening(OpeningCard::new(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",
+        )),
         today,
         &config,
     );
     store.upsert_card(card1.clone());
 
     // Create a tactic card
-    let card2 = Card::new(owner_id, CardKind::Tactic, today, &config);
+    let card2 = Card::new(
+        owner_id,
+        CardKind::Tactic(TacticCard::new()),
+        today,
+        &config,
+    );
     store.upsert_card(card2.clone());
 
     // 4. Build the scheduler
