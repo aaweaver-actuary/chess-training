@@ -100,18 +100,20 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
             aria-label="Command console"
             aria-modal="true"
           >
-            <button
-              type="button"
-              className="command-console__close"
-              onClick={onClose}
-              aria-label="Close command console"
-            >
-              ×
-            </button>
             <div className="command-console__container">
               <div className="command-console__header">
-                <span className="command-console__title">Command Console</span>
-                <span className="command-console__hint">Press Esc or click × to close</span>
+                <div className="command-console__header-content">
+                  <span className="command-console__title">Command Console</span>
+                  <span className="command-console__hint">Press Esc or click × to close</span>
+                </div>
+                <button
+                  type="button"
+                  className="command-console__close"
+                  onClick={onClose}
+                  aria-label="Close command console"
+                >
+                  ×
+                </button>
               </div>
               <div className="command-console__body">
                 <span className="command-console__prompt">$:</span>
@@ -122,7 +124,9 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
                   aria-label="Command input"
                   placeholder="Awaiting commands…"
                   value={command}
-                  onChange={(event) => setCommand(event.target.value)}
+                  onChange={(event) => {
+                    setCommand(event.target.value);
+                  }}
                 />
               </div>
             </div>
