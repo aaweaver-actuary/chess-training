@@ -4,7 +4,25 @@ import type { UserEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
-function createDefaultStats() {
+import type { CardSummary, ReviewGrade, SessionStats } from './types/gateway';
+
+type StartMock = ReturnType<typeof vi.fn<(userId: string) => Promise<void>>>;
+type SubmitGradeMock = ReturnType<
+  typeof vi.fn<(grade: ReviewGrade, latency: number) => Promise<void>>
+>;
+type NextCardMock = ReturnType<typeof vi.fn<(card?: CardSummary) => void>>;
+
+type MockSessionState = {
+  sessionId: string;
+  queue: CardSummary[];
+  currentCard: CardSummary;
+  stats?: SessionStats;
+  start: StartMock;
+  submitGrade: SubmitGradeMock;
+  nextCard: NextCardMock;
+};
+
+function createDefaultStats(): SessionStats {
   return {
     reviews_today: 3,
     accuracy: 0.75,
@@ -15,8 +33,13 @@ function createDefaultStats() {
 }
 
 vi.mock('./state/sessionStore', () => {
-  const listeners = new Set<(state: unknown) => void>();
-  const state = {
+  const listeners = new Set<(state: MockSessionState) => void>();
+  const start: StartMock = vi.fn<(userId: string) => Promise<void>>();
+  const submitGrade: SubmitGradeMock = vi.fn<
+    (grade: ReviewGrade, latency: number) => Promise<void>
+  >();
+  const nextCard: NextCardMock = vi.fn<(card?: CardSummary) => void>();
+  const state: MockSessionState = {
     sessionId: 's1',
     queue: [],
     currentCard: {
@@ -27,15 +50,15 @@ vi.mock('./state/sessionStore', () => {
       expected_moves_uci: ['c1g5'],
     },
     stats: createDefaultStats(),
-    start: vi.fn(),
-    submitGrade: vi.fn(),
-    nextCard: vi.fn(),
+    start,
+    submitGrade,
+    nextCard,
   };
 
   return {
     sessionStore: {
       getState: () => state,
-      subscribe: (listener: (state: unknown) => void) => {
+      subscribe: (listener: (state: MockSessionState) => void) => {
         listeners.add(listener);
         return () => listeners.delete(listener);
       },
@@ -49,11 +72,7 @@ import { sessionStore } from './state/sessionStore';
 const setupUser = (): UserEvent => userEvent.setup();
 
 const mockedStore = sessionStore as unknown as {
-  getState: () => {
-    start: ReturnType<typeof vi.fn>;
-    submitGrade: ReturnType<typeof vi.fn>;
-    stats: ReturnType<typeof createDefaultStats> | undefined;
-  } & Record<string, unknown>;
+  getState: () => MockSessionState;
 };
 
 beforeEach(() => {
