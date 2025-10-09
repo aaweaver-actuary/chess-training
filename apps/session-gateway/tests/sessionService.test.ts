@@ -4,18 +4,53 @@ import type { SessionState } from '../src/types.js';
 import { createBroadcaster } from '../src/broadcaster.js';
 import type { Broadcaster } from '../src/broadcaster.js';
 
+const createSchedulerMock = (
+  overrides: Partial<Record<'fetchQueue' | 'gradeCard', ReturnType<typeof vi.fn>>> = {},
+) => ({
+  fetchQueue: vi.fn(),
+  gradeCard: vi.fn(),
+  ...overrides,
+});
+
+const createSessionStoreMock = (
+  overrides: Partial<
+    Record<'create' | 'get' | 'update' | 'delete', ReturnType<typeof vi.fn>>
+  > = {},
+) => ({
+  create: vi.fn(),
+  get: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+  ...overrides,
+});
+
+const createSessionState = (overrides: Partial<SessionState> = {}): SessionState => ({
+  sessionId: 's',
+  userId: 'u',
+  queue: [],
+  currentCard: {
+    card_id: 'card',
+    kind: 'Opening',
+    position_fen: 'fen',
+    prompt: 'prompt',
+  },
+  stats: { reviews_today: 0, accuracy: 0, avg_latency_ms: 0 },
+  totalLatency: 0,
+  ...overrides,
+});
+
+const createBroadcasterMock = () => ({
+  register: vi.fn(),
+  unregister: vi.fn(),
+  broadcast: vi.fn(),
+});
+
 describe('session service', () => {
   it('throws when attempting to grade without an active session', async () => {
-    const schedulerClient = {
-      fetchQueue: vi.fn(),
-      gradeCard: vi.fn(),
-    };
-    const sessionStore = {
-      create: vi.fn(),
+    const schedulerClient = createSchedulerMock();
+    const sessionStore = createSessionStoreMock({
       get: vi.fn().mockResolvedValue(undefined),
-      update: vi.fn(),
-      delete: vi.fn(),
-    };
+    });
     const service = createSessionService({
       schedulerClient,
       sessionStore,
@@ -33,31 +68,18 @@ describe('session service', () => {
   });
 
   it('handles zero total reviews when computing accuracy', async () => {
-    const sessionState: SessionState = {
-      sessionId: 's',
-      userId: 'u',
-      queue: [],
-      currentCard: {
-        card_id: 'card',
-        kind: 'Opening',
-        position_fen: 'fen',
-        prompt: 'prompt',
-      },
+    const sessionState = createSessionState({
       stats: { reviews_today: -1, accuracy: 0, avg_latency_ms: 0 },
-      totalLatency: 0,
-    };
-    const schedulerClient = {
-      fetchQueue: vi.fn(),
+    });
+    const schedulerClient = createSchedulerMock({
       gradeCard: vi.fn().mockResolvedValue(null),
-    };
-    const sessionStore = {
-      create: vi.fn(),
+    });
+    const sessionStore = createSessionStoreMock({
       get: vi.fn().mockResolvedValue(sessionState),
       update: vi.fn(async (_id: string, updater: (state: SessionState) => SessionState) =>
         updater(sessionState),
       ),
-      delete: vi.fn(),
-    };
+    });
     const broadcaster = createBroadcaster();
     const service = createSessionService({
       schedulerClient,
@@ -75,23 +97,20 @@ describe('session service', () => {
   });
 
   it('starts, reads stats, and ends sessions', async () => {
-    const schedulerClient = {
+    const schedulerClient = createSchedulerMock({
       fetchQueue: vi
         .fn()
         .mockResolvedValue([
           { card_id: 'card', kind: 'Opening', position_fen: 'fen', prompt: 'prompt' },
         ]),
-      gradeCard: vi.fn(),
-    };
+    });
     const createdStates: SessionState[] = [];
-    const sessionStore = {
+    const sessionStore = createSessionStoreMock({
       create: vi.fn(async (_id: string, state: SessionState) => {
         createdStates.push(state);
       }),
       get: vi.fn().mockResolvedValue(undefined),
-      update: vi.fn(),
-      delete: vi.fn(),
-    };
+    });
     const service = createSessionService({
       schedulerClient,
       sessionStore,
@@ -108,10 +127,7 @@ describe('session service', () => {
   });
 
   it('grades cards, updates stats, and broadcasts results', async () => {
-    const initialState: SessionState = {
-      sessionId: 's',
-      userId: 'u',
-      queue: [],
+    const initialState = createSessionState({
       currentCard: {
         card_id: 'card-1',
         kind: 'Opening',
@@ -120,36 +136,29 @@ describe('session service', () => {
       },
       stats: { reviews_today: 1, accuracy: 0.5, avg_latency_ms: 1000 },
       totalLatency: 1000,
-    };
+    });
     const nextCard = {
       card_id: 'card-2',
       kind: 'Tactic' as const,
       position_fen: 'fen2',
       prompt: 'prompt2',
     };
-    const schedulerClient = {
-      fetchQueue: vi.fn(),
+    const schedulerClient = createSchedulerMock({
       gradeCard: vi.fn().mockResolvedValue(nextCard),
-    };
+    });
     const updateSpy = vi.fn(
       async (_id: string, updater: (state: SessionState) => SessionState) =>
         updater(initialState),
     );
-    const sessionStore = {
-      create: vi.fn(),
+    const sessionStore = createSessionStoreMock({
       get: vi.fn().mockResolvedValue(initialState),
       update: updateSpy,
-      delete: vi.fn(),
-    };
-    const broadcast = vi.fn();
+    });
+    const broadcaster = createBroadcasterMock();
     const service = createSessionService({
       schedulerClient,
       sessionStore,
-      broadcaster: {
-        register: vi.fn(),
-        unregister: vi.fn(),
-        broadcast,
-      } as unknown as Broadcaster,
+      broadcaster: broadcaster as unknown as Broadcaster,
     });
 
     const result = await service.grade({
@@ -163,7 +172,7 @@ describe('session service', () => {
     expect(result.stats).toMatchObject({ reviews_today: 2, avg_latency_ms: 750 });
     expect(result.stats.accuracy).toBeCloseTo(0.75, 2);
     expect(updateSpy).toHaveBeenCalled();
-    expect(broadcast).toHaveBeenCalledWith(
+    expect(broadcaster.broadcast).toHaveBeenCalledWith(
       's',
       expect.objectContaining({
         type: 'UPDATE',

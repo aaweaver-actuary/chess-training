@@ -9,7 +9,6 @@ import type {
 const env = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
 const baseUrlFromEnv =
   env && typeof env.VITE_SESSION_URL === 'string' ? env.VITE_SESSION_URL : undefined;
-/* c8 ignore end */
 const BASE_URL: string = baseUrlFromEnv ?? 'http://localhost:3000';
 
 type JsonShape<T> = T;

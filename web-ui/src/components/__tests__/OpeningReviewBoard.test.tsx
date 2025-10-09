@@ -14,8 +14,32 @@ describe('OpeningReviewBoard', () => {
     expected_moves_uci: ['c1g5'],
   };
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  const italianStart: CardSummary = {
+    card_id: 'italian-1',
+    kind: 'Opening',
+    position_fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    prompt: 'Begin the Italian Game with the classical pawn thrust.',
+    expected_moves_uci: ['e2e4'],
+    meta: { teaching_move_uci: 'e2e4', line_reviews: 0 },
+  };
+
+  const italianSecondMove: CardSummary = {
+    card_id: 'italian-2',
+    kind: 'Opening',
+    position_fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2',
+    prompt: 'Reinforce the centre with a developing knight move.',
+    expected_moves_uci: ['g1f3'],
+    meta: { teaching_move_uci: 'g1f3', line_reviews: 0 },
+  };
+  it('links to the Lichess analysis board for the current position', () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
+
+    const shortcut = screen.getByRole('link', { name: /open position on lichess/i });
+    expect(shortcut).toHaveAttribute(
+      'href',
+      `https://lichess.org/analysis/standard/${encodeURIComponent(baseCard.position_fen)}`,
+    );
   });
 
   it('reports success when the expected move is played', () => {
@@ -111,6 +135,31 @@ describe('OpeningReviewBoard', () => {
       expected_moves_uci: ['d7d8q'],
     };
     render(<OpeningReviewBoard card={promotionCard} onResult={onResult} />);
+  it('shows a teaching arrow for the first move of a new line', () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={italianStart} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+
+    expect(board.getAttribute('data-teaching-arrow')).toBe('e2e4');
+  });
+
+  it('updates the teaching arrow when presenting the follow-up move', () => {
+    const onResult = vi.fn();
+    const { rerender } = render(<OpeningReviewBoard card={italianStart} onResult={onResult} />);
+
+    let board = screen.getByTestId('opening-review-board');
+    expect(board.getAttribute('data-teaching-arrow')).toBe('e2e4');
+
+    rerender(<OpeningReviewBoard card={italianSecondMove} onResult={onResult} />);
+
+    board = screen.getByTestId('opening-review-board');
+    expect(board.getAttribute('data-teaching-arrow')).toBe('g1f3');
+  });
+
+  it('marks the mistaken square and restores the teaching arrow after an incorrect move', () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={italianStart} onResult={onResult} />);
 
     const board = screen.getByTestId('opening-review-board');
 
@@ -121,5 +170,11 @@ describe('OpeningReviewBoard', () => {
     );
 
     expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
+        detail: { source: 'g1', target: 'f3', piece: 'wN' },
+      }),
+    );
+
+    expect(board.getAttribute('data-error-square')).toBe('f3');
+    expect(board.getAttribute('data-teaching-arrow')).toBe('e2e4');
   });
 });

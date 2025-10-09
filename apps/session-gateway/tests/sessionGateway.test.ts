@@ -78,27 +78,35 @@ class InMemorySessionStore implements SessionStore<SessionState> {
   }
 }
 
-const createDependencies = () => {
-  const scheduler = new InMemoryScheduler();
-  const store = new InMemorySessionStore();
-  return { scheduler, store };
-};
+const createDependencies = () => ({
+  scheduler: new InMemoryScheduler(),
+  store: new InMemorySessionStore(),
+});
 
-const createEmptyQueueDependencies = () => {
-  const scheduler: SchedulerClient = {
-    async fetchQueue() {
-      return [];
-    },
-    async gradeCard() {
-      return null;
-    },
+const createEmptyQueueScheduler = (): SchedulerClient => ({
+  async fetchQueue() {
+    return [];
+  },
+  async gradeCard() {
+    return null;
+  },
+});
+
+type GatewayOverrides = Partial<{
+  scheduler: SchedulerClient;
+  store: SessionStore<SessionState>;
+}>;
+
+const selectDependencies = (overrides: GatewayOverrides = {}) => {
+  const defaults = createDependencies();
+  return {
+    scheduler: overrides.scheduler ?? defaults.scheduler,
+    store: overrides.store ?? defaults.store,
   };
-  const store = new InMemorySessionStore();
-  return { scheduler, store };
 };
 
-const startGateway = async () => {
-  const deps = createDependencies();
+const startGateway = async (overrides: GatewayOverrides = {}) => {
+  const deps = selectDependencies(overrides);
   const { app, wsServer } = createGatewayServer({
     schedulerClient: deps.scheduler,
     sessionStore: deps.store,
@@ -117,6 +125,20 @@ const startGateway = async () => {
 const closeGateway = async (server: http.Server) => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
 };
+
+const wait = (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const createWsUrl = (baseUrl: string, sessionId: string) =>
+  baseUrl.replace('http', 'ws') + `/ws?session_id=${sessionId}`;
+
+const createSessionSocket = (baseUrl: string, sessionId: string) =>
+  new WebSocket(createWsUrl(baseUrl, sessionId));
+
+const waitForOpen = (socket: WebSocket) =>
+  new Promise<void>((resolve) => socket.once('open', resolve));
+
+const waitForClose = (socket: WebSocket) =>
+  new Promise<void>((resolve) => socket.once('close', resolve));
 
 const startSession = async (baseUrl: string, userId = 'andy') => {
   return request(baseUrl)
@@ -139,12 +161,13 @@ const gradeCard = async (
 };
 
 describe('session gateway', () => {
-  let server: http.Server;
+  let server: http.Server | undefined;
   let baseUrl: string;
 
   afterEach(async () => {
     if (server) {
       await closeGateway(server);
+      server = undefined;
     }
   });
 
@@ -162,19 +185,11 @@ describe('session gateway', () => {
   });
 
   it('returns null when the scheduler queue is empty', async () => {
-    const deps = createEmptyQueueDependencies();
-    const { app, wsServer } = createGatewayServer({
-      schedulerClient: deps.scheduler,
-      sessionStore: deps.store,
-    });
-    server = http.createServer(app);
-    wsServer.attach(server);
-    await new Promise<void>((resolve) => server.listen(0, resolve));
-    const address = server.address() as AddressInfo;
-    baseUrl = `http://127.0.0.1:${address.port}`;
+    ({ server, baseUrl } = await startGateway({
+      scheduler: createEmptyQueueScheduler(),
+    }));
     const response = await startSession(baseUrl);
     expect(response.body.first_card).toBeNull();
-    await closeGateway(server);
   });
 
   it('rejects session start requests with missing user id', async () => {
@@ -211,7 +226,6 @@ describe('session gateway', () => {
 
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(response.body).toHaveProperty('error');
-    await closeGateway(server);
   });
 
   it('returns aggregated session stats', async () => {
@@ -253,16 +267,14 @@ describe('session gateway', () => {
     ({ server, baseUrl } = await startGateway());
     const startResponse = await startSession(baseUrl);
     const sessionId = startResponse.body.session_id;
-    const wsUrl = baseUrl.replace('http', 'ws') + `/ws?session_id=${sessionId}`;
-
-    const socket = new WebSocket(wsUrl);
+    const socket = createSessionSocket(baseUrl, sessionId);
 
     const messages: unknown[] = [];
     socket.on('message', (data) => {
       messages.push(JSON.parse(data.toString()));
     });
 
-    await new Promise<void>((resolve) => socket.once('open', resolve));
+    await waitForOpen(socket);
 
     await gradeCard(baseUrl, sessionId, 'c123', 'Good');
 
@@ -276,14 +288,19 @@ describe('session gateway', () => {
       card: expect.objectContaining({ card_id: 'c456' }),
       stats: expect.objectContaining({ reviews_today: 1 }),
     });
+    await wait();
+    const updateMessage = messages.find((msg) => (msg as { type: string }).type === 'UPDATE');
+    expect(updateMessage).toBeTruthy();
+    expect((updateMessage as { stats?: unknown })?.stats).toBeTruthy();
     socket.close();
+    await waitForClose(socket);
   });
 
   it('does not deliver messages to websocket clients after session ends', async () => {
     ({ server, baseUrl } = await startGateway());
     const startResponse = await startSession(baseUrl);
     const sessionId = startResponse.body.session_id;
-    const wsUrl = baseUrl.replace('http', 'ws') + `/ws?session_id=${sessionId}`;
+    const wsUrl = createWsUrl(baseUrl, sessionId);
 
     // End the session
     await request(baseUrl)
@@ -301,54 +318,54 @@ describe('session gateway', () => {
       receivedMessage = true;
     });
 
-    await new Promise<void>((resolve) => socket.once('open', resolve));
+    await waitForOpen(socket);
 
     // Wait for a short period to see if any messages are delivered
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await wait();
 
     socket.on('close', () => {
       closed = true;
     });
 
     // Wait for the close event or timeout
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await wait(200);
 
     expect(receivedMessage).toBe(false);
     expect(closed).toBe(false);
 
     socket.close();
+    await waitForClose(socket);
+    expect(closed).toBe(true);
   });
 
   it('terminates the session and notifies websocket clients', async () => {
     ({ server, baseUrl } = await startGateway());
     const startResponse = await startSession(baseUrl);
     const sessionId = startResponse.body.session_id;
-    const wsUrl = baseUrl.replace('http', 'ws') + `/ws?session_id=${sessionId}`;
-    const socket = new WebSocket(wsUrl);
+    const socket = createSessionSocket(baseUrl, sessionId);
 
     const received: unknown[] = [];
     socket.on('message', (data) => {
       received.push(JSON.parse(data.toString()));
     });
 
-    await new Promise<void>((resolve) => socket.once('open', resolve));
+    await waitForOpen(socket);
 
     await request(baseUrl)
       .post('/api/session/end')
       .send({ session_id: sessionId })
       .expect(200);
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await wait();
     expect(received.some((msg) => (msg as { type: string }).type === 'SESSION_END')).toBe(
       true,
     );
     socket.close();
+    await waitForClose(socket);
   });
 
   it('destroys websocket upgrades without a session id', async () => {
-    const result = await startGateway();
-    server = result.server;
-    baseUrl = result.baseUrl;
+    ({ server, baseUrl } = await startGateway());
     const firstDestroy = vi.fn();
     const secondDestroy = vi.fn();
     const invalidRequest = {
@@ -359,13 +376,13 @@ describe('session gateway', () => {
       url: '/ws',
       headers: {},
     } as unknown as import('http').IncomingMessage;
-    result.server.emit(
+    server!.emit(
       'upgrade',
       invalidRequest,
       { destroy: firstDestroy } as unknown as import('net').Socket,
       Buffer.alloc(0),
     );
-    result.server.emit(
+    server!.emit(
       'upgrade',
       missingSessionRequest,
       { destroy: secondDestroy } as unknown as import('net').Socket,
@@ -424,19 +441,10 @@ describe('session gateway', () => {
       },
     };
 
-    const failingStore = new InMemorySessionStore();
-    const { app: failingApp, wsServer: failingWsServer } = createGatewayServer({
-      schedulerClient: failingScheduler,
-      sessionStore: failingStore,
+    const failing = await startGateway({
+      scheduler: failingScheduler,
     });
-
-    const failingServer = http.createServer(failingApp);
-    failingWsServer.attach(failingServer);
-    await new Promise<void>((resolve) => {
-      failingServer.listen(0, resolve);
-    });
-    const address = failingServer.address() as AddressInfo;
-    const failingBaseUrl = `http://127.0.0.1:${address.port}`;
+    const failingBaseUrl = failing.baseUrl;
 
     const failingStartResponse = await request(failingBaseUrl)
       .post('/api/session/start')
@@ -454,6 +462,6 @@ describe('session gateway', () => {
       })
       .expect(500);
 
-    await new Promise<void>((resolve) => failingServer.close(() => resolve()));
+    await closeGateway(failing.server);
   });
 });
