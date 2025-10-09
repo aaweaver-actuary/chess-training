@@ -162,7 +162,12 @@ export const CommandConsole = ({
                   ×
                 </button>
               </div>
-              <form className="command-console__body" onSubmit={handleSubmit}>
+              <form
+                className="command-console__body"
+                onSubmit={(event) => {
+                  void handleSubmit(event);
+                }}
+              >
                 <span className="command-console__prompt">$:</span>
                 <input
                   ref={inputRef}
@@ -171,7 +176,9 @@ export const CommandConsole = ({
                   aria-label="Command input"
                   placeholder="Awaiting commands…"
                   value={command}
-                  onChange={(event) => setCommand(event.target.value)}
+                  onChange={(event) => {
+                    setCommand(event.target.value);
+                  }}
                   onKeyDown={handleKeyDown}
                 />
               </form>

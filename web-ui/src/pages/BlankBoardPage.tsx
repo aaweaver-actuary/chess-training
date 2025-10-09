@@ -101,7 +101,7 @@ export const BlankBoardPage: FC = () => {
           to,
           promotion: options.promotion ?? 'q',
         });
-      } catch (error) {
+      } catch {
         move = null;
       }
 

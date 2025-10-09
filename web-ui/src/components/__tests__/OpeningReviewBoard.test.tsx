@@ -6,7 +6,6 @@ import type { Move } from 'chess.js';
 
 import type { CardSummary } from '../../types/gateway';
 import { OpeningReviewBoard } from '../OpeningReviewBoard';
-import type { ChessBoardElement } from 'chessboard-element';
 
 describe('OpeningReviewBoard', () => {
   afterEach(() => {
@@ -247,7 +246,7 @@ describe('OpeningReviewBoard', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
 
-    const board = screen.getByTestId('opening-review-board') as ChessBoardElement;
+    const board = screen.getByTestId('opening-review-board');
     const e2 = await findBoardSquare(board, 'e2');
 
     fireEvent.click(e2);
@@ -262,7 +261,7 @@ describe('OpeningReviewBoard', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
 
-    const board = screen.getByTestId('opening-review-board') as ChessBoardElement;
+    const board = screen.getByTestId('opening-review-board');
 
     fireEvent.click(await findBoardSquare(board, 'e2'));
     fireEvent.click(await findBoardSquare(board, 'e4'));
@@ -280,7 +279,7 @@ describe('OpeningReviewBoard', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
 
-    const board = screen.getByTestId('opening-review-board') as ChessBoardElement;
+    const board = screen.getByTestId('opening-review-board');
 
     fireEvent.click(await findBoardSquare(board, 'e2'));
     fireEvent.click(await findBoardSquare(board, 'e5'));
@@ -303,7 +302,7 @@ describe('OpeningReviewBoard', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
 
-    const board = screen.getByTestId('opening-review-board') as ChessBoardElement;
+    const board = screen.getByTestId('opening-review-board');
 
     const e7 = await findBoardSquare(board, 'e7');
     fireEvent.click(e7);
@@ -324,7 +323,7 @@ describe('OpeningReviewBoard', () => {
   });
 });
 
-async function findBoardSquare(board: ChessBoardElement, square: string): Promise<HTMLElement> {
+async function findBoardSquare(board: HTMLElement, square: string): Promise<HTMLElement> {
   return await waitFor(() => {
     const element = board.shadowRoot?.querySelector<HTMLElement>(`[data-square="${square}"]`);
     if (!element) {
@@ -335,7 +334,7 @@ async function findBoardSquare(board: ChessBoardElement, square: string): Promis
   });
 }
 
-function getOverlaySquare(board: ChessBoardElement, square: string): HTMLElement {
+function getOverlaySquare(board: HTMLElement, square: string): HTMLElement {
   const wrapper = board.parentElement;
   if (!wrapper) {
     throw new Error('Board wrapper is missing');

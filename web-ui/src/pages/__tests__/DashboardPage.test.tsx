@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { DashboardPage } from '../DashboardPage';
 import type { ReviewOverview } from '../../services/ReviewPlanner';
-import type { DetectedOpeningLine, ImportResult } from '../../types/repertoire';
+import type { ImportResult } from '../../types/repertoire';
 
 const buildOverview = (overrides: Partial<ReviewOverview> = {}): ReviewOverview => ({
   progress: {
@@ -47,7 +47,7 @@ const buildImportResult = (): ImportResult => ({
   },
 });
 
-const stubImportLine = (_line: DetectedOpeningLine): ImportResult => buildImportResult();
+const stubImportLine = (): ImportResult => buildImportResult();
 
 describe('DashboardPage', () => {
   it('enables navigation when an opening review can start', () => {

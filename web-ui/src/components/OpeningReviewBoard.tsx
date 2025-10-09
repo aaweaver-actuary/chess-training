@@ -30,7 +30,7 @@ const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'] as const;
 const OVERLAY_SQUARES = RANKS.flatMap((rank) => FILES.map((file) => `${file}${rank}`));
 
 export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
-  const boardRef = useRef<HTMLElement | null>(null);
+  const boardRef = useRef<ChessBoardElement | null>(null);
   const gameRef = useRef(new Chess(card.position_fen));
   const expectedMovesRef = useRef<string[]>(card.expected_moves_uci ?? []);
   const startedAtRef = useRef<number>(performance.now());
@@ -96,7 +96,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
     gameRef.current = game;
     teachingArrowRef.current = extractTeachingArrow(card.meta);
 
-    const board = boardRef.current as (ChessBoardElement | null) & HTMLElement;
+    const board = boardRef.current;
     /* c8 ignore next 3 -- React always assigns the ref before this effect runs */
     if (!board) {
       return;
@@ -183,7 +183,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
           return;
         }
 
-        const moves = gameRef.current.moves({ square: selected, verbose: true });
+        const moves: Move[] = gameRef.current.moves({ square: selected, verbose: true });
         const targetMove = moves.find((move) => move.to === square);
 
         if (!targetMove) {
@@ -192,8 +192,9 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
         }
 
         const detail: DropDetail = { source: selected, target: square };
-        if (targetMove.promotion) {
-          detail.promotion = targetMove.promotion;
+        const promotion = targetMove.promotion;
+        if (typeof promotion === 'string') {
+          detail.promotion = promotion;
         }
 
         if (attemptMove(detail)) {
@@ -204,7 +205,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
         return;
       }
 
-      const moves = gameRef.current.moves({ square, verbose: true });
+      const moves: Move[] = gameRef.current.moves({ square, verbose: true });
       if (moves.length === 0) {
         showErrorHighlight(square);
         return;
@@ -288,9 +289,9 @@ function extractSquareFromEvent(event: Event): string | null {
   const path = event.composedPath();
   for (const target of path) {
     if (target instanceof HTMLElement) {
-      const square = target.getAttribute('data-square');
-      if (square) {
-        return square;
+      const squareAttribute = target.dataset.square;
+      if (typeof squareAttribute === 'string' && squareAttribute.length > 0) {
+        return squareAttribute;
       }
     }
   }
