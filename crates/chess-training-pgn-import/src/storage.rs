@@ -65,10 +65,11 @@ impl Storage for ImportInMemoryStore {
     }
 
     fn upsert_repertoire_edge(&mut self, record: RepertoireEdge) -> UpsertOutcome {
-        UpsertOutcome::from_bool(
-            self.repertoire_edges
-                .insert((record.owner, record.repertoire_key, record.edge_id)),
-        )
+        UpsertOutcome::from_bool(self.repertoire_edges.insert((
+            record.owner,
+            record.repertoire_key,
+            record.edge_id,
+        )))
     }
 
     fn upsert_tactic(&mut self, tactic: Tactic) -> UpsertOutcome {
@@ -143,9 +144,11 @@ mod tests {
         let child = sample_position(1);
         let edge = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
         assert!(store.upsert_edge(edge.clone()).is_inserted());
-        assert!(store
-            .upsert_repertoire_edge(RepertoireEdge::new("owner", "rep", edge.edge.id))
-            .is_inserted());
+        assert!(
+            store
+                .upsert_repertoire_edge(RepertoireEdge::new("owner", "rep", edge.edge.id))
+                .is_inserted()
+        );
 
         let records = store.repertoire_edges();
         assert_eq!(records.len(), 1);
