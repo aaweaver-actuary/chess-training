@@ -217,6 +217,34 @@ fn position_creation_fails_with_too_many_fields() {
 }
 
 #[test]
+fn position_creation_returns_invalid_piece_placement_for_invalid_characters() {
+    use card_store::errors::PositionError;
+    // Invalid character 'X' in piece placement field
+    let result = ChessPosition::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1",
+        0,
+    );
+    assert_eq!(result, Err(PositionError::InvalidPiecePlacement));
+}
+
+#[test]
+fn position_creation_returns_malformed_fen_for_missing_fields() {
+    use card_store::errors::PositionError;
+    let result = ChessPosition::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", 0);
+    assert_eq!(result, Err(PositionError::MalformedFen));
+}
+
+#[test]
+fn position_creation_returns_invalid_side_to_move_for_invalid_side() {
+    use card_store::errors::PositionError;
+    let result = ChessPosition::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR x KQkq - 0 1",
+        0,
+    );
+    assert_eq!(result, Err(PositionError::InvalidSideToMove));
+}
+
+#[test]
 fn upsert_position_is_idempotent() {
     let store = new_store();
     let position = sample_position();

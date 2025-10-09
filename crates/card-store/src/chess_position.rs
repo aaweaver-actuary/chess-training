@@ -16,12 +16,16 @@ pub struct ChessPosition {
 impl ChessPosition {
     /// Creates a new [`Position`] using a deterministic hash of the FEN as the identifier.
     ///
-    /// Returns [`Err`] when the FEN omits or provides an invalid side-to-move field.
-    ///
     /// # Errors
+    ///
+    /// Returns [`PositionError::MalformedFen`] when the FEN does not contain exactly 6
+    /// space-delimited fields, or when any field is empty.
     ///
     /// Returns [`PositionError::InvalidSideToMove`] when the FEN does not contain a
     /// valid side-to-move segment.
+    ///
+    /// Returns [`PositionError::InvalidPiecePlacement`] when the FEN contains invalid
+    /// characters in the piece placement field.
     #[must_use = "inspect the result to detect invalid chess positions"]
     pub fn new(fen: impl Into<String>, ply: u32) -> Result<Self, PositionError> {
         let fen = fen.into();
@@ -43,7 +47,7 @@ impl ChessPosition {
                     ..='8' | 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p'
             )
         }) {
-            return Err(PositionError::InvalidSideToMove);
+            return Err(PositionError::InvalidPiecePlacement);
         }
         let id = hash64(&[fen.as_bytes()]);
         Ok(Self {
