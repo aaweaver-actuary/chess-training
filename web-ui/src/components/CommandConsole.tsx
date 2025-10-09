@@ -31,7 +31,9 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
       setIsClosing(false);
     }, CONSOLE_ANIMATION_DURATION_MS);
 
-    return () => window.clearTimeout(timeout);
+    return () => {
+      window.clearTimeout(timeout);
+    };
   }, [isOpen, isRendered]);
 
   const launcherClassName = useMemo(() => {
@@ -73,7 +75,12 @@ export const CommandConsole = ({ isOpen, onOpen, onClose }: CommandConsoleProps)
       </button>
       {isRendered && (
         <div className={overlayClassName}>
-          <div className={consoleClassName} role="dialog" aria-label="Command console" aria-modal="true">
+          <div
+            className={consoleClassName}
+            role="dialog"
+            aria-label="Command console"
+            aria-modal="true"
+          >
             <button
               type="button"
               className="command-console__close"

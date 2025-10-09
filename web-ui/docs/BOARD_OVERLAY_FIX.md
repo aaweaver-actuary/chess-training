@@ -32,7 +32,7 @@ Added defensive CSS rules to the `.opening-review` container class to:
 1. **Prevent layout issues**: Use `fit-content` width and center the board
 2. **Establish stacking context**: Give the chess board `z-index: 10` priority
 3. **Mobile-specific protection**: On screens ≤ 480px:
-   - Add protective padding to create a "safe zone" 
+   - Add protective padding to create a "safe zone"
    - Disable pointer events on non-board overlays
    - Use negative margins to maintain visual alignment
 
@@ -58,7 +58,7 @@ Added defensive CSS rules to the `.opening-review` container class to:
     padding: 32px 32px 0 0;
     margin: -32px -32px 0 0;
   }
-  
+
   /* Disable pointer events on any absolutely positioned overlays 
      that might cover the board on small screens */
   .opening-review > :not(chess-board) {
@@ -70,19 +70,19 @@ Added defensive CSS rules to the `.opening-review` container class to:
 ## How It Works
 
 ### Desktop/Tablet (> 480px)
+
 - Board is centered with `fit-content` width
 - Board has `z-index: 10` to ensure interactions take priority
 - No additional padding needed
 
 ### Mobile (≤ 480px)
+
 1. **Padding creates safe zone**: `padding: 32px 32px 0 0`
    - Adds 32px padding on top and right
    - This pushes any overlay buttons outside the board interaction area
-   
 2. **Negative margins maintain layout**: `margin: -32px -32px 0 0`
    - Compensates for the padding visually
    - Keeps the board centered and properly sized
-   
 3. **Pointer events disabled on overlays**: `.opening-review > :not(chess-board) { pointer-events: none; }`
    - Any child elements EXCEPT the chess board lose pointer interaction
    - Clicks pass through overlays to the board underneath
@@ -117,6 +117,7 @@ Added defensive CSS rules to the `.opening-review` container class to:
 ## Future Considerations
 
 If a Lichess analysis button or similar overlay is added:
+
 - It will be visible but won't interfere with board interaction on mobile
 - Consider alternative positioning strategies (e.g., below the board)
 - Consider making it a button with explicit touch target size

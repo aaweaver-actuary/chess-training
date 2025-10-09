@@ -97,7 +97,7 @@ fn state_after_grade(current: CardState, grade: ReviewGrade) -> CardState {
     match grade {
         ReviewGrade::Again => CardState::Relearning,
         ReviewGrade::Hard | ReviewGrade::Good | ReviewGrade::Easy => match current {
-            CardState::New | CardState::Learning => CardState::Review,
+            CardState::New | CardState::Learning | CardState::Relearning => CardState::Review,
             current_state => current_state,
         },
     }
@@ -164,5 +164,15 @@ mod tests {
         );
         assert_eq!(card.state, CardState::Relearning);
         assert_eq!(card.lapses, 1);
+    }
+
+    #[test]
+    fn state_after_grade_promotes_relearning_cards() {
+        let next = state_after_grade(CardState::Relearning, ReviewGrade::Good);
+        assert_eq!(next, CardState::Review);
+        let hard = state_after_grade(CardState::Relearning, ReviewGrade::Hard);
+        assert_eq!(hard, CardState::Review);
+        let easy = state_after_grade(CardState::Relearning, ReviewGrade::Easy);
+        assert_eq!(easy, CardState::Review);
     }
 }

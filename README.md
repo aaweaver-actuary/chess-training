@@ -287,6 +287,22 @@ Key invariants tested:
 ### Frontend Tests
 Run `pnpm test` for Jest/React component coverage.
 
+### Coverage & Workspace Checks
+Run `make test` to execute formatting, linting, the full Rust test suite, and
+LLVM-based coverage verification. The coverage step depends on the
+[`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov) subcommand and the
+`llvm-tools-preview` rustup component. Install both once per development
+environment:
+
+```bash
+cargo install cargo-llvm-cov
+rustup component add llvm-tools-preview
+```
+
+With those prerequisites satisfied, `make test` will fail the build unless the
+workspace maintains 100% line, function, and region coverage for the
+`chess-training-pgn-import` crate.
+
 ---
 
 ## Roadmap

@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { UserEvent } from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -45,6 +46,8 @@ vi.mock('./state/sessionStore', () => {
 import App from './App';
 import { sessionStore } from './state/sessionStore';
 
+const setupUser = (): UserEvent => userEvent.setup();
+
 const mockedStore = sessionStore as unknown as {
   getState: () => {
     start: ReturnType<typeof vi.fn>;
@@ -78,7 +81,7 @@ describe('App', () => {
   });
 
   it('submits a grade when clicking a grade button', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <MemoryRouter initialEntries={['/review/opening']}>
         <App />
@@ -162,7 +165,7 @@ describe('App', () => {
     expect(screen.getByText(/100% complete/i)).toBeInTheDocument();
   });
   it('toggles the command console with keyboard shortcuts', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <MemoryRouter>
         <App />
@@ -211,7 +214,7 @@ describe('App', () => {
   });
 
   it('opens and closes the command console with the launcher button', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <MemoryRouter>
         <App />
@@ -272,7 +275,7 @@ describe('App', () => {
   });
 
   it('allows navigating between the dashboard and the opening review board', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <MemoryRouter>
         <App />
@@ -295,7 +298,7 @@ describe('App', () => {
   });
 
   it('opens the command console when the colon key is pressed', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <MemoryRouter>
         <App />
@@ -314,7 +317,7 @@ describe('App', () => {
   });
 
   it('closes the command console when the escape key is pressed', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <MemoryRouter>
         <App />
@@ -332,7 +335,7 @@ describe('App', () => {
   });
 
   it('does not open command console when semicolon is pressed without shift', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <MemoryRouter>
         <App />
@@ -349,6 +352,17 @@ describe('App', () => {
   });
 
   it('closes the command console when Escape key is pressed', async () => {
+    const user = setupUser();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
     // Open the console
     await user.keyboard(':');
     expect(screen.getByRole('dialog', { name: /Command console/i })).toBeInTheDocument();
@@ -363,7 +377,7 @@ describe('App', () => {
   });
 
   it('does not close the command console with escape if it is already closed', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <MemoryRouter>
         <App />

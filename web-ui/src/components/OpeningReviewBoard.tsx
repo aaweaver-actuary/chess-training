@@ -27,6 +27,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
   const gameRef = useRef(new Chess(card.position_fen));
   const expectedMovesRef = useRef<string[]>(card.expected_moves_uci ?? []);
   const startedAtRef = useRef<number>(performance.now());
+  const teachingArrowRef = useRef<string | null>(extractTeachingArrow(card.meta));
   const lichessAnalysisUrl = useMemo(
     () => `https://lichess.org/analysis/standard/${encodeURIComponent(card.position_fen)}`,
     [card.position_fen],
