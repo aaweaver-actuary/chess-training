@@ -34,7 +34,7 @@ mod tests {
     fn common_setup() -> (Uuid, CardKind, NaiveDate, SchedulerConfig) {
         let owner_id = Uuid::new_v4();
         let kind = CardKind::Opening(SchedulerOpeningCard::new("e4"));
-        let today = NaiveDate::from_ymd_opt(2024, 6, 1).unwrap();
+        let today = NaiveDate::from_ymd_opt(2024, 6, 1).expect("valid fixture date");
         let config = SchedulerConfig {
             initial_ease_factor: 2.5,
             ease_minimum: 1.3,
@@ -63,7 +63,7 @@ mod tests {
         let card = new_card(
             owner_id,
             CardKind::Opening(SchedulerOpeningCard::new("e4")),
-            NaiveDate::from_ymd_opt(2024, 6, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 6, 1).expect("valid fixture date"),
             &SchedulerConfig::default(),
         );
         assert_eq!(card.owner_id, owner_id);
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn card_struct_should_allow_setting_due_to_past_date() {
         let mut card = common_card();
-        let past_date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap();
+        let past_date = NaiveDate::from_ymd_opt(2000, 1, 1).expect("valid past date");
         card.state.due = past_date;
         assert_eq!(card.state.due, past_date);
     }
@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn card_struct_should_allow_setting_due_to_future_date() {
         let mut card = common_card();
-        let future_date = NaiveDate::from_ymd_opt(2100, 1, 1).unwrap();
+        let future_date = NaiveDate::from_ymd_opt(2100, 1, 1).expect("valid future date");
         card.state.due = future_date;
         assert_eq!(card.state.due, future_date);
     }

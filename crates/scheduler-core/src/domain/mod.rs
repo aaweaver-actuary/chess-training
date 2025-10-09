@@ -44,7 +44,8 @@ mod tests {
     fn card_new_initializes_expected_defaults() {
         let config = SchedulerConfig::default();
         let owner = Uuid::new_v4();
-        let today = chrono::NaiveDate::from_ymd_opt(2023, 1, 1).unwrap();
+        let today = chrono::NaiveDate::from_ymd_opt(2023, 1, 1)
+            .expect("1 January 2023 should be representable");
         let card = new_card(
             owner,
             CardKind::Tactic(SchedulerTacticCard::new()),
