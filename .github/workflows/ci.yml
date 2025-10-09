@@ -148,8 +148,14 @@ jobs:
             .filter(([file]) => file !== 'total')
             .flatMap(([file, metricSummary]) => {
               return metrics
-                .filter((metric) => (metricSummary?.[metric]?.pct ?? 0) < 100)
-                .map((metric) => `${file} -> ${metric}: ${metricSummary[metric].pct ?? 'N/A'}%`);
+                .filter((metric) => {
+                  const value = metricSummary?.[metric]?.pct;
+                  return typeof value !== 'number' || value < 100;
+                })
+                .map((metric) => {
+                  const value = metricSummary?.[metric]?.pct;
+                  return `${file} -> ${metric}: ${typeof value === 'number' ? value : 'N/A'}%`;
+                });
             });
           if (filesBelowThreshold.length > 0) {
             console.error('Every file must maintain 100% coverage. The following entries failed:');
