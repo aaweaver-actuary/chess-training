@@ -3,7 +3,9 @@ use std::num::NonZeroU8;
 
 use card_store::config::StorageConfig;
 use card_store::memory::InMemoryCardStore;
-use card_store::model::{Card, CardKind, CardState, EdgeInput, Position, ReviewRequest, UnlockRecord};
+use card_store::model::{
+    Card, CardKind, CardState, EdgeInput, Position, ReviewRequest, UnlockRecord,
+};
 use card_store::store::{CardStore, StoreError};
 use chrono::{Duration, NaiveDate};
 
@@ -337,7 +339,9 @@ fn importing_longer_line_preserves_existing_progress() {
 
         let card = latest.expect("at least one review per card");
         match card.kind {
-            CardKind::Opening { edge_id: stored_edge_id } => {
+            CardKind::Opening {
+                edge_id: stored_edge_id,
+            } => {
                 assert_eq!(stored_edge_id, *edge_id);
             }
             _ => panic!("expected opening card"),
