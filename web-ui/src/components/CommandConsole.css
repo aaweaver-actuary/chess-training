@@ -49,26 +49,26 @@
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  padding: 0 1.5rem;
-  background: rgba(3, 6, 20, 0.55);
+  padding: 0 1rem;
+  background: transparent;
   z-index: 1000;
-  animation: command-console-fade-in 200ms ease-out forwards;
+  animation: none;
 }
 
 .command-console-overlay--closing {
-  animation: command-console-fade-out 200ms ease-in forwards;
+  animation: none;
   pointer-events: none;
 }
 
 .command-console {
-  width: min(960px, 100%);
+  width: min(640px, 90%);
   background: rgba(12, 16, 36, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: none;
   border-radius: var(--radius-large) var(--radius-large) 0 0;
   box-shadow: 0 -24px 48px rgba(3, 6, 20, 0.55);
   color: var(--color-text-primary);
-  overflow: hidden;
+  overflow: visible;
   transform: translateY(100%);
   animation: command-console-slide-up 240ms ease-out forwards;
   position: relative;
@@ -82,14 +82,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 1.5rem 1.75rem 1.75rem;
-  min-height: clamp(200px, 25vh, 320px);
+  padding: 1.25rem 1.5rem 1.5rem;
+  min-height: clamp(140px, 18vh, 260px);
 }
 
 .command-console__close {
-  position: absolute;
-  top: 1.25rem;
-  right: 1.25rem;
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 50%;
@@ -103,6 +100,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  flex-shrink: 0;
   transition:
     transform 160ms ease,
     background 160ms ease,
@@ -123,11 +121,18 @@
 .command-console__header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 1rem;
   font-size: 0.85rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-soft);
+}
+
+.command-console__header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .command-console__title {
@@ -160,22 +165,32 @@
   color: var(--color-text-primary);
 }
 
-.command-console__placeholder {
-  font-size: 0.95rem;
+.command-console__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: 'Source Code Pro', 'Fira Code', monospace;
+  font-size: 1.1rem;
+  line-height: 1.4;
+  padding: 0;
+  outline: none;
+  caret-color: rgba(78, 115, 255, 0.95);
+}
+
+.command-console__input::placeholder {
   color: var(--color-text-muted);
+  opacity: 0.8;
 }
 
 @media (max-width: 600px) {
-  .command-console-overlay {
-    padding: 0 1rem;
-  }
-
   .command-console__container {
-    padding: 1.25rem 1.25rem 1.5rem;
+    padding: 1rem 1.25rem 1.25rem;
   }
 
   .command-console__body {
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 0.9rem;
   }
 }
 
@@ -197,20 +212,3 @@
   }
 }
 
-@keyframes command-console-fade-in {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-@keyframes command-console-fade-out {
-  0% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}

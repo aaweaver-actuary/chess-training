@@ -13,6 +13,10 @@
   width: min(960px, 100%);
 }
 
+.dashboard-page {
+  position: relative;
+}
+
 .dashboard {
   background: var(--color-surface);
   border-radius: var(--radius-large);
@@ -255,6 +259,10 @@
 }
 
 .floating-action {
+  --floating-action-edge-offset: calc(var(--space-gap-medium) * -1);
+  --floating-action-size: 4rem;
+  --floating-action-icon-size: 1.75rem;
+
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -334,22 +342,20 @@
 
 .lichess-shortcut {
   position: absolute;
-  top: -24px;
-  right: -24px;
-  width: 64px;
-  height: 64px;
-  font-size: 28px;
+  top: var(--floating-action-edge-offset);
+  right: var(--floating-action-edge-offset);
+  width: var(--floating-action-size);
+  height: var(--floating-action-size);
+  font-size: var(--floating-action-icon-size);
   line-height: 1;
   z-index: 3;
 }
 
 @media (max-width: 600px) {
   .lichess-shortcut {
-    top: 8px;
-    right: 8px;
-    width: 48px;
-    height: 48px;
-    font-size: 22px;
+    --floating-action-edge-offset: calc(var(--space-gap-small) / 2);
+    --floating-action-size: 3rem;
+    --floating-action-icon-size: 1.375rem;
   }
 }
 
@@ -390,9 +396,25 @@
 
   /* Disable pointer events on any absolutely positioned overlays 
      that might cover the board on small screens */
-  .opening-review > :not(chess-board) {
+.opening-review > :not(chess-board) {
     pointer-events: none;
   }
+}
+
+.blank-board-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.blank-board-page chess-board {
+  width: min(100vw, 100vh);
+  height: min(100vw, 100vh);
+  max-width: min(100vw, 100vh);
+  max-height: min(100vw, 100vh);
 }
 
 .empty-state {

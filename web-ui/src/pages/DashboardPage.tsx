@@ -1,13 +1,18 @@
 import type { FC } from 'react';
 import { Link } from 'react-router-dom';
 
+import { PgnImportPane } from '../components/PgnImportPane';
 import { ReviewDashboard } from '../components/ReviewDashboard';
 import type { ReviewOverview } from '../services/ReviewPlanner';
+import type { DetectedOpeningLine, ImportResult } from '../types/repertoire';
+import type { CommandDispatcher } from '../utils/commandDispatcher';
 
 type DashboardPageProps = {
   overview: ReviewOverview;
   openingPath: string;
   canStartOpening: boolean;
+  onImportLine: (line: DetectedOpeningLine) => ImportResult;
+  commandDispatcher?: CommandDispatcher;
 };
 
 const buildLinkClass = (enabled: boolean): string =>
@@ -17,8 +22,11 @@ export const DashboardPage: FC<DashboardPageProps> = ({
   overview,
   openingPath,
   canStartOpening,
+  onImportLine,
+  commandDispatcher,
 }) => (
   <main className="app-shell dashboard-page">
+    <PgnImportPane onImportLine={onImportLine} commandDispatcher={commandDispatcher} />
     <ReviewDashboard overview={overview} />
     <nav aria-label="Review navigation" className="dashboard-navigation">
       <Link

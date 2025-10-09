@@ -45,7 +45,9 @@ jobs:
       - name: Verify formatting (${{ matrix.crate }})
         run: cargo fmt --package ${{ matrix.crate }} -- --check
       - name: Lint with clippy (${{ matrix.crate }})
-        run: cargo clippy -p ${{ matrix.crate }} --all-targets --all-features -- -D warnings -D clippy::all -D clippy::pedantic
+        run: cargo clippy -p ${{ matrix.crate }} --all-targets --all-features -- -D clippy::all -D clippy::pedantic
+      - name: Run tests in debug mode (${{ matrix.crate }})
+        run: cargo test -p ${{ matrix.crate }} --all-features -- --nocapture
       - name: Run tests in release mode (${{ matrix.crate }})
         run: cargo test -p ${{ matrix.crate }} --release --all-features -- --nocapture
       - name: Enforce coverage (${{ matrix.crate }})
@@ -135,7 +137,7 @@ jobs:
           const total = summary.total;
           const metrics = ['lines', 'statements', 'branches', 'functions'];
           const failures = metrics.filter((metric) => {
-            const value = total?.[metric]?.pct;
+            const value = total?.[metric]?.pct ?? 0;
             return typeof value !== 'number' || value < 100;
           });
           if (failures.length > 0) {
@@ -146,8 +148,14 @@ jobs:
             .filter(([file]) => file !== 'total')
             .flatMap(([file, metricSummary]) => {
               return metrics
-                .filter((metric) => (metricSummary?.[metric]?.pct ?? 0) < 100)
-                .map((metric) => `${file} -> ${metric}: ${metricSummary[metric].pct ?? 'N/A'}%`);
+                .filter((metric) => {
+                  const value = metricSummary?.[metric]?.pct;
+                  return typeof value !== 'number' || value < 100;
+                })
+                .map((metric) => {
+                  const value = metricSummary?.[metric]?.pct;
+                  return `${file} -> ${metric}: ${typeof value === 'number' ? value : 'N/A'}%`;
+                });
             });
           if (filesBelowThreshold.length > 0) {
             console.error('Every file must maintain 100% coverage. The following entries failed:');

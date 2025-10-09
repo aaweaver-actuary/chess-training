@@ -11,6 +11,7 @@ pub enum CardKind<Opening, Tactic> {
 
 impl<Opening, Tactic> CardKind<Opening, Tactic> {
     /// Maps the opening payload to a different type while leaving the tactic payload untouched.
+    #[must_use]
     pub fn map_opening<O2>(self, mapper: impl FnOnce(Opening) -> O2) -> CardKind<O2, Tactic> {
         match self {
             CardKind::Opening(opening) => CardKind::Opening(mapper(opening)),
@@ -19,6 +20,7 @@ impl<Opening, Tactic> CardKind<Opening, Tactic> {
     }
 
     /// Maps the tactic payload to a different type while leaving the opening payload untouched.
+    #[must_use]
     pub fn map_tactic<T2>(self, mapper: impl FnOnce(Tactic) -> T2) -> CardKind<Opening, T2> {
         match self {
             CardKind::Opening(opening) => CardKind::Opening(opening),
@@ -27,10 +29,59 @@ impl<Opening, Tactic> CardKind<Opening, Tactic> {
     }
 
     /// Returns references to the payload without moving the value.
+    #[must_use]
     pub fn as_ref(&self) -> CardKind<&Opening, &Tactic> {
         match self {
             CardKind::Opening(opening) => CardKind::Opening(opening),
             CardKind::Tactic(tactic) => CardKind::Tactic(tactic),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn map_opening_transforms_opening_variant() {
+        let card: CardKind<String, ()> = CardKind::Opening("line".to_string());
+        let mapped: CardKind<usize, _> = card.map_opening(|opening| opening.len());
+        assert!(matches!(mapped, CardKind::Opening(4)));
+    }
+
+    #[test]
+    fn map_opening_leaves_tactic_variant_untouched() {
+        let card: CardKind<&str, _> = CardKind::Tactic("fork");
+        let mapped = card.map_opening(|opening| opening.len());
+        assert!(matches!(mapped, CardKind::Tactic("fork")));
+    }
+
+    #[test]
+    fn map_tactic_transforms_tactic_variant() {
+        let card: CardKind<(), String> = CardKind::Tactic("pin".to_string());
+        let mapped: CardKind<(), usize> = card.map_tactic(|tactic| tactic.len());
+        assert!(matches!(mapped, CardKind::Tactic(3)));
+    }
+
+    #[test]
+    fn map_tactic_leaves_opening_variant_untouched() {
+        let card: CardKind<_, &str> = CardKind::Opening("Najdorf");
+        let mapped = card.map_tactic(|tactic| tactic.len());
+        assert!(matches!(mapped, CardKind::Opening("Najdorf")));
+    }
+
+    #[test]
+    fn as_ref_preserves_payload_references() {
+        let tactic = String::from("skewer");
+        let card: CardKind<(), String> = CardKind::Tactic(tactic.clone());
+        assert!(matches!(
+            card.as_ref(),
+            CardKind::Tactic(reference) if *reference == "skewer"
+        ));
+        let opening: CardKind<String, ()> = CardKind::Opening(String::from("Ruy Lopez"));
+        assert!(matches!(
+            opening.as_ref(),
+            CardKind::Opening(reference) if *reference == "Ruy Lopez"
+        ));
     }
 }

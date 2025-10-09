@@ -159,7 +159,7 @@ pub struct Card {
     pub user_id: Uuid,
     pub kind: CardKind,            // Opening | Tactic
     pub ref_id: i64,               // Edge.id or Tactic.id
-    pub state: CardState,          // New | Learning | Review | Relearning
+    pub state: StoredCardState,    // Scheduling metadata (due date, interval, ease, streak)
     pub due_date: NaiveDate,
     pub interval: i32,
     pub ease: f32,

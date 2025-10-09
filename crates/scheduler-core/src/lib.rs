@@ -10,7 +10,10 @@ pub mod sm2;
 pub mod store;
 
 pub use config::SchedulerConfig;
-pub use domain::{Card, CardKind, CardState, ReviewOutcome, UnlockRecord};
+pub use domain::{
+    Card, CardKind, CardState, ReviewOutcome, SchedulerOpeningCard, SchedulerTacticCard,
+    SchedulerUnlockDetail, UnlockRecord, new_card,
+};
 pub use errors::SchedulerError;
 pub use grade::ReviewGrade;
 pub use queue::build_queue_for_day;

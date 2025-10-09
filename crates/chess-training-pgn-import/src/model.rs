@@ -1,4 +1,5 @@
 use fnv::FnvHasher;
+pub use review_domain::OpeningEdge;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -15,6 +16,7 @@ pub struct Position {
 }
 
 impl Position {
+    #[must_use]
     pub fn new(fen: &str, side_to_move: char, ply: u32) -> Self {
         let id = hash_with_seed(HASH_NAMESPACE, SCHEMA_VERSION, &fen);
         Self {
@@ -27,17 +29,15 @@ impl Position {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Edge {
-    pub id: u64,
-    pub parent_id: u64,
-    pub move_uci: String,
-    pub move_san: String,
-    pub child_id: u64,
+pub struct OpeningEdgeRecord {
+    #[serde(flatten)]
+    pub edge: OpeningEdge,
     pub source_hint: Option<String>,
 }
 
-impl Edge {
+impl OpeningEdgeRecord {
     #[allow(clippy::too_many_arguments)]
+    #[must_use]
     pub fn new(
         parent_id: u64,
         move_uci: &str,
@@ -46,14 +46,8 @@ impl Edge {
         source_hint: Option<String>,
     ) -> Self {
         let id = hash_with_seed(HASH_NAMESPACE, SCHEMA_VERSION, &(parent_id, move_uci));
-        Self {
-            id,
-            parent_id,
-            move_uci: move_uci.to_string(),
-            move_san: move_san.to_string(),
-            child_id,
-            source_hint,
-        }
+        let edge = OpeningEdge::new(id, parent_id, child_id, move_uci, move_san);
+        Self { edge, source_hint }
     }
 }
 
@@ -65,6 +59,7 @@ pub struct RepertoireEdge {
 }
 
 impl RepertoireEdge {
+    #[must_use]
     pub fn new(owner: &str, repertoire_key: &str, edge_id: u64) -> Self {
         Self {
             owner: owner.to_string(),
@@ -84,6 +79,7 @@ pub struct Tactic {
 }
 
 impl Tactic {
+    #[must_use]
     pub fn new(
         fen: &str,
         pv_uci: Vec<String>,
@@ -137,9 +133,9 @@ mod tests {
     fn edge_ids_differ_for_unique_moves() {
         let parent = Position::new("fen parent", 'w', 0);
         let child = Position::new("fen child", 'b', 1);
-        let first = Edge::new(parent.id, "e2e4", "e4", child.id, None);
-        let second = Edge::new(parent.id, "g1f3", "Nf3", child.id, None);
-        assert_ne!(first.id, second.id);
+        let first = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
+        let second = OpeningEdgeRecord::new(parent.id, "g1f3", "Nf3", child.id, None);
+        assert_ne!(first.edge.id, second.edge.id);
     }
 
     #[test]

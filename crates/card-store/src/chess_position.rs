@@ -18,18 +18,37 @@ impl ChessPosition {
     ///
     /// # Errors
     ///
-    /// Returns [`PositionError::InvalidSideToMove`] when the FEN omits or provides an invalid
-    /// side-to-move field.
+    /// Returns [`PositionError::MalformedFen`] when the FEN does not contain exactly 6
+    /// space-delimited fields, or when any field is empty.
+    ///
+    /// Returns [`PositionError::InvalidSideToMove`] when the FEN does not contain a
+    /// valid side-to-move segment.
+    ///
+    /// Returns [`PositionError::InvalidPiecePlacement`] when the FEN contains invalid
+    /// characters in the piece placement field.
+    #[must_use = "inspect the result to detect invalid chess positions"]
     pub fn new(fen: impl Into<String>, ply: u32) -> Result<Self, PositionError> {
         let fen = fen.into();
-        let side_to_move = fen
-            .split_whitespace()
-            .nth(1)
-            .and_then(|s| {
-                let c = s.chars().next()?;
-                matches!(c, 'w' | 'b').then_some(c)
-            })
+        let parts: Vec<&str> = fen.split(' ').collect();
+        if parts.len() != 6 || parts.iter().any(|segment| segment.is_empty()) {
+            return Err(PositionError::MalformedFen);
+        }
+
+        let side_to_move = parts[1]
+            .chars()
+            .next()
+            .filter(|c| matches!(c, 'w' | 'b'))
             .ok_or(PositionError::InvalidSideToMove)?;
+
+        if !parts[0].chars().all(|c| {
+            matches!(
+                c,
+                '/' | '1'
+                    ..='8' | 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p'
+            )
+        }) {
+            return Err(PositionError::InvalidPiecePlacement);
+        }
         let id = hash64(&[fen.as_bytes()]);
         Ok(Self {
             id,

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { sessionGateway } from '../sessionGateway';
 
-const fetchMock = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>();
+const fetchMock = vi.fn<typeof fetch>();
 
 describe('sessionGateway', () => {
   beforeEach(() => {
@@ -32,9 +32,11 @@ describe('sessionGateway', () => {
         body: JSON.stringify({ user_id: 'user-1' }),
       }),
     );
-    const [, init] = fetchMock.mock.calls[0];
+    const firstCall = fetchMock.mock.calls[0];
+    expect(firstCall).not.toBeUndefined();
+    const init = Array.isArray(firstCall) ? firstCall[1] : undefined;
     expect(init).toBeDefined();
-    const headers = (init as RequestInit).headers;
+    const headers = init?.headers;
     expect(headers).toBeInstanceOf(Headers);
     expect((headers as Headers).get('content-type')).toBe('application/json');
     expect(result).toEqual(responseBody);
@@ -66,9 +68,11 @@ describe('sessionGateway', () => {
         body: JSON.stringify({ card_id: 'c1', grade: 'Good', latency_ms: 4500 }),
       }),
     );
-    const [, gradeInit] = fetchMock.mock.calls[0];
+    const gradeCall = fetchMock.mock.calls[0];
+    expect(gradeCall).not.toBeUndefined();
+    const [, gradeInit] = gradeCall as Parameters<typeof fetch>;
     expect(gradeInit).toBeDefined();
-    const gradeHeaders = (gradeInit as RequestInit).headers;
+    const gradeHeaders = gradeInit?.headers;
     expect(gradeHeaders).toBeInstanceOf(Headers);
     expect((gradeHeaders as Headers).get('content-type')).toBe('application/json');
     expect(result).toEqual(responseBody);

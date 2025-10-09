@@ -149,6 +149,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "fnv",
+ "review-domain",
  "serde",
  "serde_json",
  "shakmaty",
@@ -428,6 +429,7 @@ name = "review-domain"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "serde",
 ]
 
 [[package]]
@@ -461,6 +463,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "maplit",
+ "num-traits",
  "review-domain",
  "thiserror",
  "uuid",

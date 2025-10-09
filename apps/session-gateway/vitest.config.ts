@@ -5,7 +5,13 @@ export default defineConfig({
     coverage: {
       reporter: ['text', 'lcov'],
       provider: 'v8',
-      exclude: ['src/index.ts', 'src/types.ts', 'eslint.config.js', 'vitest.config.ts'],
+      exclude: [
+        'src/index.ts',
+        'src/types.ts',
+        'eslint.config.js',
+        'vitest.config.ts',
+        'dist/**',
+      ],
       thresholds: {
         lines: 99,
         functions: 94,

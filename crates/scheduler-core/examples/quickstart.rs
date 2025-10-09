@@ -3,9 +3,9 @@
 //! Run with: `cargo run -p scheduler-core --example quickstart`
 
 use chrono::NaiveDate;
-use scheduler_core::domain::{OpeningCard, TacticCard};
+use scheduler_core::domain::{SchedulerOpeningCard, SchedulerTacticCard};
 use scheduler_core::{
-    Card, CardKind, CardStore, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig,
+    CardKind, CardStore, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig, new_card,
 };
 use uuid::Uuid;
 
@@ -18,12 +18,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 3. Add some sample cards to the store
     let owner_id = Uuid::new_v4();
-    let today = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
+    let today = NaiveDate::from_ymd_opt(2025, 1, 15).expect("valid example date");
 
     // Create a new opening card
-    let card1 = Card::new(
+    let card1 = new_card(
         owner_id,
-        CardKind::Opening(OpeningCard::new(
+        CardKind::Opening(SchedulerOpeningCard::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",
         )),
         today,
@@ -32,9 +32,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     store.upsert_card(card1.clone());
 
     // Create a tactic card
-    let card2 = Card::new(
+    let card2 = new_card(
         owner_id,
-        CardKind::Tactic(TacticCard::new()),
+        CardKind::Tactic(SchedulerTacticCard::new()),
         today,
         &config,
     );
@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let outcome = scheduler.review(card1.id, ReviewGrade::Good, today)?;
     println!(
         "Reviewed card {}: next due on {}",
-        outcome.card.id, outcome.card.due
+        outcome.card.id, outcome.card.state.due
     );
 
     Ok(())

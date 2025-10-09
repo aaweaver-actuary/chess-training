@@ -2,11 +2,12 @@ use review_domain::CardKind as GenericCardKind;
 
 /// Payload describing an opening-based card within the scheduler.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct OpeningCard {
+pub struct SchedulerOpeningCard {
     pub parent_prefix: String,
 }
 
-impl OpeningCard {
+impl SchedulerOpeningCard {
+    #[must_use]
     pub fn new(parent_prefix: impl Into<String>) -> Self {
         Self {
             parent_prefix: parent_prefix.into(),
@@ -16,13 +17,14 @@ impl OpeningCard {
 
 /// Marker struct representing tactic cards. Kept as a struct to allow future metadata.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct TacticCard;
+pub struct SchedulerTacticCard;
 
-impl TacticCard {
+impl SchedulerTacticCard {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 }
 
 /// Represents the type of a card in the scheduler.
-pub type CardKind = GenericCardKind<OpeningCard, TacticCard>;
+pub type CardKind = GenericCardKind<SchedulerOpeningCard, SchedulerTacticCard>;

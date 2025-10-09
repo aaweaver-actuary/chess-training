@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { DashboardPage } from '../DashboardPage';
 import type { ReviewOverview } from '../../services/ReviewPlanner';
+import type { DetectedOpeningLine, ImportResult } from '../../types/repertoire';
 
 const buildOverview = (overrides: Partial<ReviewOverview> = {}): ReviewOverview => ({
   progress: {
@@ -34,11 +35,30 @@ const buildOverview = (overrides: Partial<ReviewOverview> = {}): ReviewOverview 
   ],
 });
 
+const buildImportResult = (): ImportResult => ({
+  added: false,
+  line: {
+    id: 'line-1',
+    opening: 'Test Opening',
+    color: 'White',
+    moves: [],
+    display: 'Test line',
+    scheduledFor: '2024-01-01',
+  },
+});
+
+const stubImportLine = (_line: DetectedOpeningLine): ImportResult => buildImportResult();
+
 describe('DashboardPage', () => {
   it('enables navigation when an opening review can start', () => {
     render(
       <MemoryRouter>
-        <DashboardPage overview={buildOverview()} openingPath="/review/opening" canStartOpening />
+        <DashboardPage
+          overview={buildOverview()}
+          openingPath="/review/opening"
+          canStartOpening
+          onImportLine={stubImportLine}
+        />
       </MemoryRouter>,
     );
 
@@ -57,6 +77,7 @@ describe('DashboardPage', () => {
           overview={buildOverview()}
           openingPath="/review/opening"
           canStartOpening={false}
+          onImportLine={stubImportLine}
         />
       </MemoryRouter>,
     );

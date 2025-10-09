@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use crate::chess_position::ChessPosition;
 use crate::errors::PositionError;
-use crate::model::{Card, CardState, Edge, EdgeInput, ReviewRequest, UnlockRecord};
+use crate::model::{Card, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
 
 /// Unified error type returned by [`CardStore`] implementations.
 #[derive(Debug, Error, PartialEq)]
@@ -44,7 +44,8 @@ pub trait CardStore: Send + Sync + fmt::Debug {
     ///
     /// # Errors
     ///
-    /// Returns [`StoreError`] when the persistence layer cannot upsert the position.
+    /// Returns [`StoreError`] when the underlying persistence layer fails to
+    /// store the position or when the provided position is invalid.
     fn upsert_position(&self, position: ChessPosition) -> Result<ChessPosition, StoreError>;
     /// Insert or update an [`Edge`]. Returns the stored record.
     ///
@@ -56,29 +57,31 @@ pub trait CardStore: Send + Sync + fmt::Debug {
     ///
     /// # Errors
     ///
-    /// Returns [`StoreError`] when the card could not be created or retrieved.
+    /// Returns [`StoreError`] when the store cannot create or fetch the card.
     fn create_opening_card(
         &self,
         owner_id: &str,
         edge: &Edge,
-        state: CardState,
+        state: StoredCardState,
     ) -> Result<Card, StoreError>;
     /// Fetch all due cards for an owner on or before `as_of`.
     ///
     /// # Errors
     ///
-    /// Returns [`StoreError`] when the data source fails to return due cards.
+    /// Returns [`StoreError`] when the store cannot query the due cards.
     fn fetch_due_cards(&self, owner_id: &str, as_of: NaiveDate) -> Result<Vec<Card>, StoreError>;
     /// Record a review and return the updated card state.
     ///
     /// # Errors
     ///
-    /// Returns [`StoreError`] when the review could not be persisted.
+    /// Returns [`StoreError`] when the review cannot be recorded or the grade is
+    /// invalid.
     fn record_review(&self, review: ReviewRequest) -> Result<Card, StoreError>;
     /// Record a newly unlocked opening edge.
     ///
     /// # Errors
     ///
-    /// Returns [`StoreError`] when the unlock cannot be persisted.
+    /// Returns [`StoreError`] when the unlock cannot be recorded or conflicts
+    /// with an existing record.
     fn record_unlock(&self, unlock: UnlockRecord) -> Result<(), StoreError>;
 }

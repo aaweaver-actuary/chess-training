@@ -11,6 +11,7 @@ serde_json="1"
 toml      ="0.8"
 thiserror ="1"
 shakmaty     ="0.29"
+review-domain = { path = "../review-domain", features = ["serde"] }
 
 [dev-dependencies]
 tempfile="3"

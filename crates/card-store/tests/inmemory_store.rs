@@ -5,7 +5,7 @@ use card_store::chess_position::ChessPosition;
 use card_store::config::StorageConfig;
 use card_store::memory::InMemoryCardStore;
 use card_store::model::{
-    Card, CardKind, CardState, EdgeInput, ReviewRequest, UnlockDetail, UnlockRecord,
+    Card, CardKind, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockDetail, UnlockRecord,
 };
 use card_store::store::{CardStore, StoreError};
 use chrono::{Duration, NaiveDate};
@@ -53,11 +53,124 @@ fn setup_card_for_review(
         .create_opening_card(
             "andy",
             &edge,
-            CardState::new(review_date, initial_interval, initial_ease),
+            StoredCardState::new(review_date, initial_interval, initial_ease),
         )
         .unwrap();
 
     (store, card)
+}
+
+fn store_position_with_label(
+    store: &InMemoryCardStore,
+    fen: &str,
+    ply: u32,
+    label: &str,
+) -> ChessPosition {
+    let position =
+        ChessPosition::new(fen, ply).unwrap_or_else(|_| panic!("invalid position {label}"));
+    store
+        .upsert_position(position)
+        .unwrap_or_else(|_| panic!("store {label} position"))
+}
+
+fn store_edge_with_label(
+    store: &InMemoryCardStore,
+    parent: u64,
+    child: u64,
+    uci: &str,
+    san: &str,
+    label: &str,
+) -> Edge {
+    store
+        .upsert_edge(EdgeInput {
+            parent_id: parent,
+            move_uci: uci.to_string(),
+            move_san: san.to_string(),
+            child_id: child,
+        })
+        .unwrap_or_else(|_| panic!("store {label} edge"))
+}
+
+fn upsert_positions(
+    store: &InMemoryCardStore,
+    definitions: &[(&'static str, &'static str, u32)],
+) -> HashMap<&'static str, ChessPosition> {
+    let mut positions = HashMap::new();
+    for (label, fen, ply) in definitions {
+        let stored = store_position_with_label(store, fen, *ply, label);
+        positions.insert(*label, stored);
+    }
+    positions
+}
+
+fn upsert_edges(
+    store: &InMemoryCardStore,
+    positions: &HashMap<&'static str, ChessPosition>,
+    definitions: &[(
+        &'static str,
+        &'static str,
+        &'static str,
+        &'static str,
+        &'static str,
+    )],
+) -> HashMap<&'static str, Edge> {
+    let mut edges = HashMap::new();
+    for (label, parent, child, uci, san) in definitions {
+        let parent_id = positions[parent].id;
+        let child_id = positions[child].id;
+        let edge = store_edge_with_label(store, parent_id, child_id, uci, san, label);
+        edges.insert(*label, edge);
+    }
+    edges
+}
+
+fn extend_positions(
+    store: &InMemoryCardStore,
+    positions: &mut HashMap<&'static str, ChessPosition>,
+    definitions: &[(&'static str, &'static str, u32)],
+) {
+    for (label, fen, ply) in definitions {
+        let stored = store_position_with_label(store, fen, *ply, label);
+        positions.insert(*label, stored);
+    }
+}
+
+fn build_baseline(
+    store: &InMemoryCardStore,
+    owner: &str,
+    edges: &[Edge],
+    start_day: NaiveDate,
+    initial_interval: NonZeroU8,
+    initial_ease: f32,
+) -> HashMap<u64, Card> {
+    let mut baseline = HashMap::new();
+    for edge in edges {
+        let mut card = store
+            .create_opening_card(
+                owner,
+                edge,
+                StoredCardState::new(start_day, initial_interval, initial_ease),
+            )
+            .expect("create opening card");
+        let mut review_day = start_day;
+        for _ in 0..3 {
+            card = store
+                .record_review(ReviewRequest {
+                    card_id: card.id,
+                    reviewed_on: review_day,
+                    grade: 4,
+                })
+                .expect("record review");
+            review_day = card.state.due_on;
+        }
+
+        assert!(matches!(
+            &card.kind,
+            CardKind::Opening(opening) if opening.edge_id == edge.id
+        ));
+        baseline.insert(edge.id, card);
+    }
+    baseline
 }
 
 #[test]
@@ -74,7 +187,6 @@ fn position_creation_fails_with_missing_fields() {
 }
 
 #[test]
-#[should_panic]
 fn position_creation_fails_with_invalid_characters() {
     // Invalid character 'X' in FEN
     let result = ChessPosition::new(
@@ -85,7 +197,6 @@ fn position_creation_fails_with_invalid_characters() {
 }
 
 #[test]
-#[should_panic]
 fn position_creation_fails_with_extra_whitespace() {
     // Extra whitespace between fields
     let result = ChessPosition::new(
@@ -95,16 +206,42 @@ fn position_creation_fails_with_extra_whitespace() {
     assert!(result.is_err());
 }
 
-// This test should panic:
+// This test ensures invalid FEN strings with too many fields are rejected.
 #[test]
-#[should_panic]
 fn position_creation_fails_with_too_many_fields() {
-    // Too many fields in FEN
     let result = ChessPosition::new(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra",
         0,
     );
     assert!(result.is_err());
+}
+
+#[test]
+fn position_creation_returns_invalid_piece_placement_for_invalid_characters() {
+    use card_store::errors::PositionError;
+    // Invalid character 'X' in piece placement field
+    let result = ChessPosition::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1",
+        0,
+    );
+    assert_eq!(result, Err(PositionError::InvalidPiecePlacement));
+}
+
+#[test]
+fn position_creation_returns_malformed_fen_for_missing_fields() {
+    use card_store::errors::PositionError;
+    let result = ChessPosition::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", 0);
+    assert_eq!(result, Err(PositionError::MalformedFen));
+}
+
+#[test]
+fn position_creation_returns_invalid_side_to_move_for_invalid_side() {
+    use card_store::errors::PositionError;
+    let result = ChessPosition::new(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR x KQkq - 0 1",
+        0,
+    );
+    assert_eq!(result, Err(PositionError::InvalidSideToMove));
 }
 
 #[test]
@@ -177,14 +314,14 @@ fn due_cards_filter_out_future_entries() {
         .create_opening_card(
             "andy",
             &edge,
-            CardState::new(past, NonZeroU8::new(1).unwrap(), 2.5),
+            StoredCardState::new(past, NonZeroU8::new(1).unwrap(), 2.5),
         )
         .unwrap();
     store
         .create_opening_card(
             "andy",
             &edge,
-            CardState::new(future, NonZeroU8::new(1).unwrap(), 2.5),
+            StoredCardState::new(future, NonZeroU8::new(1).unwrap(), 2.5),
         )
         .unwrap();
 
@@ -252,135 +389,62 @@ fn importing_longer_line_preserves_existing_progress() {
     let initial_interval = NonZeroU8::new(1).unwrap();
     let owner = "learner";
 
-    // Initial import containing moves up to 3.Bc4.
-    let start = store
-        .upsert_position(ChessPosition::new(START_FEN, 0).expect("start position"))
-        .expect("store start");
-    let e4_pos = store
-        .upsert_position(ChessPosition::new(E4_FEN, 1).expect("after 1.e4"))
-        .expect("store e4");
-    let e5_pos = store
-        .upsert_position(ChessPosition::new(E5_FEN, 2).expect("after 1...e5"))
-        .expect("store e5");
-    let nf3_pos = store
-        .upsert_position(ChessPosition::new(NF3_FEN, 3).expect("after 2.Nf3"))
-        .expect("store Nf3");
-    let nc6_pos = store
-        .upsert_position(ChessPosition::new(NC6_FEN, 4).expect("after 2...Nc6"))
-        .expect("store Nc6");
-    let bc4_pos = store
-        .upsert_position(ChessPosition::new(BC4_FEN, 5).expect("after 3.Bc4"))
-        .expect("store Bc4");
-
-    let edge_e4 = store
-        .upsert_edge(EdgeInput {
-            parent_id: start.id,
-            move_uci: "e2e4".to_string(),
-            move_san: "e4".to_string(),
-            child_id: e4_pos.id,
-        })
-        .expect("edge 1.e4");
-    let _edge_e5 = store
-        .upsert_edge(EdgeInput {
-            parent_id: e4_pos.id,
-            move_uci: "e7e5".to_string(),
-            move_san: "e5".to_string(),
-            child_id: e5_pos.id,
-        })
-        .expect("edge 1...e5");
-    let edge_nf3 = store
-        .upsert_edge(EdgeInput {
-            parent_id: e5_pos.id,
-            move_uci: "g1f3".to_string(),
-            move_san: "Nf3".to_string(),
-            child_id: nf3_pos.id,
-        })
-        .expect("edge 2.Nf3");
-    let _edge_nc6 = store
-        .upsert_edge(EdgeInput {
-            parent_id: nf3_pos.id,
-            move_uci: "b8c6".to_string(),
-            move_san: "Nc6".to_string(),
-            child_id: nc6_pos.id,
-        })
-        .expect("edge 2...Nc6");
-    let edge_bc4 = store
-        .upsert_edge(EdgeInput {
-            parent_id: nc6_pos.id,
-            move_uci: "f1c4".to_string(),
-            move_san: "Bc4".to_string(),
-            child_id: bc4_pos.id,
-        })
-        .expect("edge 3.Bc4");
-
-    let white_edges = vec![edge_e4.clone(), edge_nf3.clone(), edge_bc4.clone()];
-    let mut edge_to_card: HashMap<u64, u64> = HashMap::new();
+    let mut positions = upsert_positions(
+        &store,
+        &[
+            ("start", START_FEN, 0),
+            ("e4", E4_FEN, 1),
+            ("e5", E5_FEN, 2),
+            ("nf3", NF3_FEN, 3),
+            ("nc6", NC6_FEN, 4),
+            ("bc4", BC4_FEN, 5),
+        ],
+    );
+    let initial_edges = upsert_edges(
+        &store,
+        &positions,
+        &[
+            ("e4", "start", "e4", "e2e4", "e4"),
+            ("e5", "e4", "e5", "e7e5", "e5"),
+            ("nf3", "e5", "nf3", "g1f3", "Nf3"),
+            ("nc6", "nf3", "nc6", "b8c6", "Nc6"),
+            ("bc4", "nc6", "bc4", "f1c4", "Bc4"),
+        ],
+    );
+    let white_edges = vec![
+        initial_edges["e4"].clone(),
+        initial_edges["nf3"].clone(),
+        initial_edges["bc4"].clone(),
+    ];
     let start_day = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
-    let initial_state = CardState::new(start_day, initial_interval, 2.5);
+    let baseline = build_baseline(
+        &store,
+        owner,
+        &white_edges,
+        start_day,
+        initial_interval,
+        2.5,
+    );
 
-    for edge in &white_edges {
-        let card = store
-            .create_opening_card(owner, edge, initial_state.clone())
-            .expect("create opening card");
-        edge_to_card.insert(edge.id, card.id);
-    }
-
-    // Simulate a week of study by reviewing each card on its due date.
-    let mut baseline: HashMap<u64, Card> = HashMap::new();
-    for (edge_id, card_id) in &edge_to_card {
-        let mut review_day = start_day;
-        let mut latest: Option<Card> = None;
-        for _ in 0..3 {
-            let card = store
-                .record_review(ReviewRequest {
-                    card_id: *card_id,
-                    reviewed_on: review_day,
-                    grade: 4,
-                })
-                .expect("record review");
-            review_day = card.state.due_on;
-            latest = Some(card);
-        }
-
-        let card = latest.expect("at least one review per card");
-        match card.kind {
-            CardKind::Opening(ref opening) => {
-                assert_eq!(opening.edge_id, *edge_id);
-            }
-            _ => panic!("expected opening card"),
-        }
-        baseline.insert(*edge_id, card);
-    }
-
-    // Second import arrives a week later with additional moves 3...Bc5 4.c3.
     let import_day = start_day + Duration::days(7);
-    let import_state = CardState::new(import_day, initial_interval, 2.5);
+    let import_state = StoredCardState::new(import_day, initial_interval, 2.5);
 
-    let bc5_pos = store
-        .upsert_position(ChessPosition::new(BC5_FEN, 6).expect("after 3...Bc5"))
-        .expect("store Bc5");
-    let c3_pos = store
-        .upsert_position(ChessPosition::new(C3_FEN, 7).expect("after 4.c3"))
-        .expect("store c3");
+    extend_positions(
+        &store,
+        &mut positions,
+        &[("bc5", BC5_FEN, 6), ("c3", C3_FEN, 7)],
+    );
+    let new_edges = upsert_edges(
+        &store,
+        &positions,
+        &[
+            ("bc5", "bc4", "bc5", "f8c5", "Bc5"),
+            ("c3", "bc5", "c3", "c2c3", "c3"),
+        ],
+    );
+    let bc5_edge = new_edges["bc5"].clone();
+    let c3_edge = new_edges["c3"].clone();
 
-    let edge_bc5 = store
-        .upsert_edge(EdgeInput {
-            parent_id: bc4_pos.id,
-            move_uci: "f8c5".to_string(),
-            move_san: "Bc5".to_string(),
-            child_id: bc5_pos.id,
-        })
-        .expect("edge 3...Bc5");
-    let edge_c3 = store
-        .upsert_edge(EdgeInput {
-            parent_id: edge_bc5.child_id,
-            move_uci: "c2c3".to_string(),
-            move_san: "c3".to_string(),
-            child_id: c3_pos.id,
-        })
-        .expect("edge 4.c3");
-
-    // Re-importing the earlier moves should not change their scheduling metadata.
     for edge in &white_edges {
         let card = store
             .create_opening_card(owner, edge, import_state.clone())
@@ -391,13 +455,12 @@ fn importing_longer_line_preserves_existing_progress() {
         assert_eq!(card, *original, "card state changed for {}", edge.move_san);
     }
 
-    // The new move becomes the only item due on the import day.
     let new_card = store
-        .create_opening_card(owner, &edge_c3, import_state.clone())
+        .create_opening_card(owner, &c3_edge, import_state.clone())
         .expect("create new move card");
     assert_eq!(
         new_card.state,
-        CardState::new(import_day, initial_interval, 2.5),
+        StoredCardState::new(import_day, initial_interval, 2.5),
         "new card should use default scheduling state",
     );
 
@@ -407,10 +470,7 @@ fn importing_longer_line_preserves_existing_progress() {
     assert_eq!(due_cards.len(), 1, "only the new move should be due");
     assert_eq!(due_cards[0].id, new_card.id, "unexpected card queued");
 
-    // Ensure the opponent move was recorded but does not create a learner card.
-    // Only the learner's moves should result in card creation; opponent moves like Bc5
-    // should not create a learner card. This assertion validates that behavior.
-    assert!(!baseline.contains_key(&edge_bc5.id));
+    assert!(!baseline.contains_key(&bc5_edge.id));
 }
 
 #[test]
@@ -475,7 +535,7 @@ fn grade_0_resets_interval_and_decreases_ease_factor() {
     // Grade 0: interval resets to 1
     assert_eq!(updated_card.state.interval.get(), 1);
     // Grade 0: ease_factor decreases by -0.3, clamped to 1.3 minimum
-    assert_eq!(updated_card.state.ease_factor, 2.2); // 2.5 - 0.3 = 2.2
+    assert!((updated_card.state.ease_factor - 2.2).abs() < f32::EPSILON); // 2.5 - 0.3 = 2.2
     // Grade 0: consecutive_correct resets to 0
     assert_eq!(updated_card.state.consecutive_correct, 0);
     assert_eq!(updated_card.state.last_reviewed_on, Some(review_date));
@@ -504,7 +564,7 @@ fn grade_1_resets_interval_with_smaller_ease_penalty() {
     // Grade 1: interval resets to 1
     assert_eq!(updated_card.state.interval.get(), 1);
     // Grade 1: ease_factor decreases by -0.15
-    assert_eq!(updated_card.state.ease_factor, 1.85); // 2.0 - 0.15 = 1.85
+    assert!((updated_card.state.ease_factor - 1.85).abs() < f32::EPSILON); // 2.0 - 0.15 = 1.85
     // Grade 1: consecutive_correct resets to 0
     assert_eq!(updated_card.state.consecutive_correct, 0);
     assert_eq!(updated_card.state.last_reviewed_on, Some(review_date));
@@ -528,7 +588,7 @@ fn grade_2_maintains_interval_with_small_ease_penalty() {
     // Grade 2: interval remains the same
     assert_eq!(updated_card.state.interval.get(), 7);
     // Grade 2: ease_factor decreases by -0.05
-    assert_eq!(updated_card.state.ease_factor, 2.45); // 2.5 - 0.05 = 2.45
+    assert!((updated_card.state.ease_factor - 2.45).abs() < f32::EPSILON); // 2.5 - 0.05 = 2.45
     // Grade 2: consecutive_correct resets to 0
     assert_eq!(updated_card.state.consecutive_correct, 0);
     assert_eq!(updated_card.state.last_reviewed_on, Some(review_date));
@@ -557,7 +617,7 @@ fn grade_3_increments_interval_and_streak() {
     // Grade 3: interval increments by 1
     assert_eq!(updated_card.state.interval.get(), 4); // 3 + 1 = 4
     // Grade 3: ease_factor remains unchanged (delta = 0.0)
-    assert_eq!(updated_card.state.ease_factor, 2.5);
+    assert!((updated_card.state.ease_factor - 2.5).abs() < f32::EPSILON);
     // Grade 3: consecutive_correct increments
     assert_eq!(updated_card.state.consecutive_correct, 1);
     assert_eq!(updated_card.state.last_reviewed_on, Some(review_date));
@@ -586,7 +646,7 @@ fn grade_0_clamps_ease_factor_to_minimum() {
 
     // Grade 0: ease_factor decreases by -0.3, but should be clamped to 1.3 minimum
     // 1.4 - 0.3 = 1.1, but clamped to 1.3
-    assert_eq!(updated_card.state.ease_factor, 1.3);
+    assert!((updated_card.state.ease_factor - 1.3).abs() < f32::EPSILON);
 }
 
 #[test]
@@ -607,5 +667,5 @@ fn grade_4_clamps_ease_factor_to_maximum() {
 
     // Grade 4: ease_factor increases by 0.15, but should be clamped to 2.8 maximum
     // 2.7 + 0.15 = 2.85, but clamped to 2.8
-    assert_eq!(updated_card.state.ease_factor, 2.8);
+    assert!((updated_card.state.ease_factor - 2.8).abs() < f32::EPSILON);
 }

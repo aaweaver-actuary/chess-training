@@ -2,7 +2,7 @@ use std::num::NonZeroU8;
 
 use chrono::{Duration, NaiveDate};
 
-use crate::model::{CardState, ReviewRequest};
+use crate::model::{ReviewRequest, StoredCardState};
 use crate::store::StoreError;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -14,7 +14,7 @@ pub(super) struct ReviewTransition {
 }
 
 pub(super) fn apply_review(
-    state: &mut CardState,
+    state: &mut StoredCardState,
     review: &ReviewRequest,
 ) -> Result<(), StoreError> {
     let transition = derive_review_transition(state, review)?;
@@ -23,7 +23,7 @@ pub(super) fn apply_review(
 }
 
 fn derive_review_transition(
-    state: &CardState,
+    state: &StoredCardState,
     review: &ReviewRequest,
 ) -> Result<ReviewTransition, StoreError> {
     validate_grade(review.grade)?;
@@ -73,7 +73,7 @@ fn ease_delta_for_grade(grade: u8) -> f32 {
 }
 
 fn finalize_transition(
-    state: &CardState,
+    state: &StoredCardState,
     review: &ReviewRequest,
     interval: NonZeroU8,
     ease: f32,
@@ -101,7 +101,7 @@ fn due_date_for_review(reviewed_on: NaiveDate, interval: NonZeroU8) -> NaiveDate
 }
 
 fn commit_review_transition(
-    state: &mut CardState,
+    state: &mut StoredCardState,
     reviewed_on: NaiveDate,
     transition: ReviewTransition,
 ) {
@@ -115,13 +115,14 @@ fn commit_review_transition(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::panic::catch_unwind;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
     }
 
-    fn sample_state() -> CardState {
-        CardState::new(naive_date(2023, 1, 1), NonZeroU8::new(1).unwrap(), 2.5)
+    fn sample_state() -> StoredCardState {
+        StoredCardState::new(naive_date(2023, 1, 1), NonZeroU8::new(1).unwrap(), 2.5)
     }
 
     fn sample_review(grade: u8) -> ReviewRequest {
@@ -176,6 +177,19 @@ mod tests {
     }
 
     #[test]
+    fn interval_after_grade_panics_on_out_of_range_values() {
+        let interval = NonZeroU8::new(3).unwrap();
+        let result = catch_unwind(|| interval_after_grade(interval, 9));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn ease_delta_for_grade_panics_on_out_of_range_values() {
+        let result = catch_unwind(|| ease_delta_for_grade(9));
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn next_streak_tracks_correct_answers() {
         assert_eq!(next_streak(2, 4), 3);
         assert_eq!(next_streak(5, 1), 0);
@@ -195,7 +209,7 @@ mod tests {
         let interval = NonZeroU8::new(2).unwrap();
         let transition = finalize_transition(&state, &review, interval, 2.3);
         assert_eq!(transition.interval, interval);
-        assert_eq!(transition.ease, 2.3);
+        assert!((transition.ease - 2.3).abs() < f32::EPSILON);
         assert_eq!(transition.due_on, naive_date(2023, 1, 3));
     }
 
@@ -210,7 +224,7 @@ mod tests {
         };
         commit_review_transition(&mut state, naive_date(2023, 1, 2), transition);
         assert_eq!(state.interval.get(), 3);
-        assert_eq!(state.ease_factor, 2.1);
+        assert!((state.ease_factor - 2.1).abs() < f32::EPSILON);
         assert_eq!(state.due_on, naive_date(2023, 1, 4));
     }
 }

@@ -9,7 +9,7 @@ use chrono::NaiveDate;
 use crate::chess_position::ChessPosition;
 use crate::config::StorageConfig;
 use crate::model::{
-    Card, CardState, Edge, EdgeInput, ReviewRequest, UnlockRecord, card_id_for_opening,
+    Card, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord, card_id_for_opening,
 };
 use crate::store::{CardStore, StoreError};
 
@@ -37,6 +37,7 @@ pub struct InMemoryCardStore {
 
 impl InMemoryCardStore {
     /// Construct a new [`InMemoryCardStore`] with the provided [`StorageConfig`].
+    #[must_use]
     pub fn new(config: StorageConfig) -> Self {
         Self {
             _config: config,
@@ -48,6 +49,11 @@ impl InMemoryCardStore {
     }
 
     /// Number of unique positions currently stored. Useful for tests.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::PoisonedLock`] when the underlying position lock is poisoned.
+    #[must_use = "handle potential store errors when counting positions"]
     pub fn position_count(&self) -> Result<usize, StoreError> {
         Ok(self.positions_read()?.len())
     }
@@ -127,7 +133,7 @@ impl CardStore for InMemoryCardStore {
     fn upsert_edge(&self, edge: EdgeInput) -> Result<Edge, StoreError> {
         self.ensure_position_exists(edge.parent_id)?;
         self.ensure_position_exists(edge.child_id)?;
-        let canonical = Edge::from_input(edge);
+        let canonical = edge.into_edge();
         let mut edges = self.edges_write()?;
         store_canonical_edge(&mut edges, canonical)
     }
@@ -136,7 +142,7 @@ impl CardStore for InMemoryCardStore {
         &self,
         owner_id: &str,
         edge: &Edge,
-        state: CardState,
+        state: StoredCardState,
     ) -> Result<Card, StoreError> {
         self.ensure_edge_exists(edge.id)?;
         let card_id = card_id_for_opening(owner_id, edge.id);
@@ -158,13 +164,14 @@ impl CardStore for InMemoryCardStore {
 
     fn record_unlock(&self, unlock: UnlockRecord) -> Result<(), StoreError> {
         let mut unlocks = self.unlocks_write()?;
-        insert_unlock_or_error(&mut unlocks, unlock)
+        insert_unlock_or_error(&mut unlocks, &unlock)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::UnlockDetail;
     use chrono::NaiveDate;
     use std::panic::catch_unwind;
 
@@ -188,6 +195,20 @@ mod tests {
         )
         .expect("valid FEN");
         let err = store.upsert_position(position).unwrap_err();
+        assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "positions"));
+    }
+
+    #[test]
+    fn position_count_reports_poisoned_lock() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+
+        let result = catch_unwind(|| {
+            let _guard = store.positions.write().unwrap();
+            panic!("poison");
+        });
+        assert!(result.is_err());
+
+        let err = store.position_count().unwrap_err();
         assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "positions"));
     }
 
@@ -222,7 +243,7 @@ mod tests {
                 child_id: position.id,
             })
             .unwrap();
-        let state = CardState::new(
+        let state = StoredCardState::new(
             naive_date(2023, 1, 1),
             std::num::NonZeroU8::new(1).unwrap(),
             2.5,
@@ -239,5 +260,24 @@ mod tests {
             .unwrap();
         assert_eq!(updated.id, card.id);
         assert!(updated.state.last_reviewed_on.is_some());
+    }
+
+    #[test]
+    fn record_unlock_reports_poisoned_lock() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+
+        let result = catch_unwind(|| {
+            let _guard = store.unlocks.write().unwrap();
+            panic!("poison");
+        });
+        assert!(result.is_err());
+
+        let unlock = UnlockRecord {
+            owner_id: "owner".to_string(),
+            detail: UnlockDetail::new(42),
+            unlocked_on: naive_date(2023, 1, 3),
+        };
+        let err = store.record_unlock(unlock).unwrap_err();
+        assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "unlocks"));
     }
 }

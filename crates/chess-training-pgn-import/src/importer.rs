@@ -3,8 +3,8 @@ use shakmaty::san::San;
 use shakmaty::{CastlingMode, Chess, Color, EnPassantMode, Move, Position};
 
 use crate::config::IngestConfig;
-use crate::model::{Edge, Position as ModelPosition, RepertoireEdge, Tactic};
-use crate::storage::{InMemoryStore, Storage};
+use crate::model::{OpeningEdgeRecord, Position as ModelPosition, RepertoireEdge, Tactic};
+use crate::storage::{ImportInMemoryStore, Storage, UpsertOutcome};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Tracks various metrics during the import process.
@@ -27,26 +27,26 @@ pub struct ImportMetrics {
 }
 
 impl ImportMetrics {
-    fn note_position(&mut self, inserted: bool) {
-        if inserted {
+    fn note_position(&mut self, outcome: UpsertOutcome) {
+        if outcome.is_inserted() {
             self.opening_positions += 1;
         }
     }
 
-    fn note_edge(&mut self, inserted: bool) {
-        if inserted {
+    fn note_edge(&mut self, outcome: UpsertOutcome) {
+        if outcome.is_inserted() {
             self.opening_edges += 1;
         }
     }
 
-    fn note_repertoire(&mut self, inserted: bool) {
-        if inserted {
+    fn note_repertoire(&mut self, outcome: UpsertOutcome) {
+        if outcome.is_inserted() {
             self.repertoire_edges += 1;
         }
     }
 
-    fn note_tactic(&mut self, inserted: bool) {
-        if inserted {
+    fn note_tactic(&mut self, outcome: UpsertOutcome) {
+        if outcome.is_inserted() {
             self.tactics += 1;
         }
     }
@@ -76,9 +76,9 @@ pub enum ImportError {
 /// # Basic usage
 ///
 /// ```
-/// use chess_training_pgn_import::{Importer, InMemoryStore, IngestConfig};
+/// use chess_training_pgn_import::{Importer, ImportInMemoryStore, IngestConfig};
 /// let config = IngestConfig::default();
-/// let store = InMemoryStore::new();
+/// let store = ImportInMemoryStore::new();
 /// let mut importer = Importer::new(config, store);
 /// let pgn_str = r#"[Event "Example"]
 /// 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O
@@ -93,6 +93,7 @@ pub struct Importer<S: Storage> {
 }
 
 impl<S: Storage> Importer<S> {
+    #[must_use]
     pub fn new(config: IngestConfig, store: S) -> Self {
         Self {
             config,
@@ -101,6 +102,12 @@ impl<S: Storage> Importer<S> {
         }
     }
 
+    /// Ingests one or more PGN games from the provided string into the configured storage.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any parsed game violates the configured import constraints or
+    /// fails PGN validation.
     pub fn ingest_pgn_str(
         &mut self,
         owner: &str,
@@ -115,21 +122,23 @@ impl<S: Storage> Importer<S> {
                 &mut self.metrics,
                 owner,
                 repertoire,
-                game,
+                &game,
                 game_index,
             )?;
         }
         Ok(())
     }
 
+    #[must_use]
     pub fn finalize(self) -> (S, ImportMetrics) {
         (self.store, self.metrics)
     }
 }
 
-impl Importer<InMemoryStore> {
+impl Importer<ImportInMemoryStore> {
+    #[must_use]
     pub fn new_in_memory(config: IngestConfig) -> Self {
-        Self::new(config, InMemoryStore::default())
+        Self::new(config, ImportInMemoryStore::default())
     }
 }
 
@@ -139,15 +148,15 @@ fn process_game<S: Storage>(
     metrics: &mut ImportMetrics,
     owner: &str,
     repertoire: &str,
-    game: RawGame,
+    game: &RawGame,
     index: usize,
 ) -> Result<(), ImportError> {
     let fen_tag = game.tag("FEN").map(str::to_string);
-    ensure_setup_requirement_for_fen_games(config, &game, fen_tag.as_deref())?;
+    ensure_setup_requirement_for_fen_games(config, game, fen_tag.as_deref())?;
     let source_hint = game.tag("Event").map(str::to_string);
     let context =
         initialize_game_context(config, store, metrics, fen_tag.clone(), source_hint.clone())?;
-    play_moves_and_finalize(store, metrics, owner, repertoire, &game, index, context)?;
+    play_moves_and_finalize(store, metrics, owner, repertoire, game, index, context)?;
     Ok(())
 }
 
@@ -324,16 +333,16 @@ fn process_single_san_move<S: Storage>(
     index: usize,
 ) -> Result<(), ImportError> {
     let san = parse_san(san_text)?;
-    let mv = convert_san_to_move(&context.board, &san, san_text, index)?;
+    let mv = convert_san_to_move(&context.board, san, san_text, index)?;
     let movement = MoveContext::new(&context.board, mv);
-    store_opening_data_if_requested(store, metrics, owner, repertoire, context, &movement, &san);
+    store_opening_data_if_requested(store, metrics, owner, repertoire, context, &movement, san);
     context.advance(movement);
     Ok(())
 }
 
 fn convert_san_to_move(
     board: &Chess,
-    san: &San,
+    san: San,
     original: &str,
     index: usize,
 ) -> Result<Move, ImportError> {
@@ -350,7 +359,7 @@ fn store_opening_data_if_requested<S: Storage>(
     repertoire: &str,
     context: &GameContext,
     movement: &MoveContext,
-    san: &San,
+    san: San,
 ) {
     if !context.include_in_trie {
         return;
@@ -358,7 +367,7 @@ fn store_opening_data_if_requested<S: Storage>(
     let parent = position_from_board(&context.board, context.ply);
     let child = position_from_board(&movement.next_board, movement.child_ply);
     metrics.note_position(store.upsert_position(child.clone()));
-    let edge = Edge::new(
+    let edge = OpeningEdgeRecord::new(
         parent.id,
         &movement.uci,
         &san.to_string(),
@@ -366,9 +375,11 @@ fn store_opening_data_if_requested<S: Storage>(
         context.source_hint.clone(),
     );
     metrics.note_edge(store.upsert_edge(edge.clone()));
-    metrics.note_repertoire(
-        store.upsert_repertoire_edge(RepertoireEdge::new(owner, repertoire, edge.id)),
-    );
+    metrics.note_repertoire(store.upsert_repertoire_edge(RepertoireEdge::new(
+        owner,
+        repertoire,
+        edge.edge.id,
+    )));
 }
 
 fn finalize_tactic_if_requested<S: Storage>(
@@ -472,7 +483,7 @@ fn move_to_uci(board: &Chess, mv: Move) -> String {
 
 fn board_to_ply(board: &Chess) -> u32 {
     let base = board.fullmoves().get().saturating_sub(1);
-    base * 2 + if board.turn() == Color::Black { 1 } else { 0 }
+    base * 2 + u32::from(board.turn() == Color::Black)
 }
 
 fn position_from_board(board: &Chess, ply: u32) -> ModelPosition {
@@ -599,20 +610,20 @@ mod tests {
     #[test]
     fn metrics_only_increment_when_inserted() {
         let mut metrics = ImportMetrics::default();
-        metrics.note_position(false);
-        metrics.note_edge(false);
-        metrics.note_repertoire(false);
-        metrics.note_tactic(false);
+        metrics.note_position(UpsertOutcome::Replaced);
+        metrics.note_edge(UpsertOutcome::Replaced);
+        metrics.note_repertoire(UpsertOutcome::Replaced);
+        metrics.note_tactic(UpsertOutcome::Replaced);
 
         assert_eq!(metrics.opening_positions, 0);
         assert_eq!(metrics.opening_edges, 0);
         assert_eq!(metrics.repertoire_edges, 0);
         assert_eq!(metrics.tactics, 0);
 
-        metrics.note_position(true);
-        metrics.note_edge(true);
-        metrics.note_repertoire(true);
-        metrics.note_tactic(true);
+        metrics.note_position(UpsertOutcome::Inserted);
+        metrics.note_edge(UpsertOutcome::Inserted);
+        metrics.note_repertoire(UpsertOutcome::Inserted);
+        metrics.note_tactic(UpsertOutcome::Inserted);
 
         assert_eq!(metrics.opening_positions, 1);
         assert_eq!(metrics.opening_edges, 1);
@@ -713,7 +724,7 @@ mod tests {
             include_fen_in_trie: true,
             ..Default::default()
         };
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
             .expect("context creation succeeds")
@@ -729,7 +740,7 @@ mod tests {
             skip_malformed_fen: true,
             ..Default::default()
         };
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let context = initialize_game_context(
             &config,
@@ -779,7 +790,7 @@ mod tests {
     fn convert_san_to_move_reports_illegal_moves() {
         let board = Chess::default();
         let san = parse_san("Kxh8").expect("parse ok");
-        let err = convert_san_to_move(&board, &san, "Kxh8", 3).expect_err("illegal move");
+        let err = convert_san_to_move(&board, san, "Kxh8", 3).expect_err("illegal move");
         assert!(matches!(err, ImportError::IllegalSan { game, .. } if game == 3));
     }
 
@@ -789,7 +800,7 @@ mod tests {
             include_fen_in_trie: true,
             ..Default::default()
         };
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let mut context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
             .expect("context creation")
@@ -815,7 +826,7 @@ mod tests {
             include_fen_in_trie: true,
             ..Default::default()
         };
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let mut context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
             .expect("context")
@@ -844,7 +855,7 @@ mod tests {
             tactic_from_fen: true,
             ..Default::default()
         };
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let context = initialize_game_context(
             &config,
@@ -862,7 +873,7 @@ mod tests {
 
     #[test]
     fn play_moves_and_finalize_is_noop_when_context_absent() {
-        let mut store = InMemoryStore::default();
+        let mut store = ImportInMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let game = RawGame::default();
         assert!(

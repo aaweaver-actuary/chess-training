@@ -1,14 +1,22 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import type { JSX } from 'react';
+
+
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 
 import './App.css';
 import { sampleSnapshot } from './fixtures/sampleSnapshot';
 import { DashboardPage } from './pages/DashboardPage';
+import { BlankBoardPage } from './pages/BlankBoardPage';
 import { OpeningReviewPage } from './pages/OpeningReviewPage';
 import { ReviewPlanner } from './services/ReviewPlanner';
+import type { ReviewOverview } from './services/ReviewPlanner';
 import type { CardSummary, ReviewGrade } from './types/gateway';
 import { sessionStore } from './state/sessionStore';
 import { CommandConsole } from './components/CommandConsole';
+import type { DetectedOpeningLine, ImportResult, ScheduledOpeningLine } from './types/repertoire';
+import { createCommandDispatcher } from './utils/commandDispatcher';
+import type { CommandDispatcher } from './utils/commandDispatcher';
 
 const planner = new ReviewPlanner();
 const baselineOverview = planner.buildOverview(sampleSnapshot);
@@ -40,6 +48,46 @@ const buildOverview = (stats: ReturnType<typeof sessionStore.getState>['stats'])
   };
 };
 
+const scheduleDateForLine = (offset: number): string => {
+  const base = new Date();
+  base.setDate(base.getDate() + 1 + offset);
+  return base.toISOString().slice(0, 10);
+};
+
+const scheduleOpeningLine = (line: DetectedOpeningLine, offset: number): ScheduledOpeningLine => ({
+  ...line,
+  id: ['import', Date.now().toString(), offset.toString()].join('-'),
+  scheduledFor: scheduleDateForLine(offset),
+});
+
+const linesMatch = (candidate: ScheduledOpeningLine, target: DetectedOpeningLine): boolean =>
+  candidate.opening === target.opening &&
+  candidate.color === target.color &&
+  candidate.moves.length === target.moves.length &&
+  candidate.moves.every((move, index) => move.toLowerCase() === target.moves[index]?.toLowerCase());
+
+const augmentOverviewWithImports = (
+  overview: ReviewOverview,
+  lines: ScheduledOpeningLine[],
+): ReviewOverview => ({
+  ...overview,
+  upcomingUnlocks: [
+    ...overview.upcomingUnlocks,
+    ...lines.map((line) => ({
+      id: line.id,
+      move: `${line.opening} (${line.color})`,
+      idea: `Line: ${line.display}`,
+      scheduledFor: line.scheduledFor,
+    })),
+  ],
+});
+
+type SessionRoutesProps = {
+  importedLines: ScheduledOpeningLine[];
+  onImportLine: (line: DetectedOpeningLine) => ImportResult;
+  commandDispatcher?: CommandDispatcher;
+};
+
 const useStartTimestamp = (card?: CardSummary) => {
   const startedAtRef = useRef<number>(performance.now());
   useEffect(() => {
@@ -56,7 +104,7 @@ const useSessionLifecycle = (start: (userId: string) => Promise<void>) => {
   }, [start]);
 };
 
-const SessionRoutes = () => {
+const SessionRoutes = ({ importedLines, onImportLine, commandDispatcher }: SessionRoutesProps) => {
   const session = useSessionState();
   const { stats, currentCard, start, submitGrade } = session;
   useSessionLifecycle(start);
@@ -64,6 +112,10 @@ const SessionRoutes = () => {
   const startedAtRef = useStartTimestamp(currentCard);
 
   const overview = useMemo(() => buildOverview(stats), [stats]);
+  const dashboardOverview = useMemo(
+    () => augmentOverviewWithImports(overview, importedLines),
+    [overview, importedLines],
+  );
   const canStartOpening = currentCard?.kind === 'Opening';
   const openingCard = canStartOpening ? currentCard : undefined;
 
@@ -83,9 +135,11 @@ const SessionRoutes = () => {
         path="/dashboard"
         element={
           <DashboardPage
-            overview={overview}
+            overview={dashboardOverview}
             openingPath="/review/opening"
             canStartOpening={canStartOpening}
+            onImportLine={onImportLine}
+            commandDispatcher={commandDispatcher}
           />
         }
       />
@@ -100,6 +154,7 @@ const SessionRoutes = () => {
           />
         }
       />
+      <Route path="/tools/board" element={<BlankBoardPage />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
@@ -125,6 +180,15 @@ const isColonKeyPressed = (event: KeyboardEvent): boolean => {
 
 const App = (): JSX.Element => {
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [importedLines, setImportedLines] = useState<ScheduledOpeningLine[]>([]);
+  const navigate = useNavigate();
+  const dispatcher = useMemo(
+    () =>
+      createCommandDispatcher({
+        onUnknownCommand: (input) => window.alert(input),
+      }),
+    [],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -154,6 +218,17 @@ const App = (): JSX.Element => {
     };
   }, [isConsoleOpen]);
 
+  const handleImportLine = (line: DetectedOpeningLine): ImportResult => {
+    const existing = importedLines.find((candidate) => linesMatch(candidate, line));
+    if (existing) {
+      return { added: false, line: existing };
+    }
+
+    const nextLine = scheduleOpeningLine(line, importedLines.length);
+    setImportedLines((previous) => [...previous, nextLine]);
+    return { added: true, line: nextLine };
+  };
+
   const handleOpenConsole = () => {
     setIsConsoleOpen(true);
   };
@@ -161,13 +236,34 @@ const App = (): JSX.Element => {
     setIsConsoleOpen(false);
   };
 
+  useEffect(() => {
+    dispatcher.register('cb', () => {
+      navigate('/tools/board');
+    });
+    dispatcher.register('db', () => {
+      navigate('/dashboard');
+    });
+  }, [dispatcher, navigate]);
+
+  const handleExecuteCommand = useCallback(
+    async (input: string) => {
+      await dispatcher.dispatch(input);
+    },
+    [dispatcher],
+  );
+
   return (
     <>
-      <SessionRoutes />
+      <SessionRoutes
+        importedLines={importedLines}
+        onImportLine={handleImportLine}
+        commandDispatcher={dispatcher}
+      />
       <CommandConsole
         isOpen={isConsoleOpen}
         onOpen={handleOpenConsole}
         onClose={handleCloseConsole}
+        onExecuteCommand={handleExecuteCommand}
       />
     </>
   );

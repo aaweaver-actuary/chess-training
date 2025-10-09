@@ -1,8 +1,8 @@
 use chrono::NaiveDate;
-use scheduler_core::domain::OpeningCard;
+use scheduler_core::domain::SchedulerOpeningCard;
 use scheduler_core::{
     Card, CardKind, CardState, CardStore, ReviewGrade, Scheduler, SchedulerConfig, UnlockRecord,
-    build_queue_for_day,
+    build_queue_for_day, new_card,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
@@ -54,12 +54,12 @@ impl CardStore for TimedStore {
             .values()
             .filter(|card| {
                 card.owner_id == owner_id
-                    && card.due <= today
-                    && !matches!(card.state, CardState::New)
+                    && card.state.due <= today
+                    && !matches!(card.state.stage, CardState::New)
             })
             .cloned()
             .collect();
-        due.sort_by(|a, b| (a.due, a.id).cmp(&(b.due, b.id)));
+        due.sort_by(|a, b| (a.state.due, a.id).cmp(&(b.state.due, b.id)));
         due
     }
 
@@ -67,12 +67,11 @@ impl CardStore for TimedStore {
         let mut candidates: Vec<Card> = self
             .cards
             .values()
-            .filter(|card| card.owner_id == owner_id && matches!(card.state, CardState::New))
+            .filter(|card| card.owner_id == owner_id && matches!(card.state.stage, CardState::New))
             .filter(|card| {
                 self.availability
                     .get(&card.id)
-                    .map(|available| *available <= self.current_day)
-                    .unwrap_or(true)
+                    .is_none_or(|available| *available <= self.current_day)
             })
             .cloned()
             .collect();
@@ -107,15 +106,15 @@ fn shared_first_move_is_unlocked_only_once() {
     let day1 = date(2024, 1, 1);
     let mut store = TimedStore::new(day1);
 
-    let first_line = Card::new(
+    let first_line = new_card(
         owner,
-        CardKind::Opening(OpeningCard::new("start")),
+        CardKind::Opening(SchedulerOpeningCard::new("start")),
         day1,
         &config,
     );
-    let alternate_line = Card::new(
+    let alternate_line = new_card(
         owner,
-        CardKind::Opening(OpeningCard::new("start")),
+        CardKind::Opening(SchedulerOpeningCard::new("start")),
         day1,
         &config,
     );
@@ -128,12 +127,12 @@ fn shared_first_move_is_unlocked_only_once() {
     assert_eq!(queue.len(), 1, "only one opening should unlock per prefix");
     let unlocked = queue.first().expect("queue should contain a card");
     assert_eq!(unlocked.id, first_line.id.min(alternate_line.id));
-    assert_eq!(unlocked.state, CardState::Learning);
+    assert_eq!(unlocked.state.stage, CardState::Learning);
 
     let remaining = store
         .get_card(first_line.id.max(alternate_line.id))
         .expect("second card should remain in store");
-    assert_eq!(remaining.state, CardState::New);
+    assert_eq!(remaining.state.stage, CardState::New);
 }
 
 #[test]
@@ -144,23 +143,23 @@ fn responses_unlock_after_first_move_review() {
     let day2 = date(2024, 1, 2);
     let mut store = TimedStore::new(day1);
 
-    let first_move = Card::new(
+    let first_move = new_card(
         owner,
-        CardKind::Opening(OpeningCard::new("start")),
+        CardKind::Opening(SchedulerOpeningCard::new("start")),
         day1,
         &config,
     );
     let first_move_id = first_move.id;
 
-    let scandinavian = Card::new(
+    let scandinavian = new_card(
         owner,
-        CardKind::Opening(OpeningCard::new("start e4 vs d5")),
+        CardKind::Opening(SchedulerOpeningCard::new("start e4 vs d5")),
         day1,
         &config,
     );
-    let open_game = Card::new(
+    let open_game = new_card(
         owner,
-        CardKind::Opening(OpeningCard::new("start e4 vs e5")),
+        CardKind::Opening(SchedulerOpeningCard::new("start e4 vs e5")),
         day1,
         &config,
     );
@@ -172,7 +171,7 @@ fn responses_unlock_after_first_move_review() {
     let day_one_queue = build_queue_for_day(&mut store, &config, owner, day1);
     assert_eq!(day_one_queue.len(), 1);
     assert_eq!(day_one_queue[0].id, first_move_id);
-    assert_eq!(day_one_queue[0].state, CardState::Learning);
+    assert_eq!(day_one_queue[0].state.stage, CardState::Learning);
 
     let mut scheduler = Scheduler::new(store, config.clone());
     scheduler
