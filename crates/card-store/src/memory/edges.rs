@@ -34,17 +34,18 @@ fn validate_edge_collision(existing: &Edge, canonical: &Edge) -> Result<(), Stor
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{EdgeInput, Position};
+    use crate::chess_position::ChessPosition;
+    use crate::model::EdgeInput;
     use std::collections::HashMap;
 
     #[test]
     fn store_canonical_edge_returns_existing_when_identical() {
-        let parent = Position::new(
+        let parent = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
         )
         .unwrap();
-        let child = Position::new(
+        let child = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
             1,
         )
@@ -64,12 +65,12 @@ mod tests {
 
     #[test]
     fn store_canonical_edge_errors_on_mismatch() {
-        let parent = Position::new(
+        let parent = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
         )
         .unwrap();
-        let child = Position::new(
+        let child = ChessPosition::new(
             "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2",
             2,
         )
@@ -83,7 +84,7 @@ mod tests {
         let mut edges = HashMap::new();
         edges.insert(first.id, first);
 
-        let alternate_child = Position::new(
+        let alternate_child = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
             1,
         )

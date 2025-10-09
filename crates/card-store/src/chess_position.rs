@@ -2,7 +2,7 @@ use crate::{PositionError, hash64};
 
 /// Chess position represented by a FEN string.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Position {
+pub struct ChessPosition {
     /// Stable identifier derived from the [`fen`](Self::fen).
     pub id: u64,
     /// Full FEN string.
@@ -13,7 +13,7 @@ pub struct Position {
     pub ply: u32,
 }
 
-impl Position {
+impl ChessPosition {
     /// Creates a new [`Position`] using a deterministic hash of the FEN as the identifier.
     ///
     /// Returns [`Err`] when the FEN omits or provides an invalid side-to-move field.

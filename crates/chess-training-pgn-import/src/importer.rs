@@ -673,8 +673,10 @@ mod tests {
 
     #[test]
     fn ensure_setup_requirement_for_fen_games_errors_without_setup() {
-        let mut config = IngestConfig::default();
-        config.require_setup_for_fen = true;
+        let config = IngestConfig {
+            require_setup_for_fen: true,
+            ..Default::default()
+        };
         let mut game = RawGame::default();
         game.tags.push(("FEN".into(), "fen".into()));
         let err = ensure_setup_requirement_for_fen_games(&config, &game, Some("fen"))
@@ -684,8 +686,10 @@ mod tests {
 
     #[test]
     fn ensure_setup_requirement_for_fen_games_allows_explicit_setup() {
-        let mut config = IngestConfig::default();
-        config.require_setup_for_fen = true;
+        let config = IngestConfig {
+            require_setup_for_fen: true,
+            ..Default::default()
+        };
         let mut game = RawGame::default();
         game.tags.push(("FEN".into(), "fen".into()));
         game.tags.push(("SetUp".into(), "1".into()));
@@ -694,8 +698,10 @@ mod tests {
 
     #[test]
     fn load_initial_board_from_optional_fen_skips_when_configured() {
-        let mut config = IngestConfig::default();
-        config.skip_malformed_fen = true;
+        let config = IngestConfig {
+            skip_malformed_fen: true,
+            ..Default::default()
+        };
         let board =
             load_initial_board_from_optional_fen(Some("invalid"), &config).expect("ok result");
         assert!(board.is_none());
@@ -703,8 +709,10 @@ mod tests {
 
     #[test]
     fn initialize_game_context_records_starting_position() {
-        let mut config = IngestConfig::default();
-        config.include_fen_in_trie = true;
+        let config = IngestConfig {
+            include_fen_in_trie: true,
+            ..Default::default()
+        };
         let mut store = InMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
@@ -717,8 +725,10 @@ mod tests {
 
     #[test]
     fn initialize_game_context_respects_skip_on_malformed_fen() {
-        let mut config = IngestConfig::default();
-        config.skip_malformed_fen = true;
+        let config = IngestConfig {
+            skip_malformed_fen: true,
+            ..Default::default()
+        };
         let mut store = InMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let context = initialize_game_context(
@@ -775,8 +785,10 @@ mod tests {
 
     #[test]
     fn process_single_san_move_updates_metrics_and_context() {
-        let mut config = IngestConfig::default();
-        config.include_fen_in_trie = true;
+        let config = IngestConfig {
+            include_fen_in_trie: true,
+            ..Default::default()
+        };
         let mut store = InMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let mut context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
@@ -799,15 +811,19 @@ mod tests {
 
     #[test]
     fn execute_full_move_sequence_processes_all_moves() {
-        let mut config = IngestConfig::default();
-        config.include_fen_in_trie = true;
+        let config = IngestConfig {
+            include_fen_in_trie: true,
+            ..Default::default()
+        };
         let mut store = InMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let mut context = initialize_game_context(&config, &mut store, &mut metrics, None, None)
             .expect("context")
             .expect("available");
-        let mut game = RawGame::default();
-        game.moves = vec!["e4".into(), "e5".into()];
+        let game = RawGame {
+            moves: vec!["e4".into(), "e5".into()],
+            ..Default::default()
+        };
         execute_full_move_sequence(
             &mut store,
             &mut metrics,
@@ -823,9 +839,11 @@ mod tests {
 
     #[test]
     fn finalize_tactic_if_requested_records_entry() {
-        let mut config = IngestConfig::default();
-        config.include_fen_in_trie = true;
-        config.tactic_from_fen = true;
+        let config = IngestConfig {
+            include_fen_in_trie: true,
+            tactic_from_fen: true,
+            ..Default::default()
+        };
         let mut store = InMemoryStore::default();
         let mut metrics = ImportMetrics::default();
         let context = initialize_game_context(

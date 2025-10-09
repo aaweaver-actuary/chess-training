@@ -5,9 +5,9 @@ use std::fmt;
 use chrono::NaiveDate;
 use thiserror::Error;
 
-use crate::model::{
-    Card, CardState, Edge, EdgeInput, Position, PositionError, ReviewRequest, UnlockRecord,
-};
+use crate::chess_position::ChessPosition;
+use crate::errors::PositionError;
+use crate::model::{Card, CardState, Edge, EdgeInput, ReviewRequest, UnlockRecord};
 
 /// Unified error type returned by [`CardStore`] implementations.
 #[derive(Debug, Error, PartialEq)]
@@ -41,7 +41,7 @@ pub enum StoreError {
 /// Persistence abstraction used across services.
 pub trait CardStore: Send + Sync + fmt::Debug {
     /// Insert or update a [`Position`]. Returns the stored record.
-    fn upsert_position(&self, position: Position) -> Result<Position, StoreError>;
+    fn upsert_position(&self, position: ChessPosition) -> Result<ChessPosition, StoreError>;
     /// Insert or update an [`Edge`]. Returns the stored record.
     fn upsert_edge(&self, edge: EdgeInput) -> Result<Edge, StoreError>;
     /// Create or fetch an opening card for the given owner and edge.

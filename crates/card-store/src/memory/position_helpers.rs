@@ -1,19 +1,19 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-use crate::model::Position;
+use crate::chess_position::ChessPosition;
 use crate::store::StoreError;
 
 pub(super) fn canonicalize_position_for_storage(
-    position: Position,
-) -> Result<Position, StoreError> {
-    Position::new(position.fen, position.ply).map_err(StoreError::from)
+    position: ChessPosition,
+) -> Result<ChessPosition, StoreError> {
+    ChessPosition::new(position.fen, position.ply).map_err(StoreError::from)
 }
 
 pub(super) fn store_canonical_position(
-    positions: &mut HashMap<u64, Position>,
-    canonical: Position,
-) -> Result<Position, StoreError> {
+    positions: &mut HashMap<u64, ChessPosition>,
+    canonical: ChessPosition,
+) -> Result<ChessPosition, StoreError> {
     match positions.entry(canonical.id) {
         Entry::Occupied(entry) => {
             validate_position_collision(entry.get(), &canonical)?;
@@ -27,8 +27,8 @@ pub(super) fn store_canonical_position(
 }
 
 fn validate_position_collision(
-    existing: &Position,
-    canonical: &Position,
+    existing: &ChessPosition,
+    canonical: &ChessPosition,
 ) -> Result<(), StoreError> {
     if existing.fen == canonical.fen {
         Ok(())
@@ -43,7 +43,7 @@ mod tests {
 
     #[test]
     fn canonicalize_position_rejects_invalid_side_to_move() {
-        let position = Position {
+        let position = ChessPosition {
             id: 1,
             fen: "invalid fen".into(),
             side_to_move: 'w',
@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn canonicalize_position_recomputes_identifier() {
-        let original = Position::new(
+        let original = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
         )
@@ -67,7 +67,7 @@ mod tests {
     #[test]
     fn store_canonical_position_inserts_when_missing() {
         let mut positions = HashMap::new();
-        let position = Position::new(
+        let position = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
         )
@@ -80,12 +80,12 @@ mod tests {
     #[test]
     fn store_canonical_position_returns_existing_on_collision() {
         let mut positions = HashMap::new();
-        let first = Position::new(
+        let first = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
         )
         .unwrap();
-        let second = Position::new(
+        let second = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             10,
         )
@@ -99,7 +99,7 @@ mod tests {
     #[test]
     fn validate_position_collision_errors_on_conflicting_fen() {
         let mut positions = HashMap::new();
-        let first = Position::new(
+        let first = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
         )

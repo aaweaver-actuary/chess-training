@@ -53,6 +53,5 @@ mod tests {
     fn position_error_invalid_side_to_move_implements_eq_trait() {
         fn assert_eq_trait<T: Eq>() {}
         assert_eq_trait::<PositionError>();
-        assert!(true);
     }
 }

@@ -6,21 +6,22 @@ use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use chrono::NaiveDate;
 
+use crate::chess_position::ChessPosition;
 use crate::config::StorageConfig;
 use crate::model::{
-    Card, CardState, Edge, EdgeInput, Position, ReviewRequest, UnlockRecord, card_id_for_opening,
+    Card, CardState, Edge, EdgeInput, ReviewRequest, UnlockRecord, card_id_for_opening,
 };
 use crate::store::{CardStore, StoreError};
 
 mod cards;
 mod edges;
-mod positions;
+mod position_helpers;
 mod reviews;
 mod unlocks;
 
 use cards::{borrow_card_for_review, collect_due_cards_for_owner, store_opening_card};
 use edges::store_canonical_edge;
-use positions::{canonicalize_position_for_storage, store_canonical_position};
+use position_helpers::{canonicalize_position_for_storage, store_canonical_position};
 use reviews::apply_review;
 use unlocks::insert_unlock_or_error;
 
@@ -28,7 +29,7 @@ use unlocks::insert_unlock_or_error;
 #[derive(Debug)]
 pub struct InMemoryCardStore {
     _config: StorageConfig,
-    positions: RwLock<HashMap<u64, Position>>,
+    positions: RwLock<HashMap<u64, ChessPosition>>,
     edges: RwLock<HashMap<u64, Edge>>,
     cards: RwLock<HashMap<u64, Card>>,
     unlocks: RwLock<HashSet<UnlockRecord>>,
@@ -51,13 +52,17 @@ impl InMemoryCardStore {
         Ok(self.positions_read()?.len())
     }
 
-    fn positions_read(&self) -> Result<RwLockReadGuard<'_, HashMap<u64, Position>>, StoreError> {
+    fn positions_read(
+        &self,
+    ) -> Result<RwLockReadGuard<'_, HashMap<u64, ChessPosition>>, StoreError> {
         self.positions.read().map_err(|_| StoreError::PoisonedLock {
             resource: "positions",
         })
     }
 
-    fn positions_write(&self) -> Result<RwLockWriteGuard<'_, HashMap<u64, Position>>, StoreError> {
+    fn positions_write(
+        &self,
+    ) -> Result<RwLockWriteGuard<'_, HashMap<u64, ChessPosition>>, StoreError> {
         self.positions
             .write()
             .map_err(|_| StoreError::PoisonedLock {
@@ -113,7 +118,7 @@ impl InMemoryCardStore {
 }
 
 impl CardStore for InMemoryCardStore {
-    fn upsert_position(&self, position: Position) -> Result<Position, StoreError> {
+    fn upsert_position(&self, position: ChessPosition) -> Result<ChessPosition, StoreError> {
         let canonical = canonicalize_position_for_storage(position)?;
         let mut positions = self.positions_write()?;
         store_canonical_position(&mut positions, canonical)
@@ -177,7 +182,7 @@ mod tests {
         });
         assert!(result.is_err());
 
-        let position = Position::new(
+        let position = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
         )
@@ -202,7 +207,7 @@ mod tests {
 
     #[test]
     fn record_review_updates_cards() {
-        let position = Position::new(
+        let position = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
         )

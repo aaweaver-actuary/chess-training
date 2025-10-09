@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 use std::num::NonZeroU8;
 
+use card_store::chess_position::ChessPosition;
 use card_store::config::StorageConfig;
 use card_store::memory::InMemoryCardStore;
-use card_store::model::{
-    Card, CardKind, CardState, EdgeInput, Position, ReviewRequest, UnlockRecord,
-};
+use card_store::model::{Card, CardKind, CardState, EdgeInput, ReviewRequest, UnlockRecord};
 use card_store::store::{CardStore, StoreError};
 use chrono::{Duration, NaiveDate};
 
@@ -13,16 +12,16 @@ fn new_store() -> InMemoryCardStore {
     InMemoryCardStore::new(StorageConfig::default())
 }
 
-fn sample_position() -> Position {
-    Position::new(
+fn sample_position() -> ChessPosition {
+    ChessPosition::new(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         0,
     )
     .expect("valid starting position")
 }
 
-fn sample_child_position() -> Position {
-    Position::new(
+fn sample_child_position() -> ChessPosition {
+    ChessPosition::new(
         "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
         1,
     )
@@ -61,14 +60,14 @@ fn setup_card_for_review(
 
 #[test]
 fn position_creation_requires_valid_side_to_move() {
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", 0);
+    let result = ChessPosition::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", 0);
     assert!(result.is_err());
 }
 
 #[test]
 fn position_creation_fails_with_missing_fields() {
     // Missing side to move, castling, en passant, halfmove, fullmove
-    let result = Position::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", 0);
+    let result = ChessPosition::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", 0);
     assert!(result.is_err());
 }
 
@@ -76,7 +75,7 @@ fn position_creation_fails_with_missing_fields() {
 #[should_panic]
 fn position_creation_fails_with_invalid_characters() {
     // Invalid character 'X' in FEN
-    let result = Position::new(
+    let result = ChessPosition::new(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w KQkq - 0 1",
         0,
     );
@@ -87,7 +86,7 @@ fn position_creation_fails_with_invalid_characters() {
 #[should_panic]
 fn position_creation_fails_with_extra_whitespace() {
     // Extra whitespace between fields
-    let result = Position::new(
+    let result = ChessPosition::new(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w KQkq - 0 1",
         0,
     );
@@ -99,7 +98,7 @@ fn position_creation_fails_with_extra_whitespace() {
 #[should_panic]
 fn position_creation_fails_with_too_many_fields() {
     // Too many fields in FEN
-    let result = Position::new(
+    let result = ChessPosition::new(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 extra",
         0,
     );
@@ -253,22 +252,22 @@ fn importing_longer_line_preserves_existing_progress() {
 
     // Initial import containing moves up to 3.Bc4.
     let start = store
-        .upsert_position(Position::new(START_FEN, 0).expect("start position"))
+        .upsert_position(ChessPosition::new(START_FEN, 0).expect("start position"))
         .expect("store start");
     let e4_pos = store
-        .upsert_position(Position::new(E4_FEN, 1).expect("after 1.e4"))
+        .upsert_position(ChessPosition::new(E4_FEN, 1).expect("after 1.e4"))
         .expect("store e4");
     let e5_pos = store
-        .upsert_position(Position::new(E5_FEN, 2).expect("after 1...e5"))
+        .upsert_position(ChessPosition::new(E5_FEN, 2).expect("after 1...e5"))
         .expect("store e5");
     let nf3_pos = store
-        .upsert_position(Position::new(NF3_FEN, 3).expect("after 2.Nf3"))
+        .upsert_position(ChessPosition::new(NF3_FEN, 3).expect("after 2.Nf3"))
         .expect("store Nf3");
     let nc6_pos = store
-        .upsert_position(Position::new(NC6_FEN, 4).expect("after 2...Nc6"))
+        .upsert_position(ChessPosition::new(NC6_FEN, 4).expect("after 2...Nc6"))
         .expect("store Nc6");
     let bc4_pos = store
-        .upsert_position(Position::new(BC4_FEN, 5).expect("after 3.Bc4"))
+        .upsert_position(ChessPosition::new(BC4_FEN, 5).expect("after 3.Bc4"))
         .expect("store Bc4");
 
     let edge_e4 = store
@@ -358,10 +357,10 @@ fn importing_longer_line_preserves_existing_progress() {
     let import_state = CardState::new(import_day, initial_interval, 2.5);
 
     let bc5_pos = store
-        .upsert_position(Position::new(BC5_FEN, 6).expect("after 3...Bc5"))
+        .upsert_position(ChessPosition::new(BC5_FEN, 6).expect("after 3...Bc5"))
         .expect("store Bc5");
     let c3_pos = store
-        .upsert_position(Position::new(C3_FEN, 7).expect("after 4.c3"))
+        .upsert_position(ChessPosition::new(C3_FEN, 7).expect("after 4.c3"))
         .expect("store c3");
 
     let edge_bc5 = store
