@@ -2,9 +2,13 @@
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReviewGrade {
+    /// The user failed to recall the item; schedule for immediate relearning.
     Again,
+    /// The user recalled the item with difficulty; schedule for a shorter interval.
     Hard,
+    /// The user recalled the item with reasonable ease; schedule for a normal interval.
     Good,
+    /// The user recalled the item effortlessly; schedule for a longer interval.
     Easy,
 }
 

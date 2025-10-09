@@ -73,6 +73,17 @@ sqlite = ["sqlx/sqlite"]
 inmemory = []
 ```
 
+### Note on In-Memory Stores
+
+This crate provides `InMemoryCardStore`, which is a **full-featured, thread-safe** in-memory implementation supporting the complete domain model (positions, edges, tactics, cards, reviews, unlock ledgers).
+
+There is also a separate `InMemoryStore` in the **scheduler-core** crate, which is a simpler, single-threaded store focused only on scheduling operations (cards and unlock records). The two serve different purposes:
+
+- **Use `card-store::InMemoryCardStore`** when you need the complete storage layer, thread safety, or are testing the full system integration
+- **Use `scheduler-core::InMemoryStore`** for lightweight scheduler examples and unit tests that don't require the full domain model
+
+See the scheduler-core [Persistence documentation](../scheduler-core/README.md#persistence) for more details on when to use each.
+
 ---
 
 ## Schema Overview
