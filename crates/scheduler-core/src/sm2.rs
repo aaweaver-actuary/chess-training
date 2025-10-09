@@ -77,7 +77,7 @@ fn scaled_interval(previous_interval: u32, factor: f64) -> u32 {
     }
     let rounded = scaled.round();
     let clamped = rounded.clamp(1.0, f64::from(u32::MAX));
-    clamped.to_u32().unwrap_or(u32::MAX)
+    clamped.to_u32().expect("clamped value should always fit in u32")
 }
 
 fn finalize_review(
