@@ -162,6 +162,8 @@ fn commit_review_transition(
 
 #[cfg(all(test, not(coverage)))]
 mod tests {
+    use std::panic;
+
     use super::*;
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
@@ -384,7 +386,8 @@ mod tests {
         let state = sample_state();
         let review = sample_review(3);
         let interval = NonZeroU8::new(2).unwrap();
-        let transition = finalize_transition(&state, &review, interval, 2.1);
+        let grade = valid_grade(3);
+        let transition = finalize_transition(&state, &review, grade, interval, 2.1);
         assert_eq!(transition.interval, interval);
         assert!((transition.ease - 2.1).abs() < f32::EPSILON);
         assert_eq!(transition.due_on, review.reviewed_on + Duration::days(2));
@@ -396,7 +399,7 @@ mod tests {
         let transition = ReviewTransition {
             interval: NonZeroU8::new(4).unwrap(),
             ease: 2.0,
-            streak: next_streak(5, 4),
+            streak: next_streak(5, valid_grade(4)),
             due_on: NaiveDate::from_ymd_opt(2023, 1, 5).unwrap(),
         };
         commit_review_transition(&mut state, transition.due_on, transition);
