@@ -213,6 +213,10 @@ mod tests {
         });
     }
 
+    fn is_invalid_position(err: &StoreError) -> bool {
+        matches!(err, StoreError::InvalidPosition(_))
+    }
+
     #[test]
     fn poisoned_locks_surface_as_store_errors() {
         let store = InMemoryCardStore::new(StorageConfig::default());

@@ -63,28 +63,46 @@ fn validate_grade(grade: u8) -> Result<ValidGrade, StoreError> {
     grade.try_into()
 }
 
-fn interval_after_grade(interval: NonZeroU8, grade: ValidGrade) -> NonZeroU8 {
-    let value = grade.as_u8();
-    if value <= 1 {
-        NonZeroU8::new(1).unwrap()
-    } else if value == 2 {
-        interval
-    } else if value == 3 {
-        let next = interval.get().saturating_add(1);
-        NonZeroU8::new(next).unwrap()
-    } else {
-        let doubled = interval.get().saturating_mul(2);
-        NonZeroU8::new(doubled).unwrap()
+#[cfg_attr(not(test), allow(dead_code))]
+fn interval_after_grade(interval: NonZeroU8, grade: u8) -> Result<NonZeroU8, StoreError> {
+    validate_grade(grade)?;
+    Ok(interval_after_grade_validated(interval, grade))
+}
+
+fn interval_after_grade_validated(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
+    match grade {
+        0 | 1 => NonZeroU8::new(1).unwrap(),
+        2 => interval,
+        3 => {
+            let next = interval.get().saturating_add(1);
+            NonZeroU8::new(next).unwrap()
+        }
+        _ => {
+            let doubled = interval.get().saturating_mul(2);
+            NonZeroU8::new(doubled).unwrap()
+        }
     }
 }
 
-fn ease_after_grade(current: f32, grade: ValidGrade) -> f32 {
-    let delta = ease_delta_for_grade(grade);
+#[cfg_attr(not(test), allow(dead_code))]
+fn ease_after_grade(current: f32, grade: u8) -> Result<f32, StoreError> {
+    validate_grade(grade)?;
+    Ok(ease_after_grade_validated(current, grade))
+}
+
+fn ease_after_grade_validated(current: f32, grade: u8) -> f32 {
+    let delta = ease_delta_for_grade_validated(grade);
     (current + delta).clamp(1.3, 2.8)
 }
 
-fn ease_delta_for_grade(grade: ValidGrade) -> f32 {
-    match grade.as_u8() {
+#[cfg_attr(not(test), allow(dead_code))]
+fn ease_delta_for_grade(grade: u8) -> Result<f32, StoreError> {
+    validate_grade(grade)?;
+    Ok(ease_delta_for_grade_validated(grade))
+}
+
+fn ease_delta_for_grade_validated(grade: u8) -> f32 {
+    match grade {
         0 => -0.3,
         1 => -0.15,
         2 => -0.05,
@@ -204,6 +222,36 @@ mod tests {
 
     #[test]
     fn ease_after_grade_clamps_results() {
+        let eased_high = ease_after_grade(2.7, 4).unwrap();
+        assert!((eased_high - 2.8).abs() < f32::EPSILON);
+
+        let eased_low = ease_after_grade(1.4, 0).unwrap();
+        assert!((eased_low - 1.3).abs() < f32::EPSILON);
+
+        let eased_mid = ease_after_grade(2.0, 3).unwrap();
+        assert!((eased_mid - 2.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn ease_after_grade_errors_on_out_of_range_values() {
+        let err = ease_after_grade(1.5, 9).unwrap_err();
+        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 9));
+    }
+
+    #[test]
+    fn interval_after_grade_errors_on_out_of_range_values() {
+        let interval = NonZeroU8::new(3).unwrap();
+        let err = interval_after_grade(interval, 9).unwrap_err();
+        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 9));
+    }
+
+    #[test]
+    fn ease_delta_for_grade_errors_on_out_of_range_values() {
+        let err = ease_delta_for_grade(9).unwrap_err();
+        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 9));
+    }
+
+    #[test]
         let eased = ease_after_grade(2.7, valid_grade(4));
         assert!((eased - 2.8).abs() < f32::EPSILON);
     }
