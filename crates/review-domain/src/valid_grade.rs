@@ -9,7 +9,7 @@ pub enum ValidGrade {
 }
 
 /// Errors produced when attempting to construct a [`ValidGrade`].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GradeError {
     /// The provided grade was outside the supported range of 0-4.
     /// The provided grade was outside the supported range of 0-4.
@@ -92,24 +92,6 @@ impl ValidGrade {
         }
     }
 }
-
-impl PartialEq for GradeError {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                GradeError::GradeOutsideRangeError { grade: left },
-                GradeError::GradeOutsideRangeError { grade: right },
-            )
-            | (
-                GradeError::InvalidGradeError { grade: left },
-                GradeError::InvalidGradeError { grade: right },
-            ) => left == right,
-            _ => false,
-        }
-    }
-}
-
-impl Eq for GradeError {}
 
 impl TryFrom<u8> for ValidGrade {
     type Error = GradeError;
