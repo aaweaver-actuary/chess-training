@@ -1,35 +1,9 @@
 use chrono::{Duration, NaiveDate};
-use std::num::NonZeroU8;
+use std::num::{NonZero, NonZeroU8};
 
 use crate::model::{ReviewRequest, StoredCardState};
 use crate::store::StoreError;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ValidGrade(u8);
-
-impl ValidGrade {
-    #[inline]
-    fn as_u8(self) -> u8 {
-        self.0
-    }
-
-    #[inline]
-    fn is_correct(self) -> bool {
-        self.0 >= 3
-    }
-}
-
-impl TryFrom<u8> for ValidGrade {
-    type Error = StoreError;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        if value <= 4 {
-            Ok(Self(value))
-        } else {
-            Err(StoreError::InvalidGrade { grade: value })
-        }
-    }
-}
+use review_domain::{GradeError, ValidGrade};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct ReviewTransition {
@@ -43,7 +17,7 @@ pub(super) fn apply_review(
     state: &mut StoredCardState,
     review: &ReviewRequest,
 ) -> Result<(), StoreError> {
-    let transition = derive_review_transition(state, review)?;
+    let transition = derive_review_transition(state, review);
     commit_review_transition(state, review.reviewed_on, transition);
     Ok(())
 }
@@ -51,21 +25,17 @@ pub(super) fn apply_review(
 fn derive_review_transition(
     state: &StoredCardState,
     review: &ReviewRequest,
-) -> Result<ReviewTransition, StoreError> {
-    let grade = validate_grade(review.grade)?;
+) -> Result<ReviewTransition, GradeError> {
+    let grade = ValidGrade::new(review.grade)?;
     let interval = interval_after_grade_validated(state.interval, grade.as_u8());
     let ease = ease_after_grade_validated(state.ease_factor, grade.as_u8());
     Ok(finalize_transition(state, review, grade, interval, ease))
 }
 
-fn validate_grade(grade: u8) -> Result<ValidGrade, StoreError> {
-    grade.try_into()
-}
-
 #[cfg_attr(not(test), allow(dead_code))]
-fn interval_after_grade(interval: NonZeroU8, grade: u8) -> Result<NonZeroU8, StoreError> {
-    validate_grade(grade)?;
-    Ok(interval_after_grade_validated(interval, grade))
+fn interval_after_grade(_interval: NonZeroU8, grade: u8) -> Result<NonZeroU8, GradeError> {
+    let valid_grade = ValidGrade::new(grade)?;
+    Ok(NonZero::new(valid_grade.to_interval_increment()).unwrap())
 }
 
 fn interval_after_grade_validated(interval: NonZeroU8, grade: u8) -> NonZeroU8 {

@@ -10,6 +10,7 @@ mod review;
 mod study_stage;
 mod tactic;
 mod unlock;
+mod valid_grade;
 
 pub use card::Card;
 pub use card_kind::CardKind;
@@ -21,3 +22,4 @@ pub use review::ReviewRequest;
 pub use study_stage::StudyStage;
 pub use tactic::TacticCard;
 pub use unlock::{UnlockDetail, UnlockRecord};
+pub use valid_grade::{GradeError, ValidGrade};
