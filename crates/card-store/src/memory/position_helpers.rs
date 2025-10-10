@@ -40,6 +40,11 @@ fn validate_position_collision(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::PositionError;
+
+    fn is_invalid_position(err: &StoreError) -> bool {
+        matches!(err, StoreError::InvalidPosition(_))
+    }
 
     fn assert_invalid_position(err: StoreError) {
         if let StoreError::InvalidPosition(_) = err {
