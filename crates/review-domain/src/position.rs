@@ -102,21 +102,21 @@ mod tests {
     #[test]
     fn malformed_fen_rejected() {
         let result = ChessPosition::new("invalid", 0);
-        assert!(matches!(result, Err(PositionError::MalformedFen)));
+        assert_eq!(result, Err(PositionError::MalformedFen));
     }
 
     #[test]
     fn invalid_piece_placement_rejected() {
         let fen = "8/8/8/8/8/8/8/8x w - - 0 1";
         let result = ChessPosition::new(fen, 0);
-        assert!(matches!(result, Err(PositionError::InvalidPiecePlacement)));
+        assert_eq!(result, Err(PositionError::InvalidPiecePlacement));
     }
 
     #[test]
     fn invalid_side_to_move_rejected() {
         let fen = "8/8/8/8/8/8/8/8 x - - 0 1";
         let result = ChessPosition::new(fen, 0);
-        assert!(matches!(result, Err(PositionError::InvalidSideToMove)));
+        assert_eq!(result, Err(PositionError::InvalidSideToMove));
     }
 
     #[test]
@@ -131,7 +131,7 @@ mod tests {
     fn empty_segment_rejected() {
         let fen = "8/8/8/8/8/8/8/8  - - 0 1";
         let result = ChessPosition::new(fen, 0);
-        assert!(matches!(result, Err(PositionError::MalformedFen)));
+        assert_eq!(result, Err(PositionError::MalformedFen));
     }
 
     #[test]
