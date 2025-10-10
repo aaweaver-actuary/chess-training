@@ -1,5 +1,6 @@
-//! Review grades supported by the scheduler.
+//! Review grades supported by the review domain.
 
+/// Possible outcomes of a learner's review session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReviewGrade {
     /// The user failed to recall the item; schedule for immediate relearning.

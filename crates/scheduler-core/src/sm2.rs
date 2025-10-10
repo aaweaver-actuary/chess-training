@@ -5,7 +5,7 @@ use num_traits::ToPrimitive;
 
 use crate::config::SchedulerConfig;
 use crate::domain::{Card, CardState};
-use crate::grade::ReviewGrade;
+use review_domain::ReviewGrade;
 
 pub(super) fn apply_sm2(
     card: &mut Card,
