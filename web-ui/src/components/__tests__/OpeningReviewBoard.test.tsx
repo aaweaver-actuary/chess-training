@@ -46,6 +46,13 @@ describe('OpeningReviewBoard', () => {
     prompt: 'Make a classical first move.',
     expected_moves_uci: ['e2e4'],
   };
+  const promotionByClickCard: CardSummary = {
+    card_id: 'promotion-click',
+    kind: 'Opening',
+    position_fen: '3k4/4P3/8/8/8/8/8/4K3 w - - 0 1',
+    prompt: 'Promote the pawn on e7.',
+    expected_moves_uci: ['e7e8q'],
+  };
   it('links to the Lichess analysis board for the current position', () => {
     const onResult = vi.fn();
     render(<OpeningReviewBoard card={baseCard} onResult={onResult} />);
@@ -172,6 +179,25 @@ describe('OpeningReviewBoard', () => {
     });
 
     expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
+  });
+
+  it('captures promotion metadata when moves are made via board clicks', async () => {
+    const onResult = vi.fn();
+    render(
+      <OpeningReviewBoard card={promotionByClickCard} onResult={onResult} />,
+    );
+
+    const board = screen.getByTestId('opening-review-board');
+
+    fireEvent.click(await findBoardSquare(board, 'e7'));
+    fireEvent.click(await findBoardSquare(board, 'e8'));
+
+    await waitFor(() => {
+      expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
+      expect(board.getAttribute('position')).toBe(
+        '3kQ3/8/8/8/8/8/8/4K3 b - - 0 1',
+      );
+    });
   });
 
   it('shows a teaching arrow for the first move of a new line', () => {

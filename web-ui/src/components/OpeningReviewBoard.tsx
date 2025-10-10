@@ -175,7 +175,9 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
           square: selected,
           verbose: true,
         });
-        const targetMove = moves.find((move) => move.to === square);
+        const targetMove =
+          moves.find((move) => move.to === square && move.promotion === 'q') ??
+          moves.find((move) => move.to === square);
 
         if (!targetMove) {
           showErrorHighlight(square);

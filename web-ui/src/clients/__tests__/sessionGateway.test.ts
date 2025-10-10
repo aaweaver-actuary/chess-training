@@ -15,7 +15,11 @@ describe('sessionGateway', () => {
   });
 
   it('starts a session with the expected payload', async () => {
-    const responseBody = { session_id: 's1', queue_size: 3, first_card: { card_id: 'c1' } };
+    const responseBody = {
+      session_id: 's1',
+      queue_size: 3,
+      first_card: { card_id: 'c1' },
+    };
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify(responseBody), {
         status: 200,
@@ -64,7 +68,11 @@ describe('sessionGateway', () => {
       'http://localhost:3000/api/session/grade',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ card_id: 'c1', grade: 'Good', latency_ms: 4500 }),
+        body: JSON.stringify({
+          card_id: 'c1',
+          grade: 'Good',
+          latency_ms: 4500,
+        }),
       }),
     );
     const gradeCall = fetchMock.mock.calls[0];
@@ -95,7 +103,10 @@ describe('sessionGateway', () => {
 
     const result = await sessionGateway.stats();
 
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/session/stats', undefined);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/api/session/stats',
+      expect.objectContaining({ method: 'GET' }),
+    );
     expect(result).toEqual(responseBody);
   });
 

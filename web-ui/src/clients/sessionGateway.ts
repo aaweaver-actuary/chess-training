@@ -78,6 +78,6 @@ export const sessionGateway = {
     });
   },
   stats(): Promise<SessionStats> {
-    return request<SessionStats>('/api/session/stats');
+    return request<SessionStats>('/api/session/stats', { method: 'GET' });
   },
 } as const;
