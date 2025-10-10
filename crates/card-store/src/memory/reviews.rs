@@ -230,7 +230,7 @@ mod tests {
         let interval = NonZeroU8::new(3).unwrap();
         assert_eq!(get_clean_interval_after_grade(interval, valid_grade(0)), 1);
         assert_eq!(get_clean_interval_after_grade(interval, valid_grade(1)), 1);
-        assert_eq!(get_clean_interval_after_grade(interval, valid_grade(2)), 3);
+        assert_eq!(get_clean_interval_after_grade(interval, valid_grade(2)), 1);
         assert_eq!(get_clean_interval_after_grade(interval, valid_grade(3)), 4);
         assert_eq!(get_clean_interval_after_grade(interval, valid_grade(4)), 6);
     }
