@@ -6,7 +6,7 @@ import { Chess } from 'chess.js';
 import type { CardSummary, ReviewGrade } from '../types/gateway';
 
 import 'chessboard-element';
-import type { ChessBoardElement } from 'chessboard-element';
+import type { ChessBoardElement } from 'chessboard-element/lib/chessboard-element';
 import './OpeningReviewBoard.css';
 
 type Props = {
@@ -307,7 +307,12 @@ function applyMove(game: Chess, detail: DropDetail): Move | null {
 }
 
 function isSquare(value: unknown): value is Square {
-  return typeof value === 'string' && OVERLAY_SQUARE_SET.has(value);
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const maybeSquare = value as Square;
+  return OVERLAY_SQUARE_SET.has(maybeSquare);
 }
 
 function extractTeachingArrow(meta?: CardSummary['meta']): string | null {

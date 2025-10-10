@@ -4,6 +4,7 @@ import { Chess } from 'chess.js';
 import type { Move, Square } from 'chess.js';
 
 import 'chessboard-element';
+import type { ChessBoardElement } from 'chessboard-element/lib/chessboard-element';
 
 type DropDetail = {
   source: string;
@@ -13,11 +14,6 @@ type DropDetail = {
 };
 
 type DropEvent = CustomEvent<DropDetail | undefined>;
-
-type ChessBoardElement = HTMLElement & {
-  setPosition?: (position: string, useAnimation?: boolean) => void;
-  start?: (useAnimation?: boolean) => void;
-};
 
 const START_POSITION = 'start';
 const BOARD_SIZE = 'min(100vw, 100vh)';
@@ -63,11 +59,13 @@ export const BlankBoardPage: FC = () => {
     const syncBoard = () => {
       const position = getBoardPosition();
       board.setAttribute('position', position);
-      if (board.setPosition) {
-        board.setPosition(position, false);
-      } else if (position === START_POSITION) {
-        board.start?.(false);
+
+      if (position === START_POSITION) {
+        board.start(false);
+        return;
       }
+
+      board.setPosition(position, false);
     };
 
     const clearSelection = () => {
@@ -189,7 +187,7 @@ export const BlankBoardPage: FC = () => {
 
     board.setAttribute('data-initial-position', START_POSITION);
     board.setAttribute('draggable-pieces', 'true');
-    board.start?.(false);
+    board.start(false);
     syncBoard();
 
     board.addEventListener('drop', handleDrop);

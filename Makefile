@@ -58,6 +58,7 @@ test-web-ui:
 	npm run format && \
 	npm run lint && \
 	npm run typecheck && \
+	npm run build && \
 	npm run test:coverage
 
 test-session-gateway:
@@ -65,4 +66,5 @@ test-session-gateway:
 	npm run format && \
 	npm run lint && \
 	npm run typecheck && \
+	npm run build && \
 	npm run test:coverage

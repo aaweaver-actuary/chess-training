@@ -1,14 +1,19 @@
-import type { DetailedHTMLProps, HTMLAttributes } from 'react';
-import type * as React from 'react';
+/* eslint-disable @typescript-eslint/consistent-type-definitions */
+import type { DetailedHTMLProps, HTMLAttributes, Ref } from 'react';
+import type { ChessBoardElement } from 'chessboard-element/lib/chessboard-element';
 
-type ChessBoardElementProps = DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & {
+type ChessBoardElementProps = Omit<
+  DetailedHTMLProps<HTMLAttributes<ChessBoardElement>, ChessBoardElement>,
+  'ref'
+> & {
   position?: string;
+  ref?: Ref<ChessBoardElement | null>;
 };
 
-declare module 'react/jsx-runtime' {
+declare module 'react' {
   namespace JSX {
-    type IntrinsicElements = React.JSX.IntrinsicElements & {
+    interface IntrinsicElements {
       'chess-board': ChessBoardElementProps;
-    };
+    }
   }
 }
