@@ -5,6 +5,33 @@ use chrono::{Duration, NaiveDate};
 use crate::model::{ReviewRequest, StoredCardState};
 use crate::store::StoreError;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ValidGrade(u8);
+
+impl ValidGrade {
+    #[inline]
+    fn as_u8(self) -> u8 {
+        self.0
+    }
+
+    #[inline]
+    fn is_correct(self) -> bool {
+        self.0 >= 3
+    }
+}
+
+impl TryFrom<u8> for ValidGrade {
+    type Error = StoreError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if value <= 4 {
+            Ok(Self(value))
+        } else {
+            Err(StoreError::InvalidGrade { grade: value })
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct ReviewTransition {
     interval: NonZeroU8,
@@ -26,21 +53,23 @@ fn derive_review_transition(
     state: &StoredCardState,
     review: &ReviewRequest,
 ) -> Result<ReviewTransition, StoreError> {
-    validate_grade(review.grade)?;
-    let interval = interval_after_grade(state.interval, review.grade);
-    let ease = ease_after_grade(state.ease_factor, review.grade);
-    Ok(finalize_transition(state, review, interval, ease))
+    let grade = validate_grade(review.grade)?;
+    let interval = interval_after_grade(state.interval, grade);
+    let ease = ease_after_grade(state.ease_factor, grade);
+    Ok(finalize_transition(state, review, grade, interval, ease))
 }
 
-fn validate_grade(grade: u8) -> Result<(), StoreError> {
-    if grade > 4 {
-        Err(StoreError::InvalidGrade { grade })
-    } else {
-        Ok(())
-    }
+fn validate_grade(grade: u8) -> Result<ValidGrade, StoreError> {
+    grade.try_into()
 }
 
-fn interval_after_grade(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
+#[cfg_attr(not(test), allow(dead_code))]
+fn interval_after_grade(interval: NonZeroU8, grade: u8) -> Result<NonZeroU8, StoreError> {
+    validate_grade(grade)?;
+    Ok(interval_after_grade_validated(interval, grade))
+}
+
+fn interval_after_grade_validated(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
     match grade {
         0 | 1 => NonZeroU8::new(1).unwrap(),
         2 => interval,
@@ -48,37 +77,52 @@ fn interval_after_grade(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
             let next = interval.get().saturating_add(1);
             NonZeroU8::new(next).unwrap()
         }
-        4 => {
+        _ => {
             let doubled = interval.get().saturating_mul(2);
             NonZeroU8::new(doubled).unwrap()
         }
-        _ => panic!("grade {grade} must be between 0 and 4"),
     }
 }
 
-fn ease_after_grade(current: f32, grade: u8) -> f32 {
-    let delta = ease_delta_for_grade(grade);
+#[cfg_attr(not(test), allow(dead_code))]
+fn ease_after_grade(current: f32, grade: u8) -> Result<f32, StoreError> {
+    validate_grade(grade)?;
+    Ok(ease_after_grade_validated(current, grade))
+}
+
+fn ease_after_grade_validated(current: f32, grade: u8) -> f32 {
+    let delta = ease_delta_for_grade_validated(grade);
     (current + delta).clamp(1.3, 2.8)
 }
 
-fn ease_delta_for_grade(grade: u8) -> f32 {
+#[cfg_attr(not(test), allow(dead_code))]
+fn ease_delta_for_grade(grade: u8) -> Result<f32, StoreError> {
+    validate_grade(grade)?;
+    Ok(ease_delta_for_grade_validated(grade))
+}
+
+fn ease_delta_for_grade_validated(grade: u8) -> f32 {
     match grade {
         0 => -0.3,
         1 => -0.15,
         2 => -0.05,
         3 => 0.0,
         4 => 0.15,
-        _ => panic!("grade {grade} must be between 0 and 4"),
+        _ => {
+            // Defensive: unreachable, but return neutral value if ever violated
+            0.0
+        }
     }
 }
 
 fn finalize_transition(
     state: &StoredCardState,
     review: &ReviewRequest,
+    grade: ValidGrade,
     interval: NonZeroU8,
     ease: f32,
 ) -> ReviewTransition {
-    let streak = next_streak(state.consecutive_correct, review.grade);
+    let streak = next_streak(state.consecutive_correct, grade);
     let due_on = due_date_for_review(review.reviewed_on, interval);
     ReviewTransition {
         interval,
@@ -88,8 +132,8 @@ fn finalize_transition(
     }
 }
 
-fn next_streak(current: u32, grade: u8) -> u32 {
-    if grade >= 3 {
+fn next_streak(current: u32, grade: ValidGrade) -> u32 {
+    if grade.is_correct() {
         current.saturating_add(1)
     } else {
         0
@@ -131,6 +175,10 @@ mod tests {
         }
     }
 
+    fn valid_grade(grade: u8) -> ValidGrade {
+        ValidGrade::try_from(grade).expect("valid grade")
+    }
+
     #[test]
     fn apply_review_updates_state_fields() {
         let mut state = sample_state();
@@ -166,39 +214,60 @@ mod tests {
     #[test]
     fn interval_after_grade_adjusts_spacing() {
         let interval = NonZeroU8::new(3).unwrap();
-        assert_eq!(interval_after_grade(interval, 2), interval);
-        assert_eq!(interval_after_grade(interval, 4).get(), 6);
+        assert_eq!(interval_after_grade(interval, valid_grade(0)).get(), 1);
+        assert_eq!(interval_after_grade(interval, valid_grade(1)).get(), 1);
+        assert_eq!(interval_after_grade(interval, valid_grade(2)), interval);
+        assert_eq!(interval_after_grade(interval, valid_grade(3)).get(), 4);
+        assert_eq!(interval_after_grade(interval, valid_grade(4)).get(), 6);
     }
 
     #[test]
     fn ease_delta_for_grade_matches_expectations() {
-        assert!(ease_delta_for_grade(0) < 0.0);
-        assert!(ease_delta_for_grade(4) > 0.0);
+        assert!(ease_delta_for_grade(valid_grade(0)) < 0.0);
+        assert!(ease_delta_for_grade(valid_grade(2)) < 0.0);
+        assert!(ease_delta_for_grade(valid_grade(4)) > 0.0);
     }
 
     #[test]
     fn ease_after_grade_clamps_results() {
-        let eased = ease_after_grade(2.7, 4);
+        let eased_high = ease_after_grade(2.7, 4).unwrap();
+        assert!((eased_high - 2.8).abs() < f32::EPSILON);
+
+        let eased_low = ease_after_grade(1.4, 0).unwrap();
+        assert!((eased_low - 1.3).abs() < f32::EPSILON);
+
+        let eased_mid = ease_after_grade(2.0, 3).unwrap();
+        assert!((eased_mid - 2.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn ease_after_grade_errors_on_out_of_range_values() {
+        let err = ease_after_grade(1.5, 9).unwrap_err();
+        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 9));
+    }
+
+    #[test]
+    fn interval_after_grade_errors_on_out_of_range_values() {
+        let interval = NonZeroU8::new(3).unwrap();
+        let err = interval_after_grade(interval, 9).unwrap_err();
+        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 9));
+    }
+
+    #[test]
+    fn ease_delta_for_grade_errors_on_out_of_range_values() {
+        let err = ease_delta_for_grade(9).unwrap_err();
+        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 9));
+    }
+
+    #[test]
+        let eased = ease_after_grade(2.7, valid_grade(4));
         assert!((eased - 2.8).abs() < f32::EPSILON);
     }
 
     #[test]
-    #[should_panic(expected = "grade 9 must be between 0 and 4")]
-    fn interval_after_grade_panics_on_out_of_range_values() {
-        let interval = NonZeroU8::new(3).unwrap();
-        interval_after_grade(interval, 9);
-    }
-
-    #[test]
-    #[should_panic(expected = "grade 9 must be between 0 and 4")]
-    fn ease_delta_for_grade_panics_on_out_of_range_values() {
-        ease_delta_for_grade(9);
-    }
-
-    #[test]
     fn next_streak_tracks_correct_answers() {
-        assert_eq!(next_streak(2, 4), 3);
-        assert_eq!(next_streak(5, 1), 0);
+        assert_eq!(next_streak(2, valid_grade(4)), 3);
+        assert_eq!(next_streak(5, valid_grade(1)), 0);
     }
 
     #[test]
@@ -213,7 +282,7 @@ mod tests {
         let state = sample_state();
         let review = sample_review(3);
         let interval = NonZeroU8::new(2).unwrap();
-        let transition = finalize_transition(&state, &review, interval, 2.3);
+        let transition = finalize_transition(&state, &review, valid_grade(3), interval, 2.3);
         assert_eq!(transition.interval, interval);
         assert!((transition.ease - 2.3).abs() < f32::EPSILON);
         assert_eq!(transition.due_on, naive_date(2023, 1, 3));
