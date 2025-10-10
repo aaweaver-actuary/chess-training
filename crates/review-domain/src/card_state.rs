@@ -38,7 +38,7 @@ impl StoredCardState {
     #[must_use]
     pub fn next_interval(&self, grade: ValidGrade) -> NonZeroU8 {
         match grade {
-            ValidGrade::Zero | ValidGrade::One => NonZeroU8::new(1).expect("non zero"),
+            ValidGrade::Zero | ValidGrade::One => NonZeroU8::new(1).expect("Failed to create NonZeroU8 from 1: value must be non-zero, but 1 was provided"),
             ValidGrade::Two => self.interval,
             ValidGrade::Three => {
                 let next = self.interval.get().saturating_add(1);
