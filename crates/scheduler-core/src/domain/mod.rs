@@ -13,7 +13,7 @@ pub use sm2_state::Sm2State;
 use chrono::NaiveDate;
 use uuid::Uuid;
 
-use crate::grade::ReviewGrade;
+use review_domain::ReviewGrade;
 
 use review_domain::UnlockRecord as GenericUnlockRecord;
 

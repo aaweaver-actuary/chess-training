@@ -6,10 +6,10 @@ use uuid::Uuid;
 use crate::config::SchedulerConfig;
 use crate::domain::{Card, ReviewOutcome};
 use crate::errors::SchedulerError;
-use crate::grade::ReviewGrade;
 use crate::queue::build_queue_for_day;
 use crate::sm2::apply_sm2;
 use crate::store::CardStore;
+use review_domain::ReviewGrade;
 
 pub struct Scheduler<S: CardStore> {
     store: S,

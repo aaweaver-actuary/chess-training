@@ -3,7 +3,6 @@
 pub mod config;
 pub mod domain;
 pub mod errors;
-pub mod grade;
 pub mod queue;
 pub mod scheduler;
 pub mod sm2;
@@ -15,7 +14,7 @@ pub use domain::{
     SchedulerUnlockDetail, UnlockRecord, new_card,
 };
 pub use errors::SchedulerError;
-pub use grade::ReviewGrade;
 pub use queue::build_queue_for_day;
+pub use review_domain::ReviewGrade;
 pub use scheduler::Scheduler;
 pub use store::{CardStore, InMemoryStore};
