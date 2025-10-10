@@ -21,7 +21,14 @@ pub fn from_u8(grade: u8) -> Result<ValidGrade, GradeError> {
 /// # Errors
 /// Returns `GradeError::InvalidGradeError` if the provided value is not between 0 and 4 inclusive.
 pub fn new(grade: u8) -> Result<ValidGrade, GradeError> {
-    from_u8(grade)
+    match grade {
+        0 => Ok(ValidGrade::Zero),
+        1 => Ok(ValidGrade::One),
+        2 => Ok(ValidGrade::Two),
+        3 => Ok(ValidGrade::Three),
+        4 => Ok(ValidGrade::Four),
+        _ => Err(GradeError::InvalidGradeError { grade }),
+    }
 }
 
 /// Converts a `ValidGrade` to a `u8`.
