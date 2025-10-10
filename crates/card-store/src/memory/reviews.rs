@@ -222,8 +222,12 @@ mod tests {
     #[test]
     fn commit_review_transition_updates_state() {
         let mut state = sample_state();
-        #[rustfmt::skip]
-        let transition = ReviewTransition { interval: NonZeroU8::new(3).unwrap(), ease: 2.1, streak: 4, due_on: naive_date(2023, 1, 4) };
+        let transition = ReviewTransition {
+            interval: NonZeroU8::new(3).unwrap(),
+            ease: 2.1,
+            streak: 4,
+            due_on: naive_date(2023, 1, 4),
+        };
         commit_review_transition(&mut state, naive_date(2023, 1, 2), transition);
         assert_eq!(state.interval.get(), 3);
         assert!((state.ease_factor - 2.1).abs() < f32::EPSILON);
