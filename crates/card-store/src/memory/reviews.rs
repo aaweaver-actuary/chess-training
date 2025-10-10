@@ -64,17 +64,18 @@ fn validate_grade(grade: u8) -> Result<ValidGrade, StoreError> {
 }
 
 fn interval_after_grade(interval: NonZeroU8, grade: ValidGrade) -> NonZeroU8 {
-    let value = grade.as_u8();
-    if value <= 1 {
-        NonZeroU8::new(1).unwrap()
-    } else if value == 2 {
-        interval
-    } else if value == 3 {
-        let next = interval.get().saturating_add(1);
-        NonZeroU8::new(next).unwrap()
-    } else {
-        let doubled = interval.get().saturating_mul(2);
-        NonZeroU8::new(doubled).unwrap()
+    match grade.as_u8() {
+        0 | 1 => NonZeroU8::new(1).unwrap(),
+        2 => interval,
+        3 => {
+            let next = interval.get().saturating_add(1);
+            NonZeroU8::new(next).unwrap()
+        }
+        4 => {
+            let doubled = interval.get().saturating_mul(2);
+            NonZeroU8::new(doubled).unwrap()
+        }
+        _ => unreachable!("grade should be validated before computing interval"),
     }
 }
 
