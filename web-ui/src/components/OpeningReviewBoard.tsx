@@ -30,7 +30,7 @@ const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'] as const;
 const OVERLAY_SQUARES: Square[] = RANKS.flatMap((rank) =>
   FILES.map((file) => `${file}${rank}` as Square),
 );
-const OVERLAY_SQUARE_SET = new Set<Square>(OVERLAY_SQUARES);
+const OVERLAY_SQUARE_SET = new Set<string>(OVERLAY_SQUARES);
 
 export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
   const boardRef = useRef<ChessBoardElement | null>(null);
@@ -215,7 +215,10 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
       }
 
       setSelectedSquareState(square);
-      setLegalTargets(moves.map((move) => move.to));
+      const targets = moves
+        .map((move) => move.to)
+        .filter((target): target is Square => isSquare(target));
+      setLegalTargets(targets);
     };
 
     board.addEventListener('drop', handleDrop);
