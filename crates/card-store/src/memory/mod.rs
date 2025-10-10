@@ -1,17 +1,14 @@
 //! In-memory implementation of the [`CardStore`](crate::store::CardStore) trait organized by
 //! storage concern for readability.
 
-use std::collections::{HashMap, HashSet};
-use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-
-use chrono::NaiveDate;
-
+#[cfg(test)]
 use crate::chess_position::ChessPosition;
+#[cfg(test)]
 use crate::config::StorageConfig;
-use crate::model::{
-    Card, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord, card_id_for_opening,
-};
-use crate::store::{CardStore, StoreError};
+#[cfg(test)]
+use crate::model::{Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
+#[cfg(test)]
+use crate::store::StoreError;
 
 pub mod cards;
 pub mod edges;
@@ -19,6 +16,8 @@ pub mod in_memory_card_store;
 pub mod position_helpers;
 pub mod reviews;
 pub mod unlocks;
+
+pub use in_memory_card_store::InMemoryCardStore;
 
 use cards::{borrow_card_for_review, collect_due_cards_for_owner, store_opening_card};
 use edges::store_canonical_edge;
@@ -28,10 +27,11 @@ use unlocks::insert_unlock_or_error;
 
 #[cfg(test)]
 mod tests {
+    use super::in_memory_card_store::InMemoryCardStore;
     use super::*;
-    use crate::errors::PositionError;
     use crate::model::UnlockDetail;
-    use crate::tests::util::{assert_invalid_position, is_invalid_position};
+    use crate::store::CardStore;
+    use crate::tests::util::assert_invalid_position;
     use chrono::NaiveDate;
     use std::sync::RwLock;
     use std::thread;
@@ -76,7 +76,7 @@ mod tests {
     fn poisoned_locks_surface_as_store_errors() {
         let store = InMemoryCardStore::new(StorageConfig::default());
 
-        poison_write_lock(&store.positions);
+        poison_write_lock(store.positions_lock());
 
         let position = start_position();
         let err = store.upsert_position(position).unwrap_err();
@@ -87,7 +87,7 @@ mod tests {
     fn position_count_reports_poisoned_lock() {
         let store = InMemoryCardStore::new(StorageConfig::default());
 
-        poison_write_lock(&store.positions);
+        poison_write_lock(store.positions_lock());
 
         let err = store.position_count().unwrap_err();
         assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "positions"));
@@ -106,7 +106,7 @@ mod tests {
     #[test]
     fn ensure_position_exists_surfaces_missing_positions() {
         let store = InMemoryCardStore::new(StorageConfig::default());
-        let err = store.ensure_position_exists(42).unwrap_err();
+        let err = store.ensure_position_exists_for_test(42).unwrap_err();
         assert!(matches!(err, StoreError::MissingPosition { id } if id == 42));
     }
 
@@ -114,9 +114,9 @@ mod tests {
     fn ensure_position_exists_reports_poisoned_lock() {
         let store = InMemoryCardStore::new(StorageConfig::default());
 
-        poison_write_lock(&store.positions);
+        poison_write_lock(store.positions_lock());
 
-        let err = store.ensure_position_exists(1).unwrap_err();
+        let err = store.ensure_position_exists_for_test(1).unwrap_err();
         assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "positions"));
     }
 
@@ -147,13 +147,13 @@ mod tests {
         )
         .unwrap();
         store.upsert_position(position.clone()).unwrap();
-        assert!(store.ensure_position_exists(position.id).is_ok());
+        assert!(store.ensure_position_exists_for_test(position.id).is_ok());
     }
 
     #[test]
     fn ensure_edge_exists_surfaces_missing_edges() {
         let store = InMemoryCardStore::new(StorageConfig::default());
-        let err = store.ensure_edge_exists(24).unwrap_err();
+        let err = store.ensure_edge_exists_for_test(24).unwrap_err();
         assert!(matches!(err, StoreError::MissingEdge { id } if id == 24));
     }
 
@@ -161,9 +161,9 @@ mod tests {
     fn ensure_edge_exists_reports_poisoned_lock() {
         let store = InMemoryCardStore::new(StorageConfig::default());
 
-        poison_write_lock(&store.edges);
+        poison_write_lock(store.edges_lock());
 
-        let err = store.ensure_edge_exists(1).unwrap_err();
+        let err = store.ensure_edge_exists_for_test(1).unwrap_err();
         assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "edges"));
     }
 
@@ -215,7 +215,7 @@ mod tests {
         store.upsert_position(parent.clone()).unwrap();
         store.upsert_position(child.clone()).unwrap();
 
-        poison_write_lock(&store.edges);
+        poison_write_lock(store.edges_lock());
 
         let edge = EdgeInput {
             parent_id: parent.id,
@@ -339,7 +339,7 @@ mod tests {
     fn record_unlock_reports_poisoned_lock() {
         let store = InMemoryCardStore::new(StorageConfig::default());
 
-        poison_write_lock(&store.unlocks);
+        poison_write_lock(store.unlocks_lock());
 
         let unlock = UnlockRecord {
             owner_id: "owner".to_string(),
@@ -360,7 +360,7 @@ mod tests {
         };
         store.record_unlock(unlock.clone()).unwrap();
 
-        let unlocks = store.unlocks.read().unwrap();
+        let unlocks = store.unlocks_lock().read().unwrap();
         assert!(unlocks.contains(&unlock));
     }
 
@@ -393,7 +393,7 @@ mod tests {
             })
             .unwrap();
 
-        poison_write_lock(&store.cards);
+        poison_write_lock(store.cards_lock());
 
         let state = StoredCardState::new(
             naive_date(2023, 1, 1),
@@ -410,7 +410,7 @@ mod tests {
     fn fetch_due_cards_reports_poisoned_cards_lock() {
         let store = InMemoryCardStore::new(StorageConfig::default());
 
-        poison_write_lock(&store.cards);
+        poison_write_lock(store.cards_lock());
 
         let err = store
             .fetch_due_cards("owner", naive_date(2023, 1, 1))
@@ -441,7 +441,7 @@ mod tests {
             .create_opening_card("owner", &edge, state)
             .expect("create card");
 
-        poison_write_lock(&store.cards);
+        poison_write_lock(store.cards_lock());
 
         let err = store
             .record_review(ReviewRequest {

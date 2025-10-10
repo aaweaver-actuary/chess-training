@@ -53,8 +53,8 @@ fn derive_review_transition(
     review: &ReviewRequest,
 ) -> Result<ReviewTransition, StoreError> {
     let grade = validate_grade(review.grade)?;
-    let interval = interval_after_grade(state.interval, grade.as_u8())?;
-    let ease = ease_after_grade(state.ease_factor, grade.as_u8())?;
+    let interval = interval_after_grade_validated(state.interval, grade.as_u8());
+    let ease = ease_after_grade_validated(state.ease_factor, grade.as_u8());
     Ok(finalize_transition(state, review, grade, interval, ease))
 }
 
@@ -69,21 +69,16 @@ fn interval_after_grade(interval: NonZeroU8, grade: u8) -> Result<NonZeroU8, Sto
 }
 
 fn interval_after_grade_validated(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
-    match grade {
-        0 | 1 => NonZeroU8::new(1).unwrap(),
-        2 => interval,
-        3 => {
-            let next = interval.get().saturating_add(1);
-            NonZeroU8::new(next).unwrap()
-        }
-        4 => {
-            let doubled = interval.get().saturating_mul(2);
-            NonZeroU8::new(doubled).unwrap()
-        }
-        _ => unreachable!(
-            "Invalid grade value: grades must be 0-4 and validated before computing interval (got {})",
-            grade
-        ),
+    if grade <= 1 {
+        NonZeroU8::new(1).unwrap()
+    } else if grade == 2 {
+        interval
+    } else if grade == 3 {
+        let next = interval.get().saturating_add(1);
+        NonZeroU8::new(next).unwrap()
+    } else {
+        let doubled = interval.get().saturating_mul(2);
+        NonZeroU8::new(doubled).unwrap()
     }
 }
 
@@ -105,16 +100,16 @@ fn ease_delta_for_grade(grade: u8) -> Result<f32, StoreError> {
 }
 
 fn ease_delta_for_grade_validated(grade: u8) -> f32 {
-    match grade {
-        0 => -0.3,
-        1 => -0.15,
-        2 => -0.05,
-        3 => 0.0,
-        4 => 0.15,
-        _ => {
-            // Defensive: unreachable, but return neutral value if ever violated
-            0.0
-        }
+    if grade == 0 {
+        -0.3
+    } else if grade == 1 {
+        -0.15
+    } else if grade == 2 {
+        -0.05
+    } else if grade == 3 {
+        0.0
+    } else {
+        0.15
     }
 }
 
@@ -162,8 +157,6 @@ fn commit_review_transition(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::panic;
-
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
     }
@@ -210,6 +203,16 @@ mod tests {
     }
 
     #[test]
+    fn derive_review_transition_returns_expected_values() {
+        let state = sample_state();
+        let review = sample_review(3);
+        let transition = derive_review_transition(&state, &review).expect("valid transition");
+        assert_eq!(transition.interval.get(), 2);
+        assert!((transition.ease - 2.5).abs() < f32::EPSILON);
+        assert_eq!(transition.streak, 1);
+    }
+
+    #[test]
     fn validate_grade_rejects_out_of_range_values() {
         let err = validate_grade(5).unwrap_err();
         assert_eq!(err, StoreError::InvalidGrade { grade: 5 });
@@ -227,7 +230,7 @@ mod tests {
         let interval = NonZeroU8::new(3).unwrap();
         assert_eq!(get_clean_interval_after_grade(interval, valid_grade(0)), 1);
         assert_eq!(get_clean_interval_after_grade(interval, valid_grade(1)), 1);
-        assert_eq!(get_clean_interval_after_grade(interval, valid_grade(2)), 1);
+        assert_eq!(get_clean_interval_after_grade(interval, valid_grade(2)), 3);
         assert_eq!(get_clean_interval_after_grade(interval, valid_grade(3)), 4);
         assert_eq!(get_clean_interval_after_grade(interval, valid_grade(4)), 6);
     }
@@ -420,11 +423,11 @@ mod tests {
     #[test]
     fn interval_after_grade_panics_on_out_of_range_values() {
         let interval = NonZeroU8::new(3).unwrap();
-        assert!(panic::catch_unwind(|| interval_after_grade(interval, 9)).is_err());
+        assert!(interval_after_grade(interval, 9).is_err());
     }
 
     #[test]
     fn ease_delta_for_grade_panics_on_out_of_range_values() {
-        assert!(panic::catch_unwind(|| ease_delta_for_grade(9)).is_err());
+        assert!(ease_delta_for_grade(9).is_err());
     }
 }

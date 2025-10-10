@@ -4,7 +4,6 @@ use std::{
 };
 
 use chrono::NaiveDate;
-use review_domain::{Card, UnlockRecord};
 
 use crate::{
     CardStore, StoreError,
@@ -17,7 +16,7 @@ use crate::{
     },
     model::{
         Card, CardMap, Edge, EdgeInput, EdgeMap, PositionMap, ReviewRequest, StoredCardState,
-        UnlockSet, card_id_for_opening,
+        UnlockRecord, UnlockSet, card_id_for_opening,
     },
 };
 
@@ -140,27 +139,47 @@ impl CardStore for InMemoryCardStore {
         store_opening_card(&mut cards, owner_id, edge, state, card_id)
     }
 
-    fn fetch_due_cards(
-        &self,
-        owner_id: &str,
-        as_of: NaiveDate,
-    ) -> Result<Vec<Card<u64, String, StoredCardState, u64>>, StoreError> {
+    fn fetch_due_cards(&self, owner_id: &str, as_of: NaiveDate) -> Result<Vec<Card>, StoreError> {
         let cards = self.cards_read()?;
         Ok(collect_due_cards_for_owner(&cards, owner_id, as_of))
     }
 
-    fn record_review(
-        &self,
-        review: ReviewRequest,
-    ) -> Result<Card<u64, String, StoredCardState, u64>, StoreError> {
+    fn record_review(&self, review: ReviewRequest) -> Result<Card, StoreError> {
         let mut cards = self.cards_write()?;
         let card = borrow_card_for_review(&mut cards, &review)?;
         apply_review(&mut card.state, &review)?;
         Ok(card.clone())
     }
 
-    fn record_unlock(&self, unlock: UnlockRecord<String, NaiveDate>) -> Result<(), StoreError> {
+    fn record_unlock(&self, unlock: UnlockRecord) -> Result<(), StoreError> {
         let mut unlocks = self.unlocks_write()?;
         insert_unlock_or_error(&mut unlocks, &unlock)
+    }
+}
+
+#[cfg(test)]
+impl InMemoryCardStore {
+    pub(crate) fn positions_lock(&self) -> &RwLock<PositionMap> {
+        &self.positions
+    }
+
+    pub(crate) fn edges_lock(&self) -> &RwLock<EdgeMap> {
+        &self.edges
+    }
+
+    pub(crate) fn cards_lock(&self) -> &RwLock<CardMap> {
+        &self.cards
+    }
+
+    pub(crate) fn unlocks_lock(&self) -> &RwLock<UnlockSet> {
+        &self.unlocks
+    }
+
+    pub(crate) fn ensure_position_exists_for_test(&self, id: u64) -> Result<(), StoreError> {
+        self.ensure_position_exists(id)
+    }
+
+    pub(crate) fn ensure_edge_exists_for_test(&self, id: u64) -> Result<(), StoreError> {
+        self.ensure_edge_exists(id)
     }
 }

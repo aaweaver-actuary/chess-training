@@ -1,5 +1,38 @@
 //! Shared opening-specific data structures.
 
+use crate::hash::hash64;
+
+/// Input payload for inserting or updating an edge.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EdgeInput {
+    /// Parent position identifier.
+    pub parent_id: u64,
+    /// Move in UCI format.
+    pub move_uci: String,
+    /// Move in SAN format.
+    pub move_san: String,
+    /// Child position identifier.
+    pub child_id: u64,
+}
+
+impl EdgeInput {
+    /// Converts the input payload into a canonical [`OpeningEdge`].
+    ///
+    /// The canonical form computes a deterministic edge ID from the parent position and move,
+    /// and returns an [`OpeningEdge`] with normalized fields.
+    #[must_use]
+    pub fn into_edge(self) -> OpeningEdge {
+        let id = hash64(&[&self.parent_id.to_be_bytes(), self.move_uci.as_bytes()]);
+        OpeningEdge {
+            id,
+            parent_id: self.parent_id,
+            child_id: self.child_id,
+            move_uci: self.move_uci,
+            move_san: self.move_san,
+        }
+    }
+}
+
 /// Payload carried by opening review cards.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct OpeningCard {
@@ -54,6 +87,21 @@ impl OpeningEdge {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn edge_input_converts_to_edge() {
+        let input = EdgeInput {
+            parent_id: 1,
+            move_uci: String::from("e2e4"),
+            move_san: String::from("e4"),
+            child_id: 2,
+        };
+        let edge = input.into_edge();
+        assert_eq!(edge.parent_id, 1);
+        assert_eq!(edge.child_id, 2);
+        assert_eq!(edge.move_uci, "e2e4");
+        assert_eq!(edge.move_san, "e4");
+    }
 
     #[test]
     fn opening_card_constructor_sets_fields() {
