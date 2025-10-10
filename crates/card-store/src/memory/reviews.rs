@@ -1,6 +1,5 @@
-use std::num::NonZeroU8;
-
 use chrono::{Duration, NaiveDate};
+use std::num::NonZeroU8;
 
 use crate::model::{ReviewRequest, StoredCardState};
 use crate::store::StoreError;
@@ -160,11 +159,11 @@ fn commit_review_transition(
     state.due_on = transition.due_on;
 }
 
-#[cfg(all(test, not(coverage)))]
+#[cfg(test)]
 mod tests {
+    use super::*;
     use std::panic;
 
-    use super::*;
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
     }

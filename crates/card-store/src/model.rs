@@ -1,6 +1,9 @@
 //! Domain model structs shared by card-store implementations.
 
-use std::num::NonZeroU8;
+use std::{
+    collections::{HashMap, HashSet},
+    num::NonZeroU8,
+};
 
 use chrono::NaiveDate;
 
@@ -11,7 +14,7 @@ use review_domain::{
     UnlockDetail as GenericUnlockDetail, UnlockRecord as GenericUnlockRecord,
 };
 
-use crate::hash64;
+use crate::{chess_position::ChessPosition, hash64};
 
 /// Input payload for inserting or updating an edge.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,8 +50,23 @@ impl EdgeInput {
 /// Opening edge describing a transition between two positions.
 pub type Edge = OpeningEdge;
 
+/// Hash Map from an integer ID to an [`Edge`].
+pub type EdgeMap = HashMap<u64, Edge>;
+
 /// Classification of a card target.
 pub type CardKind = GenericCardKind<OpeningCard, TacticCard>;
+
+/// Hash Map from an integer ID to a [`Card`].
+pub type CardMap = HashMap<u64, GenericCard<u64, String, CardKind, StoredCardState>>;
+
+/// Hash Map from a position ID to a [`ChessPosition`]
+pub type PositionMap = HashMap<u64, ChessPosition>;
+
+/// Set of unlock records.
+pub type UnlockSet = HashSet<UnlockRecord>;
+
+/// Specialized review card type for the card-store service.
+pub type Card = GenericCard<u64, String, CardKind, StoredCardState>;
 
 /// Mutable scheduling state of a card stored in the card-store service.
 #[derive(Clone, Debug, PartialEq)]
