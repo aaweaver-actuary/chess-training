@@ -1,4 +1,5 @@
 //! card-store — unified persistence traits and in-memory implementation.
+#![allow(unexpected_cfgs)]
 
 pub mod chess_position;
 pub mod config;

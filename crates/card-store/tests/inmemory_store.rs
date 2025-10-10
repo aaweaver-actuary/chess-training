@@ -180,6 +180,22 @@ fn position_creation_requires_valid_side_to_move() {
 }
 
 #[test]
+fn upsert_position_rejects_invalid_positions() {
+    let store = new_store();
+    let invalid = ChessPosition {
+        id: 1,
+        fen: "invalid".into(),
+        side_to_move: 'x',
+        ply: 0,
+    };
+
+    assert!(matches!(
+        store.upsert_position(invalid),
+        Err(StoreError::InvalidPosition(_))
+    ));
+}
+
+#[test]
 fn position_creation_fails_with_missing_fields() {
     // Missing side to move, castling, en passant, halfmove, fullmove
     let result = ChessPosition::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", 0);

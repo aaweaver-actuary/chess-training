@@ -107,19 +107,17 @@ impl InMemoryCardStore {
     }
 
     fn ensure_position_exists(&self, id: u64) -> Result<(), StoreError> {
-        if self.positions_read()?.contains_key(&id) {
-            Ok(())
-        } else {
-            Err(StoreError::MissingPosition { id })
+        if !self.positions_read()?.contains_key(&id) {
+            return Err(StoreError::MissingPosition { id });
         }
+        Ok(())
     }
 
     fn ensure_edge_exists(&self, id: u64) -> Result<(), StoreError> {
-        if self.edges_read()?.contains_key(&id) {
-            Ok(())
-        } else {
-            Err(StoreError::MissingEdge { id })
+        if !self.edges_read()?.contains_key(&id) {
+            return Err(StoreError::MissingEdge { id });
         }
+        Ok(())
     }
 }
 
@@ -173,27 +171,48 @@ mod tests {
     use super::*;
     use crate::model::UnlockDetail;
     use chrono::NaiveDate;
-    use std::panic::catch_unwind;
+    use std::sync::RwLock;
+    use std::thread;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
+    }
+
+    fn start_position() -> ChessPosition {
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        ChessPosition {
+            id: crate::hash64(&[fen.as_bytes()]),
+            fen: fen.into(),
+            side_to_move: 'w',
+            ply: 0,
+        }
+    }
+
+    fn poison_write_lock<T>(lock: &RwLock<T>)
+    where
+        T: Send + Sync,
+    {
+        thread::scope(|scope| {
+            let success = scope.spawn(|| {
+                let _guard = lock.write().unwrap();
+            });
+            assert!(success.join().is_ok());
+
+            let failure = scope.spawn(|| {
+                let _guard = lock.write().unwrap();
+                panic!("poison lock");
+            });
+            assert!(failure.join().is_err());
+        });
     }
 
     #[test]
     fn poisoned_locks_surface_as_store_errors() {
         let store = InMemoryCardStore::new(StorageConfig::default());
 
-        let result = catch_unwind(|| {
-            let _guard = store.positions.write().unwrap();
-            panic!("poison");
-        });
-        assert!(result.is_err());
+        poison_write_lock(&store.positions);
 
-        let position = ChessPosition::new(
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            0,
-        )
-        .expect("valid FEN");
+        let position = start_position();
         let err = store.upsert_position(position).unwrap_err();
         assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "positions"));
     }
@@ -202,14 +221,20 @@ mod tests {
     fn position_count_reports_poisoned_lock() {
         let store = InMemoryCardStore::new(StorageConfig::default());
 
-        let result = catch_unwind(|| {
-            let _guard = store.positions.write().unwrap();
-            panic!("poison");
-        });
-        assert!(result.is_err());
+        poison_write_lock(&store.positions);
 
         let err = store.position_count().unwrap_err();
         assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "positions"));
+    }
+
+    #[test]
+    fn position_count_reports_stored_positions() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        assert_eq!(store.position_count().unwrap(), 0);
+
+        let position = start_position();
+        store.upsert_position(position).unwrap();
+        assert_eq!(store.position_count().unwrap(), 1);
     }
 
     #[test]
@@ -220,10 +245,118 @@ mod tests {
     }
 
     #[test]
+    fn ensure_position_exists_reports_poisoned_lock() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+
+        poison_write_lock(&store.positions);
+
+        let err = store.ensure_position_exists(1).unwrap_err();
+        assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "positions"));
+    }
+
+    #[test]
+    fn upsert_position_rejects_invalid_positions() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        let invalid = ChessPosition {
+            id: 99,
+            fen: "invalid fen".into(),
+            side_to_move: 'w',
+            ply: 0,
+        };
+        let err = store.upsert_position(invalid).unwrap_err();
+        match err {
+            StoreError::InvalidPosition(_) => {}
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn ensure_position_exists_accepts_existing_positions() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        let position = ChessPosition::new(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            0,
+        )
+        .unwrap();
+        store.upsert_position(position.clone()).unwrap();
+        assert!(store.ensure_position_exists(position.id).is_ok());
+    }
+
+    #[test]
     fn ensure_edge_exists_surfaces_missing_edges() {
         let store = InMemoryCardStore::new(StorageConfig::default());
         let err = store.ensure_edge_exists(24).unwrap_err();
         assert!(matches!(err, StoreError::MissingEdge { id } if id == 24));
+    }
+
+    #[test]
+    fn ensure_edge_exists_reports_poisoned_lock() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+
+        poison_write_lock(&store.edges);
+
+        let err = store.ensure_edge_exists(1).unwrap_err();
+        assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "edges"));
+    }
+
+    #[test]
+    fn upsert_edge_requires_existing_positions() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        let parent = start_position();
+        let child = ChessPosition::new(
+            "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+            1,
+        )
+        .unwrap();
+        store.upsert_position(child.clone()).unwrap();
+
+        let missing_parent = EdgeInput {
+            parent_id: parent.id,
+            move_uci: "e2e4".into(),
+            move_san: "e4".into(),
+            child_id: child.id,
+        };
+        let err = store.upsert_edge(missing_parent).unwrap_err();
+        assert!(matches!(err, StoreError::MissingPosition { id } if id == parent.id));
+
+        store.upsert_position(parent.clone()).unwrap();
+        let missing_child = EdgeInput {
+            parent_id: parent.id,
+            move_uci: "e2e4".into(),
+            move_san: "e4".into(),
+            child_id: 999,
+        };
+        let err = store.upsert_edge(missing_child).unwrap_err();
+        assert!(matches!(err, StoreError::MissingPosition { id } if id == 999));
+    }
+
+    #[test]
+    fn upsert_edge_reports_poisoned_lock() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+
+        let parent = ChessPosition::new(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            0,
+        )
+        .unwrap();
+        let child = ChessPosition::new(
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+            1,
+        )
+        .unwrap();
+        store.upsert_position(parent.clone()).unwrap();
+        store.upsert_position(child.clone()).unwrap();
+
+        poison_write_lock(&store.edges);
+
+        let edge = EdgeInput {
+            parent_id: parent.id,
+            move_uci: "e2e4".into(),
+            move_san: "e4".into(),
+            child_id: child.id,
+        };
+        let err = store.upsert_edge(edge).unwrap_err();
+        assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "edges"));
     }
 
     #[test]
@@ -263,14 +396,83 @@ mod tests {
     }
 
     #[test]
+    fn record_review_requires_existing_card() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        let review = ReviewRequest {
+            card_id: 999,
+            reviewed_on: naive_date(2023, 1, 2),
+            grade: 3,
+        };
+        let err = store.record_review(review).unwrap_err();
+        assert!(matches!(err, StoreError::MissingCard { id } if id == 999));
+    }
+
+    #[test]
+    fn fetch_due_cards_returns_due_entries() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        let position = start_position();
+        store.upsert_position(position.clone()).unwrap();
+        let edge = store
+            .upsert_edge(EdgeInput {
+                parent_id: position.id,
+                move_uci: "e2e4".into(),
+                move_san: "e4".into(),
+                child_id: position.id,
+            })
+            .unwrap();
+        let state = StoredCardState::new(
+            naive_date(2023, 1, 1),
+            std::num::NonZeroU8::new(1).unwrap(),
+            2.5,
+        );
+        store
+            .create_opening_card("owner", &edge, state.clone())
+            .unwrap();
+
+        let cards = store
+            .fetch_due_cards("owner", naive_date(2023, 1, 1))
+            .unwrap();
+        assert!(!cards.is_empty());
+    }
+
+    #[test]
+    fn record_review_validates_grade() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        let position = start_position();
+        store.upsert_position(position.clone()).unwrap();
+        store.upsert_position(position.clone()).unwrap();
+        let edge = store
+            .upsert_edge(EdgeInput {
+                parent_id: position.id,
+                move_uci: "e2e4".into(),
+                move_san: "e4".into(),
+                child_id: position.id,
+            })
+            .unwrap();
+        let state = StoredCardState::new(
+            naive_date(2023, 1, 1),
+            std::num::NonZeroU8::new(1).unwrap(),
+            2.5,
+        );
+        let card = store
+            .create_opening_card("owner", &edge, state)
+            .expect("create card");
+
+        let err = store
+            .record_review(ReviewRequest {
+                card_id: card.id,
+                reviewed_on: naive_date(2023, 1, 2),
+                grade: 9,
+            })
+            .unwrap_err();
+        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 9));
+    }
+
+    #[test]
     fn record_unlock_reports_poisoned_lock() {
         let store = InMemoryCardStore::new(StorageConfig::default());
 
-        let result = catch_unwind(|| {
-            let _guard = store.unlocks.write().unwrap();
-            panic!("poison");
-        });
-        assert!(result.is_err());
+        poison_write_lock(&store.unlocks);
 
         let unlock = UnlockRecord {
             owner_id: "owner".to_string(),
@@ -279,5 +481,109 @@ mod tests {
         };
         let err = store.record_unlock(unlock).unwrap_err();
         assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "unlocks"));
+    }
+
+    #[test]
+    fn record_unlock_stores_entry() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        let unlock = UnlockRecord {
+            owner_id: "owner".to_string(),
+            detail: UnlockDetail::new(7),
+            unlocked_on: naive_date(2023, 1, 2),
+        };
+        store.record_unlock(unlock.clone()).unwrap();
+
+        let unlocks = store.unlocks.read().unwrap();
+        assert!(unlocks.contains(&unlock));
+    }
+
+    #[test]
+    fn create_opening_card_requires_existing_edge() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        let edge = Edge::new(7, 1, 2, "e2e4", "e4");
+        let state = StoredCardState::new(
+            naive_date(2023, 1, 1),
+            std::num::NonZeroU8::new(1).unwrap(),
+            2.5,
+        );
+        let err = store
+            .create_opening_card("owner", &edge, state)
+            .unwrap_err();
+        assert!(matches!(err, StoreError::MissingEdge { id } if id == 7));
+    }
+
+    #[test]
+    fn create_opening_card_reports_poisoned_cards_lock() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        let position = start_position();
+        store.upsert_position(position.clone()).unwrap();
+        store.upsert_position(position.clone()).unwrap();
+        let edge = store
+            .upsert_edge(EdgeInput {
+                parent_id: position.id,
+                move_uci: "e2e4".into(),
+                move_san: "e4".into(),
+                child_id: position.id,
+            })
+            .unwrap();
+
+        poison_write_lock(&store.cards);
+
+        let state = StoredCardState::new(
+            naive_date(2023, 1, 1),
+            std::num::NonZeroU8::new(1).unwrap(),
+            2.5,
+        );
+        let err = store
+            .create_opening_card("owner", &edge, state)
+            .unwrap_err();
+        assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "cards"));
+    }
+
+    #[test]
+    fn fetch_due_cards_reports_poisoned_cards_lock() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+
+        poison_write_lock(&store.cards);
+
+        let err = store
+            .fetch_due_cards("owner", naive_date(2023, 1, 1))
+            .unwrap_err();
+        assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "cards"));
+    }
+
+    #[test]
+    fn record_review_reports_poisoned_cards_lock() {
+        let store = InMemoryCardStore::new(StorageConfig::default());
+        let position = start_position();
+        store.upsert_position(position.clone()).unwrap();
+        store.upsert_position(position.clone()).unwrap();
+        let edge = store
+            .upsert_edge(EdgeInput {
+                parent_id: position.id,
+                move_uci: "e2e4".into(),
+                move_san: "e4".into(),
+                child_id: position.id,
+            })
+            .unwrap();
+        let state = StoredCardState::new(
+            naive_date(2023, 1, 1),
+            std::num::NonZeroU8::new(1).unwrap(),
+            2.5,
+        );
+        let card = store
+            .create_opening_card("owner", &edge, state)
+            .expect("create card");
+
+        poison_write_lock(&store.cards);
+
+        let err = store
+            .record_review(ReviewRequest {
+                card_id: card.id,
+                reviewed_on: naive_date(2023, 1, 2),
+                grade: 3,
+            })
+            .unwrap_err();
+        assert!(matches!(err, StoreError::PoisonedLock { resource } if resource == "cards"));
     }
 }
