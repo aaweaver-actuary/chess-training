@@ -40,13 +40,7 @@ fn validate_position_collision(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn assert_invalid_position(err: StoreError) {
-        if let StoreError::InvalidPosition(_) = err {
-            return;
-        }
-        panic!("expected invalid position error, got {err:?}");
-    }
+    use crate::tests::util::{assert_invalid_position, is_invalid_position};
 
     #[test]
     fn canonicalize_position_rejects_invalid_side_to_move() {
@@ -61,11 +55,8 @@ mod tests {
     }
 
     #[test]
-    fn assert_invalid_position_panics_for_other_errors() {
-        let result = std::panic::catch_unwind(|| {
-            assert_invalid_position(StoreError::MissingCard { id: 7 });
-        });
-        assert!(result.is_err());
+    fn is_invalid_position_returns_false_for_other_errors() {
+        assert!(!is_invalid_position(&StoreError::MissingCard { id: 7 }));
     }
 
     #[test]
