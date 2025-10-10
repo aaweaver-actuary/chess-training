@@ -8,6 +8,7 @@ pub enum ValidGrade {
     Four = 4,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum GradeError {
     /// The provided grade was outside the supported range of 0-4.
     GradeOutsideRangeError {
@@ -24,7 +25,6 @@ impl ValidGrade {
     /// # Errors
     /// Returns `GradeError::GradeOutsideRangeError` if the provided value is not between
     /// 0 and 4 inclusive.
-    #[inline]
     pub fn from_u8(grade: u8) -> Result<Self, GradeError> {
         match grade {
             0 => Ok(ValidGrade::Zero),
@@ -37,7 +37,6 @@ impl ValidGrade {
     }
 
     /// Converts a `ValidGrade` to a `u8`.
-    #[inline]
     #[must_use]
     pub fn to_u8(self) -> u8 {
         self as u8
@@ -48,14 +47,12 @@ impl ValidGrade {
     /// # Errors
     /// Returns `GradeError::InvalidGrade` if the provided value is not between
     /// 0 and 4 inclusive.
-    #[inline]
     pub fn new(grade: u8) -> Result<Self, GradeError> {
         Self::from_u8(grade)
     }
 
     /// Returns the underlying grade as a `u8`.
     /// Alias for `to_u8()`.
-    #[inline]
     #[must_use]
     pub fn as_u8(self) -> u8 {
         self.to_u8()
@@ -63,13 +60,11 @@ impl ValidGrade {
 
     /// Returns `true` if the grade is 3 or 4, indicating a correct response.
     /// TODO: Check if this is how we want to define "correct".
-    #[inline]
     #[must_use]
     pub fn is_correct(self) -> bool {
         (self as u8) >= 3
     }
 
-    #[inline]
     #[must_use]
     pub fn to_interval_increment(self) -> u8 {
         match self {
@@ -86,7 +81,6 @@ impl ValidGrade {
     /// - Grade 2: -0.05
     /// - Grade 3: 0.0
     /// - Grade 4: +0.15
-    #[inline]
     #[must_use]
     pub fn to_grade_delta(self) -> f32 {
         match self {
@@ -98,6 +92,24 @@ impl ValidGrade {
         }
     }
 }
+
+impl PartialEq for GradeError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                GradeError::GradeOutsideRangeError { grade: left },
+                GradeError::GradeOutsideRangeError { grade: right },
+            ) => left == right,
+            (
+                GradeError::InvalidGradeError { grade: left },
+                GradeError::InvalidGradeError { grade: right },
+            ) => left == right,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for GradeError {}
 
 impl TryFrom<u8> for ValidGrade {
     type Error = GradeError;

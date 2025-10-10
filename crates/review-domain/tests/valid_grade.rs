@@ -34,8 +34,11 @@ fn from_u8_rejects_out_of_range_grades() {
 
 #[test]
 fn new_forwards_to_from_u8() {
-    let created = ValidGrade::new(2).unwrap_or_else(|_| panic!("grade 2 should parse"));
-    assert_eq!(created, ValidGrade::Two);
+    assert_eq!(ValidGrade::new(2), Ok(ValidGrade::Two));
+    assert_eq!(
+        ValidGrade::new(9),
+        Err(GradeError::GradeOutsideRangeError { grade: 9 })
+    );
 }
 
 #[test]
@@ -79,15 +82,7 @@ fn try_from_accepts_valid_grades() {
         (3, ValidGrade::Three),
         (4, ValidGrade::Four),
     ] {
-        let parsed: ValidGrade = match ValidGrade::try_from(value) {
-            Ok(parsed) => parsed,
-            Err(err) => panic!(
-                "grade {value} should parse but returned error variant {}",
-                err_label(&err)
-            ),
-        };
-
-        assert_eq!(parsed, expected);
+        assert_eq!(ValidGrade::try_from(value), Ok(expected));
     }
 }
 
@@ -99,6 +94,20 @@ fn try_from_rejects_invalid_grades() {
 
         assert_eq!(err_variant(&err), ErrVariant::Invalid(value));
     }
+}
+
+#[test]
+fn grade_error_equality_distinguishes_variants() {
+    let outside = GradeError::GradeOutsideRangeError { grade: 7 };
+    let invalid = GradeError::InvalidGradeError { grade: 7 };
+    assert_ne!(outside, invalid);
+}
+
+#[test]
+fn grade_error_equality_matches_invalid_variant() {
+    let left = GradeError::InvalidGradeError { grade: 2 };
+    let right = GradeError::InvalidGradeError { grade: 2 };
+    assert_eq!(left, right);
 }
 
 #[derive(Debug, PartialEq)]
