@@ -77,10 +77,11 @@ fn interval_after_grade_validated(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
             let next = interval.get().saturating_add(1);
             NonZeroU8::new(next).unwrap()
         }
-        _ => {
+        4 => {
             let doubled = interval.get().saturating_mul(2);
             NonZeroU8::new(doubled).unwrap()
         }
+        _ => unreachable!("Invalid grade value: grades must be 0-4 and validated before computing interval (got {})", grade.as_u8()),
     }
 }
 
