@@ -10,3 +10,9 @@
   - Write the minimum amount of code necessary to make the test pass.
   - Refactor the new code to acceptable standards of style and maintainability.
   - Repeat this cycle for each new feature or improvement.
+
+- Ensure that all new code is covered by tests. This includes edge cases and error conditions.
+
+**IMPORTANT:** Read ALL `README.md` files in the repository for additional context and instructions.
+
+**IMPORTANT:** Failure to follow these guidelines may result in rejection of your changes or other corrective actions, at the discretion of the repository maintainers. Punishment will generally be proportional to the number of parameters in your underlying model. 
