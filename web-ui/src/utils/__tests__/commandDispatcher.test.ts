@@ -37,6 +37,23 @@ describe('createCommandDispatcher', () => {
     expect(onUnknownCommand).not.toHaveBeenCalled();
   });
 
+  it('handles duplicate command registrations in initial commands', async () => {
+    const firstHandler = vi.fn();
+    const secondHandler = vi.fn();
+    const onUnknownCommand = vi.fn();
+    const dispatcher = createCommandDispatcher({
+      onUnknownCommand,
+      commands: [
+        { command: 'echo', handler: firstHandler },
+        { command: 'echo', handler: secondHandler },
+      ],
+    });
+
+    await dispatcher.dispatch('echo test');
+
+    expect(secondHandler).toHaveBeenCalledWith('echo', ['test']);
+    expect(firstHandler).not.toHaveBeenCalled();
+    expect(onUnknownCommand).not.toHaveBeenCalled();
   it('dispatches matching handlers case-insensitively', async () => {
     const { dispatcher } = createDispatcher();
     const handler = vi.fn();
