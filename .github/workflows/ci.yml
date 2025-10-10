@@ -1,9 +1,6 @@
 name: Strict CI
 
 on:
-  push:
-    branches:
-      - '**'
   pull_request:
     branches:
       - master
@@ -13,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
-  CARGO_INCREMENTAL: '0'
+  CARGO_INCREMENTAL: "0"
 
 jobs:
   rust:
@@ -98,7 +95,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
           cache: npm
           cache-dependency-path: ${{ matrix.project.path }}/package-lock.json
       - name: Install dependencies (${{ matrix.project.name }})
@@ -119,7 +116,7 @@ jobs:
       - name: Test with coverage (${{ matrix.project.name }})
         working-directory: ${{ matrix.project.path }}
         env:
-          CI: 'true'
+          CI: "true"
         run: npm run test:coverage -- --coverage.reporter=json-summary --coverage.reporter=text --run
       - name: Enforce 100% coverage (${{ matrix.project.name }})
         working-directory: ${{ matrix.project.path }}
