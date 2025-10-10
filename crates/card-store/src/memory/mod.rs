@@ -130,7 +130,7 @@ mod tests {
             ply: 0,
         };
         let err = store.upsert_position(invalid).unwrap_err();
-        assert_invalid_position(err);
+        assert_invalid_position(&err);
     }
 
     #[test]

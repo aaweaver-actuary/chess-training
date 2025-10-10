@@ -51,7 +51,7 @@ mod tests {
             ply: 0,
         };
         let err = canonicalize_position_for_storage(position).unwrap_err();
-        assert_invalid_position(err);
+        assert_invalid_position(&err);
     }
 
     #[test]
