@@ -311,8 +311,7 @@ function isSquare(value: unknown): value is Square {
     return false;
   }
 
-  const maybeSquare = value as Square;
-  return OVERLAY_SQUARE_SET.has(maybeSquare);
+  return OVERLAY_SQUARE_SET.has(value);
 }
 
 function extractTeachingArrow(meta?: CardSummary['meta']): string | null {
