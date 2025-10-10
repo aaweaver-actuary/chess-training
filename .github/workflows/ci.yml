@@ -77,15 +77,18 @@ jobs:
         run: cargo fmt --all -- --check
 
   javascript:
-    name: "JavaScript checks (${{ matrix.project.name }})"
+    name: "JavaScript checks (${{ matrix.project }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         project:
-          - name: web-ui
+          - web-ui
+          - session-gateway
+        include:
+          - project: web-ui
             path: web-ui
-          - name: session-gateway
+          - project: session-gateway
             path: apps/session-gateway
     steps:
       - name: Checkout
@@ -97,29 +100,29 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: ${{ matrix.project.path }}/package-lock.json
-      - name: Install dependencies (${{ matrix.project.name }})
-        working-directory: ${{ matrix.project.path }}
+          cache-dependency-path: ${{ matrix.path }}/package-lock.json
+      - name: Install dependencies (${{ matrix.project }})
+        working-directory: ${{ matrix.path }}
         run: npm ci --prefer-offline --no-audit --fund=false
-      - name: Check formatting (${{ matrix.project.name }})
-        working-directory: ${{ matrix.project.path }}
+      - name: Check formatting (${{ matrix.project }})
+        working-directory: ${{ matrix.path }}
         run: npm run format:check
-      - name: Lint (${{ matrix.project.name }})
-        working-directory: ${{ matrix.project.path }}
+      - name: Lint (${{ matrix.project }})
+        working-directory: ${{ matrix.path }}
         run: npm run lint -- --max-warnings=0
-      - name: Type check (${{ matrix.project.name }})
-        working-directory: ${{ matrix.project.path }}
+      - name: Type check (${{ matrix.project }})
+        working-directory: ${{ matrix.path }}
         run: npm run typecheck
-      - name: Run build (${{ matrix.project.name }})
-        working-directory: ${{ matrix.project.path }}
+      - name: Run build (${{ matrix.project }})
+        working-directory: ${{ matrix.path }}
         run: npm run build
-      - name: Test with coverage (${{ matrix.project.name }})
-        working-directory: ${{ matrix.project.path }}
+      - name: Test with coverage (${{ matrix.project }})
+        working-directory: ${{ matrix.path }}
         env:
           CI: "true"
         run: npm run test:coverage -- --coverage.reporter=json-summary --coverage.reporter=text --run
-      - name: Enforce 100% coverage (${{ matrix.project.name }})
-        working-directory: ${{ matrix.project.path }}
+      - name: Enforce 100% coverage (${{ matrix.project }})
+        working-directory: ${{ matrix.path }}
         run: |
           node - <<'NODE'
           import fs from 'node:fs';
