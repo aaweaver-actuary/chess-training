@@ -64,6 +64,7 @@ impl<S: CardStore> Scheduler<S> {
 mod tests {
     use super::*;
     use crate::domain::{CardKind, CardState, SchedulerTacticCard, new_card};
+    use crate::errors::SchedulerError;
     use crate::store::InMemoryStore;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -99,5 +100,19 @@ mod tests {
         let mut scheduler = Scheduler::new(store, config);
         let queue = scheduler.build_queue(owner, naive_date(2023, 1, 1));
         assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn review_returns_error_when_card_missing() {
+        let store = InMemoryStore::new();
+        let config = SchedulerConfig::default();
+        let mut scheduler = Scheduler::new(store, config);
+        let missing_id = Uuid::new_v4();
+
+        let error = scheduler
+            .review(missing_id, ReviewGrade::Good, naive_date(2023, 1, 1))
+            .expect_err("missing cards should surface an error");
+
+        assert!(matches!(error, SchedulerError::CardNotFound(id) if id == missing_id));
     }
 }
