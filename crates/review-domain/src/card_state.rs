@@ -44,7 +44,8 @@ mod tests {
         let state = StoredCardState::new(naive_date(2023, 1, 1), interval, 2.5);
         assert_eq!(state.due_on, naive_date(2023, 1, 1));
         assert_eq!(state.interval, interval);
-        assert_eq!(state.ease_factor, 2.5);
+        let ease_factor: f32 = 2.5;
+        assert_eq!(state.ease_factor, ease_factor);
         assert_eq!(state.consecutive_correct, 0);
         assert!(state.last_reviewed_on.is_none());
     }
