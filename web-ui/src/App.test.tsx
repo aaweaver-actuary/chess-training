@@ -216,6 +216,32 @@ describe('App', () => {
       });
     });
 
+    it('opens the opening review when the s command is dispatched', async () => {
+      const user = setupUser();
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockedStore.getState().start).toHaveBeenCalled();
+      });
+
+      await user.keyboard(':');
+
+      const input = await screen.findByRole('textbox', { name: /command input/i });
+      await user.type(input, 's{Enter}');
+
+      const reviewRegion = await screen.findByRole('region', { name: /opening review/i });
+      expect(reviewRegion).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /grade current card/i })).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: /command console/i })).not.toBeInTheDocument();
+      });
+    });
+
     it('closes the PGN import pane when the x command is dispatched', async () => {
       const user = setupUser();
       render(
@@ -260,6 +286,37 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /Daily Review Summary/i })).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
     expect(screen.getByText('9')).toBeInTheDocument();
+  });
+
+  it('highlights imported opening lines on the dashboard', async () => {
+    const user = setupUser();
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedStore.getState().start).toHaveBeenCalled();
+    });
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const pasteOption = await screen.findByRole('button', { name: /paste pgn/i });
+    await user.click(pasteOption);
+
+    const textarea = await screen.findByLabelText(/pgn move input/i);
+    await user.type(textarea, '1. e4 e5 2.Nf3');
+
+    const confirmButton = await screen.findByRole('button', {
+      name: /add to king's knight opening \(white\)/i,
+    });
+    await user.click(confirmButton);
+
+    const unlockMove = await screen.findByText("King's Knight Opening (White)");
+    expect(unlockMove).toBeInTheDocument();
+    expect(await screen.findByText('Line: 1.e4 e5 2.Nf3')).toBeInTheDocument();
   });
 
   it('submits a grade when clicking a grade button', async () => {
