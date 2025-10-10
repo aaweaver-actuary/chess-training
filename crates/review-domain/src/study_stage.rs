@@ -75,6 +75,8 @@ mod tests {
         assert!(StudyStage::Relearning.is_relearning());
         assert!(!StudyStage::Review.is_relearning());
         assert!(StudyStage::Learning.is_active());
+        assert!(StudyStage::Review.is_active());
+        assert!(StudyStage::Relearning.is_active());
         assert!(!StudyStage::New.is_active());
     }
 
@@ -85,5 +87,14 @@ mod tests {
         assert_eq!(StudyStage::from_char('R'), Some(StudyStage::Review));
         assert_eq!(StudyStage::from_char('e'), Some(StudyStage::Relearning));
         assert_eq!(StudyStage::from_char('x'), None);
+    }
+
+    #[test]
+    fn from_char_handles_case_insensitivity() {
+        assert_eq!(StudyStage::from_char('n'), Some(StudyStage::New));
+        assert_eq!(StudyStage::from_char('L'), Some(StudyStage::Learning));
+        assert_eq!(StudyStage::from_char('r'), Some(StudyStage::Review));
+        assert_eq!(StudyStage::from_char('E'), Some(StudyStage::Relearning));
+        assert_eq!(StudyStage::from_char('0'), None);
     }
 }
