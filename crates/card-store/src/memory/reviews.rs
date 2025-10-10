@@ -84,8 +84,17 @@ fn ease_after_grade(current: f32, grade: ValidGrade) -> f32 {
 }
 
 fn ease_delta_for_grade(grade: ValidGrade) -> f32 {
-    const DELTAS: [f32; 5] = [-0.3, -0.15, -0.05, 0.0, 0.15];
-    DELTAS[usize::from(grade.as_u8())]
+    match grade.as_u8() {
+        0 => -0.3,
+        1 => -0.15,
+        2 => -0.05,
+        3 => 0.0,
+        4 => 0.15,
+        _ => {
+            // Defensive: unreachable, but return neutral value if ever violated
+            0.0
+        }
+    }
 }
 
 fn finalize_transition(
