@@ -67,9 +67,13 @@ mod tests {
     #[test]
     fn stage_helpers_cover_all_variants() {
         assert!(StudyStage::New.is_new());
+        assert!(!StudyStage::Learning.is_new());
         assert!(StudyStage::Learning.is_learning());
+        assert!(!StudyStage::Review.is_learning());
         assert!(StudyStage::Review.is_review());
+        assert!(!StudyStage::New.is_review());
         assert!(StudyStage::Relearning.is_relearning());
+        assert!(!StudyStage::Review.is_relearning());
         assert!(StudyStage::Learning.is_active());
         assert!(!StudyStage::New.is_active());
     }
