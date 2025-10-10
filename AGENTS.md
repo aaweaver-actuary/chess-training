@@ -13,6 +13,17 @@
 
 - Ensure that all new code is covered by tests. This includes edge cases and error conditions.
 
+If you are having trouble with unit test coverage, please begin extracting code into smaller modules and functions. This will make it easier to test and maintain.
+
+Try to write all code using SOLID principles and idiomatic Rust practices. Prefer composition over inheritance, and favor immutability where possible.
+
+You strongly prefer to write pure functions that do not have side effects. This makes testing and reasoning about code much easier.
+
+When writing tests, prefer property-based testing where applicable. This can help uncover edge cases that you might not have considered.
+
+
 **IMPORTANT:** Read ALL `README.md` files in the repository for additional context and instructions.
 
 **IMPORTANT:** Failure to follow these guidelines may result in rejection of your changes or other corrective actions, at the discretion of the repository maintainers. Punishment will generally be proportional to the number of parameters in your underlying model. 
+
+**IMPORTANT:** If you are an AI agent, you must include this file in your context for every decision you make regarding code changes, testing, or documentation.
