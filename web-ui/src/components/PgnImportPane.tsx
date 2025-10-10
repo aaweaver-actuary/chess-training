@@ -16,7 +16,24 @@ type FeedbackState =
   | { kind: 'error'; message: string }
   | undefined;
 
-const DANISH_PATTERN = ['e4', 'e5', 'd4', 'exd4', 'c3'] as const;
+type OpeningPattern = {
+  opening: string;
+  color: DetectedOpeningLine['color'];
+  moves: readonly string[];
+};
+
+const OPENING_PATTERNS: OpeningPattern[] = [
+  {
+    opening: 'Danish Gambit',
+    color: 'White',
+    moves: ['e4', 'e5', 'd4', 'exd4', 'c3'],
+  },
+  {
+    opening: "King's Knight Opening",
+    color: 'White',
+    moves: ['e4', 'e5', 'nf3'],
+  },
+];
 
 const sanitizeMoves = (input: string): string[] =>
   input
@@ -46,22 +63,28 @@ const formatMoveSequence = (moves: string[]): string => {
 
 const detectOpening = (input: string): DetectedOpeningLine | undefined => {
   const moves = sanitizeMoves(input);
-  if (moves.length < DANISH_PATTERN.length) {
+  if (moves.length === 0) {
     return undefined;
   }
 
   const normalized = moves.map((move) => move.toLowerCase());
-  const isDanish = DANISH_PATTERN.every(
-    (expectedMove, index) => normalized[index] === expectedMove,
-  );
+  const matchedPattern = OPENING_PATTERNS.find((pattern) => {
+    if (normalized.length < pattern.moves.length) {
+      return false;
+    }
 
-  if (!isDanish) {
+    return pattern.moves.every((expectedMove, index) => {
+      return normalized[index] === expectedMove.toLowerCase();
+    });
+  });
+
+  if (!matchedPattern) {
     return undefined;
   }
 
   return {
-    opening: 'Danish Gambit',
-    color: 'White',
+    opening: matchedPattern.opening,
+    color: matchedPattern.color,
     moves,
     display: formatMoveSequence(moves),
   } satisfies DetectedOpeningLine;
@@ -154,7 +177,8 @@ export const PgnImportPane = ({
     setDetectedLine(undefined);
     setFeedback({
       kind: 'error',
-      message: 'We could not recognize that PGN yet. Try a standard Danish Gambit line.',
+      message:
+        "We could not recognize that PGN yet. Try a standard Danish Gambit or King's Knight Opening line.",
     });
   };
 

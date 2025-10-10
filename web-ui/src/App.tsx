@@ -199,6 +199,10 @@ const App = (): JSX.Element => {
           handler: buildNavigationHandler('/tools/board'),
         },
         {
+          command: 's',
+          handler: buildNavigationHandler('/review/opening'),
+        },
+        {
           command: 'db',
           handler: buildNavigationHandler('/dashboard'),
         },

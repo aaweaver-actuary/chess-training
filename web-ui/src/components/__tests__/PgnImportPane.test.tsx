@@ -175,4 +175,45 @@ describe('PgnImportPane', () => {
     );
     expect(feedback).toHaveAttribute('role', 'status');
   });
+
+  it('recognizes a King\'s Knight Opening line from a short PGN import', async () => {
+    const onImportLine = vi.fn(
+      (): ImportResult => ({
+        added: true,
+        line: {
+          id: 'import-kko',
+          opening: "King's Knight Opening",
+          color: 'White',
+          moves: ['e4', 'e5', 'Nf3'],
+          display: '1.e4 e5 2.Nf3',
+          scheduledFor: '2024-01-02',
+        },
+      }),
+    );
+
+    const user = userEvent.setup();
+
+    render(<PgnImportPane onImportLine={onImportLine} />);
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const pasteOption = await screen.findByRole('button', { name: /paste pgn/i });
+    await user.click(pasteOption);
+
+    const textarea = await screen.findByLabelText(/pgn move input/i);
+    await user.type(textarea, '1. e4 e5 2.Nf3');
+
+    const confirmButton = await screen.findByRole('button', {
+      name: /add to king's knight opening \(white\)/i,
+    });
+    await user.click(confirmButton);
+
+    expect(onImportLine).toHaveBeenCalledWith({
+      opening: "King's Knight Opening",
+      color: 'White',
+      moves: ['e4', 'e5', 'Nf3'],
+      display: '1.e4 e5 2.Nf3',
+    });
+  });
 });
