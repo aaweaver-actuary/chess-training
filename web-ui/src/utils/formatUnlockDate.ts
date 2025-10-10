@@ -14,9 +14,7 @@ export function formatUnlockDate(
   input: string,
   options: DateFormatterOptions = defaultOptions,
 ): string {
-  const normalizedInput = /^\d{4}-\d{2}-\d{2}$/.test(input)
-    ? `${input}T00:00:00Z`
-    : input;
+  const normalizedInput = /^\d{4}-\d{2}-\d{2}$/.test(input) ? `${input}T00:00:00Z` : input;
 
   const parsed = new Date(normalizedInput);
 

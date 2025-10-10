@@ -66,34 +66,28 @@ impl ValidGrade {
     }
 
     pub fn to_interval_increment(self) -> u8 {
-        match self as u8 {
-            0 | 1 => 1,
-            2 => 1,
-            3 => 2,
-            4 => 3,
-            _ => unreachable!("grade validated to be between 0 and 4"),
+        match self {
+            ValidGrade::Zero | ValidGrade::One | ValidGrade::Two => 1,
+            ValidGrade::Three => 2,
+            ValidGrade::Four => 3,
         }
     }
 
-    // if grade == 0 {
-    //     -0.3
-    // } else if grade == 1 {
-    //     -0.15
-    // } else if grade == 2 {
-    //     -0.05
-    // } else if grade == 3 {
-    //     0.0
-    // } else {
-    //     0.15
-    // }
+    /// Returns the grade as a delta to be applied to the easiness factor.
+    /// The delta values are based on the SuperMemo 2 algorithm.
+    /// - Grade 0: -0.3
+    /// - Grade 1: -0.15
+    /// - Grade 2: -0.05
+    /// - Grade 3: 0.0
+    /// - Grade 4: +0.15
+    #[inline]
     pub fn to_grade_delta(self) -> f32 {
-        match self as u8 {
-            0 => -0.3,
-            1 => -0.15,
-            2 => -0.05,
-            3 => 0.0,
-            4 => 0.15,
-            _ => unreachable!("grade validated to be between 0 and 4"),
+        match self {
+            ValidGrade::Zero => -0.3,
+            ValidGrade::One => -0.15,
+            ValidGrade::Two => -0.05,
+            ValidGrade::Three => 0.0,
+            ValidGrade::Four => 0.15,
         }
     }
 }
