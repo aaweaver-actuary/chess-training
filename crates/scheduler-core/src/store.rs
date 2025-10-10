@@ -202,7 +202,7 @@ mod tests {
             .iter()
             .filter_map(|card| match &card.kind {
                 CardKind::Opening(opening) => Some(opening.parent_prefix.clone()),
-                _ => None,
+                CardKind::Tactic(_) => None,
             })
             .collect();
         assert_eq!(prefixes, vec!["a".to_string(), "b".to_string()]);
