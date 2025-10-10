@@ -174,6 +174,13 @@ mod tests {
     use std::sync::RwLock;
     use std::thread;
 
+    fn assert_invalid_position(err: StoreError) {
+        if let StoreError::InvalidPosition(_) = err {
+            return;
+        }
+        panic!("expected invalid position error, got {err:?}");
+    }
+
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
     }
@@ -268,13 +275,15 @@ mod tests {
             ply: 0,
         };
         let err = store.upsert_position(invalid).unwrap_err();
-        assert!(is_invalid_position(&err));
+        assert_invalid_position(err);
     }
 
     #[test]
-    fn invalid_position_helper_returns_false_for_other_errors() {
-        let err = StoreError::InvalidGrade { grade: 9 };
-        assert!(!is_invalid_position(&err));
+    fn assert_invalid_position_panics_for_other_errors() {
+        let result = std::panic::catch_unwind(|| {
+            assert_invalid_position(StoreError::MissingCard { id: 1 });
+        });
+        assert!(result.is_err());
     }
 
     #[test]

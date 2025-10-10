@@ -46,6 +46,13 @@ mod tests {
         matches!(err, StoreError::InvalidPosition(_))
     }
 
+    fn assert_invalid_position(err: StoreError) {
+        if let StoreError::InvalidPosition(_) = err {
+            return;
+        }
+        panic!("expected invalid position error, got {err:?}");
+    }
+
     #[test]
     fn canonicalize_position_rejects_invalid_side_to_move() {
         let position = ChessPosition {
@@ -55,16 +62,15 @@ mod tests {
             ply: 0,
         };
         let err = canonicalize_position_for_storage(position).unwrap_err();
-        assert!(is_invalid_position(&err));
+        assert_invalid_position(err);
     }
 
     #[test]
-    fn invalid_position_helper_distinguishes_variants() {
-        let err = StoreError::InvalidPosition(PositionError::MalformedFen);
-        assert!(is_invalid_position(&err));
-
-        let other = StoreError::InvalidGrade { grade: 5 };
-        assert!(!is_invalid_position(&other));
+    fn assert_invalid_position_panics_for_other_errors() {
+        let result = std::panic::catch_unwind(|| {
+            assert_invalid_position(StoreError::MissingCard { id: 7 });
+        });
+        assert!(result.is_err());
     }
 
     #[test]

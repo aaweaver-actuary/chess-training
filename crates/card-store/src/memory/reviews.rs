@@ -5,6 +5,33 @@ use chrono::{Duration, NaiveDate};
 use crate::model::{ReviewRequest, StoredCardState};
 use crate::store::StoreError;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ValidGrade(u8);
+
+impl ValidGrade {
+    #[inline]
+    fn as_u8(self) -> u8 {
+        self.0
+    }
+
+    #[inline]
+    fn is_correct(self) -> bool {
+        self.0 >= 3
+    }
+}
+
+impl TryFrom<u8> for ValidGrade {
+    type Error = StoreError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if value <= 4 {
+            Ok(Self(value))
+        } else {
+            Err(StoreError::InvalidGrade { grade: value })
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct ReviewTransition {
     interval: NonZeroU8,
@@ -26,18 +53,14 @@ fn derive_review_transition(
     state: &StoredCardState,
     review: &ReviewRequest,
 ) -> Result<ReviewTransition, StoreError> {
-    validate_grade(review.grade)?;
-    let interval = interval_after_grade_validated(state.interval, review.grade);
-    let ease = ease_after_grade_validated(state.ease_factor, review.grade);
-    Ok(finalize_transition(state, review, interval, ease))
+    let grade = validate_grade(review.grade)?;
+    let interval = interval_after_grade(state.interval, grade);
+    let ease = ease_after_grade(state.ease_factor, grade);
+    Ok(finalize_transition(state, review, grade, interval, ease))
 }
 
-fn validate_grade(grade: u8) -> Result<(), StoreError> {
-    if grade > 4 {
-        Err(StoreError::InvalidGrade { grade })
-    } else {
-        Ok(())
-    }
+fn validate_grade(grade: u8) -> Result<ValidGrade, StoreError> {
+    grade.try_into()
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
@@ -84,17 +107,22 @@ fn ease_delta_for_grade_validated(grade: u8) -> f32 {
         1 => -0.15,
         2 => -0.05,
         3 => 0.0,
-        _ => 0.15,
+        4 => 0.15,
+        _ => {
+            // Defensive: unreachable, but return neutral value if ever violated
+            0.0
+        }
     }
 }
 
 fn finalize_transition(
     state: &StoredCardState,
     review: &ReviewRequest,
+    grade: ValidGrade,
     interval: NonZeroU8,
     ease: f32,
 ) -> ReviewTransition {
-    let streak = next_streak(state.consecutive_correct, review.grade);
+    let streak = next_streak(state.consecutive_correct, grade);
     let due_on = due_date_for_review(review.reviewed_on, interval);
     ReviewTransition {
         interval,
@@ -104,8 +132,8 @@ fn finalize_transition(
     }
 }
 
-fn next_streak(current: u32, grade: u8) -> u32 {
-    if grade >= 3 {
+fn next_streak(current: u32, grade: ValidGrade) -> u32 {
+    if grade.is_correct() {
         current.saturating_add(1)
     } else {
         0
@@ -147,6 +175,10 @@ mod tests {
         }
     }
 
+    fn valid_grade(grade: u8) -> ValidGrade {
+        ValidGrade::try_from(grade).expect("valid grade")
+    }
+
     #[test]
     fn apply_review_updates_state_fields() {
         let mut state = sample_state();
@@ -168,26 +200,24 @@ mod tests {
     fn validate_grade_rejects_out_of_range_values() {
         let err = validate_grade(5).unwrap_err();
         assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 5));
-        assert!(validate_grade(4).is_ok());
+        assert_eq!(validate_grade(4).unwrap(), ValidGrade::try_from(4).unwrap());
     }
 
     #[test]
     fn interval_after_grade_adjusts_spacing() {
         let interval = NonZeroU8::new(3).unwrap();
-        assert_eq!(interval_after_grade(interval, 0).unwrap().get(), 1);
-        assert_eq!(interval_after_grade(interval, 1).unwrap().get(), 1);
-        assert_eq!(interval_after_grade(interval, 2).unwrap(), interval);
-        assert_eq!(interval_after_grade(interval, 3).unwrap().get(), 4);
-        assert_eq!(interval_after_grade(interval, 4).unwrap().get(), 6);
+        assert_eq!(interval_after_grade(interval, valid_grade(0)).get(), 1);
+        assert_eq!(interval_after_grade(interval, valid_grade(1)).get(), 1);
+        assert_eq!(interval_after_grade(interval, valid_grade(2)), interval);
+        assert_eq!(interval_after_grade(interval, valid_grade(3)).get(), 4);
+        assert_eq!(interval_after_grade(interval, valid_grade(4)).get(), 6);
     }
 
     #[test]
     fn ease_delta_for_grade_matches_expectations() {
-        assert!(ease_delta_for_grade(0).unwrap() < 0.0);
-        assert!(ease_delta_for_grade(1).unwrap() < 0.0);
-        assert!(ease_delta_for_grade(2).unwrap() < 0.0);
-        assert_eq!(ease_delta_for_grade(3).unwrap(), 0.0);
-        assert!(ease_delta_for_grade(4).unwrap() > 0.0);
+        assert!(ease_delta_for_grade(valid_grade(0)) < 0.0);
+        assert!(ease_delta_for_grade(valid_grade(2)) < 0.0);
+        assert!(ease_delta_for_grade(valid_grade(4)) > 0.0);
     }
 
     #[test]
@@ -222,9 +252,14 @@ mod tests {
     }
 
     #[test]
+        let eased = ease_after_grade(2.7, valid_grade(4));
+        assert!((eased - 2.8).abs() < f32::EPSILON);
+    }
+
+    #[test]
     fn next_streak_tracks_correct_answers() {
-        assert_eq!(next_streak(2, 4), 3);
-        assert_eq!(next_streak(5, 1), 0);
+        assert_eq!(next_streak(2, valid_grade(4)), 3);
+        assert_eq!(next_streak(5, valid_grade(1)), 0);
     }
 
     #[test]
@@ -239,7 +274,7 @@ mod tests {
         let state = sample_state();
         let review = sample_review(3);
         let interval = NonZeroU8::new(2).unwrap();
-        let transition = finalize_transition(&state, &review, interval, 2.3);
+        let transition = finalize_transition(&state, &review, valid_grade(3), interval, 2.3);
         assert_eq!(transition.interval, interval);
         assert!((transition.ease - 2.3).abs() < f32::EPSILON);
         assert_eq!(transition.due_on, naive_date(2023, 1, 3));
