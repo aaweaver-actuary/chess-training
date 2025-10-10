@@ -46,7 +46,11 @@ impl StoredCardState {
             }
             ValidGrade::Four => {
                 let next = self.interval.get().saturating_mul(2);
-                NonZeroU8::new(next).expect("saturating_mul should be non zero")
+                NonZeroU8::new(next).expect(&format!(
+                    "Expected saturating_mul(2) of interval {} to be non-zero, but got {}. This should be impossible for NonZeroU8.",
+                    self.interval.get(),
+                    next
+                ))
             }
         }
     }
