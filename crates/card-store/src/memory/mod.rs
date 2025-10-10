@@ -169,6 +169,7 @@ impl CardStore for InMemoryCardStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::PositionError;
     use crate::model::UnlockDetail;
     use chrono::NaiveDate;
     use std::sync::RwLock;
