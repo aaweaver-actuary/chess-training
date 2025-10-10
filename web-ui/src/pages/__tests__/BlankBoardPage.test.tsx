@@ -347,4 +347,32 @@ describe('BlankBoardPage', () => {
       expect(board).not.toHaveAttribute('data-active-square');
     });
   });
+
+  it('clears the selection when a click does not land on a square', async () => {
+    renderPage();
+
+    const board = screen.getByTestId('sandbox-board');
+    const shadowRoot = board.shadowRoot;
+    if (!shadowRoot) {
+      throw new Error('The chess board should expose a shadow root in tests.');
+    }
+
+    await waitFor(() => {
+      expect(shadowRoot.querySelector('[data-square="e2"]')).not.toBeNull();
+    });
+
+    const e2 = shadowRoot.querySelector('[data-square="e2"]');
+    if (!e2) {
+      throw new Error('The expected square was not found on the board.');
+    }
+
+    fireEvent.click(e2);
+    expect(board).toHaveAttribute('data-active-square', 'e2');
+
+    fireEvent.click(board);
+
+    await waitFor(() => {
+      expect(board).not.toHaveAttribute('data-active-square');
+    });
+  });
 });
