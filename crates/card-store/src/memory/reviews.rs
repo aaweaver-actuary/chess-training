@@ -27,8 +27,8 @@ fn derive_review_transition(
     review: &ReviewRequest,
 ) -> Result<ReviewTransition, StoreError> {
     validate_grade(review.grade)?;
-    let interval = interval_after_grade(state.interval, review.grade);
-    let ease = ease_after_grade(state.ease_factor, review.grade);
+    let interval = interval_after_grade_validated(state.interval, review.grade);
+    let ease = ease_after_grade_validated(state.ease_factor, review.grade);
     Ok(finalize_transition(state, review, interval, ease))
 }
 
@@ -40,7 +40,13 @@ fn validate_grade(grade: u8) -> Result<(), StoreError> {
     }
 }
 
-fn interval_after_grade(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
+#[cfg_attr(not(test), allow(dead_code))]
+fn interval_after_grade(interval: NonZeroU8, grade: u8) -> Result<NonZeroU8, StoreError> {
+    validate_grade(grade)?;
+    Ok(interval_after_grade_validated(interval, grade))
+}
+
+fn interval_after_grade_validated(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
     match grade {
         0 | 1 => NonZeroU8::new(1).unwrap(),
         2 => interval,
@@ -48,27 +54,37 @@ fn interval_after_grade(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
             let next = interval.get().saturating_add(1);
             NonZeroU8::new(next).unwrap()
         }
-        4 => {
+        _ => {
             let doubled = interval.get().saturating_mul(2);
             NonZeroU8::new(doubled).unwrap()
         }
-        _ => panic!("grade {grade} must be between 0 and 4"),
     }
 }
 
-fn ease_after_grade(current: f32, grade: u8) -> f32 {
-    let delta = ease_delta_for_grade(grade);
+#[cfg_attr(not(test), allow(dead_code))]
+fn ease_after_grade(current: f32, grade: u8) -> Result<f32, StoreError> {
+    validate_grade(grade)?;
+    Ok(ease_after_grade_validated(current, grade))
+}
+
+fn ease_after_grade_validated(current: f32, grade: u8) -> f32 {
+    let delta = ease_delta_for_grade_validated(grade);
     (current + delta).clamp(1.3, 2.8)
 }
 
-fn ease_delta_for_grade(grade: u8) -> f32 {
+#[cfg_attr(not(test), allow(dead_code))]
+fn ease_delta_for_grade(grade: u8) -> Result<f32, StoreError> {
+    validate_grade(grade)?;
+    Ok(ease_delta_for_grade_validated(grade))
+}
+
+fn ease_delta_for_grade_validated(grade: u8) -> f32 {
     match grade {
         0 => -0.3,
         1 => -0.15,
         2 => -0.05,
         3 => 0.0,
-        4 => 0.15,
-        _ => panic!("grade {grade} must be between 0 and 4"),
+        _ => 0.15,
     }
 }
 
@@ -158,33 +174,51 @@ mod tests {
     #[test]
     fn interval_after_grade_adjusts_spacing() {
         let interval = NonZeroU8::new(3).unwrap();
-        assert_eq!(interval_after_grade(interval, 2), interval);
-        assert_eq!(interval_after_grade(interval, 4).get(), 6);
+        assert_eq!(interval_after_grade(interval, 0).unwrap().get(), 1);
+        assert_eq!(interval_after_grade(interval, 1).unwrap().get(), 1);
+        assert_eq!(interval_after_grade(interval, 2).unwrap(), interval);
+        assert_eq!(interval_after_grade(interval, 3).unwrap().get(), 4);
+        assert_eq!(interval_after_grade(interval, 4).unwrap().get(), 6);
     }
 
     #[test]
     fn ease_delta_for_grade_matches_expectations() {
-        assert!(ease_delta_for_grade(0) < 0.0);
-        assert!(ease_delta_for_grade(4) > 0.0);
+        assert!(ease_delta_for_grade(0).unwrap() < 0.0);
+        assert!(ease_delta_for_grade(1).unwrap() < 0.0);
+        assert!(ease_delta_for_grade(2).unwrap() < 0.0);
+        assert_eq!(ease_delta_for_grade(3).unwrap(), 0.0);
+        assert!(ease_delta_for_grade(4).unwrap() > 0.0);
     }
 
     #[test]
     fn ease_after_grade_clamps_results() {
-        let eased = ease_after_grade(2.7, 4);
-        assert!((eased - 2.8).abs() < f32::EPSILON);
+        let eased_high = ease_after_grade(2.7, 4).unwrap();
+        assert!((eased_high - 2.8).abs() < f32::EPSILON);
+
+        let eased_low = ease_after_grade(1.4, 0).unwrap();
+        assert!((eased_low - 1.3).abs() < f32::EPSILON);
+
+        let eased_mid = ease_after_grade(2.0, 3).unwrap();
+        assert!((eased_mid - 2.0).abs() < f32::EPSILON);
     }
 
     #[test]
-    #[should_panic(expected = "grade 9 must be between 0 and 4")]
-    fn interval_after_grade_panics_on_out_of_range_values() {
+    fn ease_after_grade_errors_on_out_of_range_values() {
+        let err = ease_after_grade(1.5, 9).unwrap_err();
+        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 9));
+    }
+
+    #[test]
+    fn interval_after_grade_errors_on_out_of_range_values() {
         let interval = NonZeroU8::new(3).unwrap();
-        interval_after_grade(interval, 9);
+        let err = interval_after_grade(interval, 9).unwrap_err();
+        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 9));
     }
 
     #[test]
-    #[should_panic(expected = "grade 9 must be between 0 and 4")]
-    fn ease_delta_for_grade_panics_on_out_of_range_values() {
-        ease_delta_for_grade(9);
+    fn ease_delta_for_grade_errors_on_out_of_range_values() {
+        let err = ease_delta_for_grade(9).unwrap_err();
+        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 9));
     }
 
     #[test]

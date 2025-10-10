@@ -206,6 +206,10 @@ mod tests {
         });
     }
 
+    fn is_invalid_position(err: &StoreError) -> bool {
+        matches!(err, StoreError::InvalidPosition(_))
+    }
+
     #[test]
     fn poisoned_locks_surface_as_store_errors() {
         let store = InMemoryCardStore::new(StorageConfig::default());
@@ -264,10 +268,13 @@ mod tests {
             ply: 0,
         };
         let err = store.upsert_position(invalid).unwrap_err();
-        match err {
-            StoreError::InvalidPosition(_) => {}
-            other => panic!("unexpected error: {other:?}"),
-        }
+        assert!(is_invalid_position(&err));
+    }
+
+    #[test]
+    fn invalid_position_helper_returns_false_for_other_errors() {
+        let err = StoreError::InvalidGrade { grade: 9 };
+        assert!(!is_invalid_position(&err));
     }
 
     #[test]
