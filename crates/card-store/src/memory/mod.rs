@@ -440,7 +440,6 @@ mod tests {
         let store = InMemoryCardStore::new(StorageConfig::default());
         let position = start_position();
         store.upsert_position(position.clone()).unwrap();
-        store.upsert_position(position.clone()).unwrap();
         let edge = store
             .upsert_edge(EdgeInput {
                 parent_id: position.id,
