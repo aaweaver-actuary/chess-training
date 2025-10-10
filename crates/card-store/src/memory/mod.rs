@@ -169,6 +169,7 @@ impl CardStore for InMemoryCardStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::PositionError;
     use crate::model::UnlockDetail;
     use crate::tests::util::{assert_invalid_position, is_invalid_position};
     use chrono::NaiveDate;
@@ -205,6 +206,10 @@ mod tests {
             });
             assert!(failure.join().is_err());
         });
+    }
+
+    fn is_invalid_position(err: &StoreError) -> bool {
+        matches!(err, StoreError::InvalidPosition(_))
     }
 
     #[test]
