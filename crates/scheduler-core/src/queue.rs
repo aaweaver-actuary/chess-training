@@ -238,4 +238,15 @@ mod tests {
 
         assert!(extract_prefix(&tactic_card).is_none());
     }
+
+    #[test]
+    fn track_new_unlock_records_ids_without_prefixes() {
+        let mut unlocks = ExistingUnlocks::from_records(&[]);
+        let tactic_id = Uuid::new_v4();
+
+        unlocks.track_new_unlock(None, tactic_id);
+
+        assert!(unlocks.contains_card(&tactic_id));
+        assert!(!unlocks.contains_prefix("unused"));
+    }
 }
