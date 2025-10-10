@@ -5,7 +5,7 @@ import { Chess } from 'chess.js';
 import type { Move } from 'chess.js';
 
 import type { CardSummary } from '../../types/gateway';
-import { OpeningReviewBoard } from '../OpeningReviewBoard';
+import { OpeningReviewBoard, __testables } from '../OpeningReviewBoard';
 
 describe('OpeningReviewBoard', () => {
   afterEach(() => {
@@ -320,6 +320,25 @@ describe('OpeningReviewBoard', () => {
       },
       { timeout: 1500 },
     );
+  });
+});
+
+describe('isSquare', () => {
+  const { isSquare } = __testables;
+
+  it('rejects non-string values', () => {
+    expect(isSquare(42)).toBe(false);
+    expect(isSquare({})).toBe(false);
+  });
+
+  it('rejects strings that are not chessboard squares', () => {
+    expect(isSquare('foo')).toBe(false);
+    expect(isSquare('a9')).toBe(false);
+  });
+
+  it('accepts chessboard squares', () => {
+    expect(isSquare('a1')).toBe(true);
+    expect(isSquare('h8')).toBe(true);
   });
 });
 
