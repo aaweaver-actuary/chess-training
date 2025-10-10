@@ -38,6 +38,7 @@ impl ValidGrade {
 
     /// Converts a `ValidGrade` to a `u8`.
     #[inline]
+    #[must_use]
     pub fn to_u8(self) -> u8 {
         self as u8
     }
@@ -47,6 +48,7 @@ impl ValidGrade {
     /// # Errors
     /// Returns `GradeError::InvalidGrade` if the provided value is not between
     /// 0 and 4 inclusive.
+    #[inline]
     pub fn new(grade: u8) -> Result<Self, GradeError> {
         Self::from_u8(grade)
     }
@@ -54,6 +56,7 @@ impl ValidGrade {
     /// Returns the underlying grade as a `u8`.
     /// Alias for `to_u8()`.
     #[inline]
+    #[must_use]
     pub fn as_u8(self) -> u8 {
         self.to_u8()
     }
@@ -61,10 +64,13 @@ impl ValidGrade {
     /// Returns `true` if the grade is 3 or 4, indicating a correct response.
     /// TODO: Check if this is how we want to define "correct".
     #[inline]
+    #[must_use]
     pub fn is_correct(self) -> bool {
         (self as u8) >= 3
     }
 
+    #[inline]
+    #[must_use]
     pub fn to_interval_increment(self) -> u8 {
         match self {
             ValidGrade::Zero | ValidGrade::One | ValidGrade::Two => 1,
@@ -74,13 +80,14 @@ impl ValidGrade {
     }
 
     /// Returns the grade as a delta to be applied to the easiness factor.
-    /// The delta values are based on the SuperMemo 2 algorithm.
+    /// The delta values are based on the `SuperMemo` 2 algorithm.
     /// - Grade 0: -0.3
     /// - Grade 1: -0.15
     /// - Grade 2: -0.05
     /// - Grade 3: 0.0
     /// - Grade 4: +0.15
     #[inline]
+    #[must_use]
     pub fn to_grade_delta(self) -> f32 {
         match self {
             ValidGrade::Zero => -0.3,

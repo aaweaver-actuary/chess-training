@@ -1,9 +1,8 @@
-//! Shared data structures for representing chess study artifacts.
-
 mod card;
 mod card_kind;
 mod card_state;
 mod hash;
+mod macros;
 mod opening;
 mod position;
 mod review;
@@ -23,3 +22,4 @@ pub use study_stage::StudyStage;
 pub use tactic::TacticCard;
 pub use unlock::{UnlockDetail, UnlockRecord};
 pub use valid_grade::{GradeError, ValidGrade};
+

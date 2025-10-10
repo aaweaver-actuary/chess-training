@@ -1,11 +1,24 @@
 PROJECT_ROOT := $(shell pwd)
 
+
+CARGO_CLIPPY_FLAGS := \
+	--workspace \
+	--all-targets \
+	--all-features \
+	-- \
+	-D clippy::all \
+	-D clippy::pedantic
+
 CARGO_LLVM_COV_FLAGS := \
 	--fail-under-functions 100 \
 	--fail-under-lines 100 \
 	--fail-under-regions 100 \
 	--show-missing-lines \
 	-q
+
+rust-lint:
+	cargo fmt 
+	cargo clippy $(CARGO_CLIPPY_FLAGS)
 
 .PHONY: test \
 test-steps \
@@ -23,32 +36,28 @@ test-web-ui \
 test-session-gateway
 
 test-steps:
-	cargo fmt
-	cargo clippy
+	make rust-lint
 	cargo test
 	mkdir -p target/llvm-cov
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
 
 test-card-store:
 	cd $(PROJECT_ROOT)/crates/card-store && \
-	cargo fmt && \
-	cargo clippy && \
+	make rust-lint && \
 	cargo test && \
 	mkdir -p target/llvm-cov && \
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
 
 test-chess-training-pgn-import:
 	cd $(PROJECT_ROOT)/crates/chess-training-pgn-import && \
-	cargo fmt && \
-	cargo clippy && \
+	make rust-lint && \
 	cargo test && \
 	mkdir -p target/llvm-cov && \
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
 
 test-scheduler-core:
 	cd $(PROJECT_ROOT)/crates/scheduler-core && \
-	cargo fmt && \
-	cargo clippy && \
+	make rust-lint && \
 	cargo test && \
 	mkdir -p target/llvm-cov && \
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
