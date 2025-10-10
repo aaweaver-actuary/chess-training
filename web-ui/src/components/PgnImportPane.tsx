@@ -31,7 +31,7 @@ const OPENING_PATTERNS: OpeningPattern[] = [
   {
     opening: "King's Knight Opening",
     color: 'White',
-    moves: ['e4', 'e5', 'nf3'],
+    moves: ['e4', 'e5', 'Nf3'],
   },
 ];
 
