@@ -12,3 +12,6 @@ pub mod store;
 pub use crate::errors::PositionError;
 pub use crate::helpers::hash64;
 pub use crate::store::{CardStore, StoreError};
+
+#[cfg(test)]
+pub(crate) mod tests;
