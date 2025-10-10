@@ -14,9 +14,13 @@ use crate::model::{OpeningEdgeRecord, Position, RepertoireEdge, Tactic};
 /// Implementors should ensure that the storage is updated with the provided item, and that the return value accurately reflects
 /// whether the item was newly added or replaced an existing entry.
 pub trait Storage {
+    /// Insert or update a normalized position.
     fn upsert_position(&mut self, position: Position) -> UpsertOutcome;
+    /// Insert or update an opening edge.
     fn upsert_edge(&mut self, edge: OpeningEdgeRecord) -> UpsertOutcome;
+    /// Insert or update a repertoire edge record.
     fn upsert_repertoire_edge(&mut self, record: RepertoireEdge) -> UpsertOutcome;
+    /// Insert or update a tactic opportunity.
     fn upsert_tactic(&mut self, tactic: Tactic) -> UpsertOutcome;
 }
 
@@ -36,6 +40,7 @@ impl UpsertOutcome {
         matches!(self, Self::Inserted)
     }
 
+    /// Construct an [`UpsertOutcome`] from a boolean indicating insertion.
     pub const fn from_bool(inserted: bool) -> Self {
         if inserted {
             Self::Inserted
@@ -77,26 +82,31 @@ impl Storage for ImportInMemoryStore {
 }
 
 impl ImportInMemoryStore {
+    /// Construct a new empty in-memory store.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Return the positions currently stored.
     #[must_use]
     pub fn positions(&self) -> Vec<Position> {
         self.positions.values().cloned().collect()
     }
 
+    /// Return the opening edges currently stored.
     #[must_use]
     pub fn edges(&self) -> Vec<OpeningEdgeRecord> {
         self.edges.values().cloned().collect()
     }
 
+    /// Return the tactics currently stored.
     #[must_use]
     pub fn tactics(&self) -> Vec<Tactic> {
         self.tactics.values().cloned().collect()
     }
 
+    /// Return the repertoire edges currently stored.
     #[must_use]
     pub fn repertoire_edges(&self) -> Vec<RepertoireEdge> {
         self.repertoire_edges

@@ -7,15 +7,23 @@ use uuid::Uuid;
 
 use crate::domain::{Card, CardKind, CardState, UnlockRecord};
 
+/// Storage abstraction required by the scheduler to retrieve and persist cards.
 pub trait CardStore {
+    /// Fetch a card by identifier if it exists.
     fn get_card(&self, id: Uuid) -> Option<Card>;
+    /// Insert or update a card in the backing store.
     fn upsert_card(&mut self, card: Card);
+    /// Retrieve cards due for review on the given day.
     fn due_cards(&self, owner_id: Uuid, today: NaiveDate) -> Vec<Card>;
+    /// Fetch cards eligible to be unlocked for future study.
     fn unlock_candidates(&self, owner_id: Uuid) -> Vec<Card>;
+    /// Record a newly unlocked card.
     fn record_unlock(&mut self, record: UnlockRecord);
+    /// Retrieve unlock events that occurred on the provided day.
     fn unlocked_on(&self, owner_id: Uuid, day: NaiveDate) -> Vec<UnlockRecord>;
 }
 
+/// Reference in-memory implementation of [`CardStore`] used in tests.
 #[derive(Debug, Default)]
 pub struct InMemoryStore {
     cards: BTreeMap<Uuid, Card>,
@@ -23,6 +31,7 @@ pub struct InMemoryStore {
 }
 
 impl InMemoryStore {
+    /// Construct a new, empty in-memory store.
     #[must_use]
     pub fn new() -> Self {
         Self::default()

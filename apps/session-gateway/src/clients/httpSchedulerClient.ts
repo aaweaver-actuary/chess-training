@@ -17,6 +17,9 @@ const parseJson = async <T>(response: Response) => {
   return text.length ? (JSON.parse(text) as T) : ({} as T);
 };
 
+/**
+ * Create a scheduler client that talks to the HTTP scheduler service.
+ */
 export const createHttpSchedulerClient = (
   options: HttpSchedulerClientOptions,
 ): SchedulerClient => {

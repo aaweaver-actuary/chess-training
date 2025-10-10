@@ -8,15 +8,14 @@ pub enum ValidGrade {
     Four = 4,
 }
 
+/// Errors produced when attempting to construct a [`ValidGrade`].
 #[derive(Debug, Clone, Copy)]
 pub enum GradeError {
     /// The provided grade was outside the supported range of 0-4.
-    GradeOutsideRangeError {
-        grade: u8,
-    },
-    InvalidGradeError {
-        grade: u8,
-    },
+    /// The provided grade was outside the supported range of 0-4.
+    GradeOutsideRangeError { grade: u8 },
+    /// The provided grade could not be interpreted as a known review grade.
+    InvalidGradeError { grade: u8 },
 }
 
 impl ValidGrade {
@@ -65,6 +64,7 @@ impl ValidGrade {
         (self as u8) >= 3
     }
 
+    /// Returns the multiplicative interval increment associated with the grade.
     #[must_use]
     pub fn to_interval_increment(self) -> u8 {
         match self {

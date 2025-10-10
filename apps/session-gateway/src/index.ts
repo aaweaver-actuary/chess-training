@@ -9,6 +9,9 @@ import type { SessionState } from './types.js';
 
 const createLogger = (level: string) => pino({ level });
 
+/**
+ * Bootstrap the session gateway HTTP and WebSocket servers using the current environment configuration.
+ */
 export const startGateway = async () => {
   const config = loadConfig();
   const logger = createLogger(config.LOG_LEVEL);

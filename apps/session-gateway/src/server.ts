@@ -35,6 +35,9 @@ const asyncHandler =
     Promise.resolve(handler(req, res, next)).catch(next);
   };
 
+/**
+ * Create an Express application and WebSocket server that expose the session gateway API.
+ */
 export const createGatewayServer = (deps: GatewayDependencies) => {
   const broadcaster = createBroadcaster();
   const service = createSessionService({ ...deps, broadcaster });

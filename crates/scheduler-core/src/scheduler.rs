@@ -11,12 +11,14 @@ use crate::sm2::apply_sm2;
 use crate::store::CardStore;
 use review_domain::ReviewGrade;
 
+/// High-level façade coordinating scheduling operations for a single store implementation.
 pub struct Scheduler<S: CardStore> {
     store: S,
     config: SchedulerConfig,
 }
 
 impl<S: CardStore> Scheduler<S> {
+    /// Construct a scheduler backed by the provided store and configuration.
     #[must_use]
     pub fn new(store: S, config: SchedulerConfig) -> Self {
         Self { store, config }
@@ -49,11 +51,13 @@ impl<S: CardStore> Scheduler<S> {
         })
     }
 
+    /// Build the review and unlock queue for the specified owner on a given day.
     #[must_use]
     pub fn build_queue(&mut self, owner_id: Uuid, today: NaiveDate) -> Vec<Card> {
         build_queue_for_day(&mut self.store, &self.config, owner_id, today)
     }
 
+    /// Consume the scheduler and return the inner store for reuse.
     #[must_use]
     pub fn into_store(self) -> S {
         self.store
