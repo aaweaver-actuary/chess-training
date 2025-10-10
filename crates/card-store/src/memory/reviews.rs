@@ -52,7 +52,7 @@ fn interval_after_grade(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
             let doubled = interval.get().saturating_mul(2);
             NonZeroU8::new(doubled).unwrap()
         }
-        _ => panic!("grade must be between 0 and 4"),
+        _ => panic!("grade {grade} must be between 0 and 4"),
     }
 }
 
@@ -68,7 +68,7 @@ fn ease_delta_for_grade(grade: u8) -> f32 {
         2 => -0.05,
         3 => 0.0,
         4 => 0.15,
-        _ => panic!("grade must be between 0 and 4"),
+        _ => panic!("grade {grade} must be between 0 and 4"),
     }
 }
 
@@ -175,14 +175,14 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "grade must be between 0 and 4")]
+    #[should_panic(expected = "grade 9 must be between 0 and 4")]
     fn interval_after_grade_panics_on_out_of_range_values() {
         let interval = NonZeroU8::new(3).unwrap();
         interval_after_grade(interval, 9);
     }
 
     #[test]
-    #[should_panic(expected = "grade must be between 0 and 4")]
+    #[should_panic(expected = "grade 9 must be between 0 and 4")]
     fn ease_delta_for_grade_panics_on_out_of_range_values() {
         ease_delta_for_grade(9);
     }
