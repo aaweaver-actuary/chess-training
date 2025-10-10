@@ -55,7 +55,7 @@ describe('createCommandDispatcher', () => {
     expect(firstHandler).not.toHaveBeenCalled();
     expect(onUnknownCommand).not.toHaveBeenCalled();
   });
-  
+
   it('dispatches matching handlers case-insensitively', async () => {
     const { dispatcher } = createDispatcher();
     const handler = vi.fn();
