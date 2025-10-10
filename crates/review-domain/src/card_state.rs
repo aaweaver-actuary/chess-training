@@ -35,6 +35,11 @@ impl StoredCardState {
     }
 
     /// Compute the next review interval based on the provided [`ValidGrade`].
+    ///
+    /// # Panics
+    /// Panics if the computed next interval is zero, which should be impossible
+    /// given the current logic and the fact that `self.interval` is guaranteed
+    /// to be non-zero.
     #[must_use]
     pub fn next_interval(&self, grade: ValidGrade) -> NonZeroU8 {
         match grade {

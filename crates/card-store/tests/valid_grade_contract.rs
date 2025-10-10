@@ -9,15 +9,22 @@ fn valid_grades_round_trip_between_enum_and_u8() {
         (3, ValidGrade::Three),
         (4, ValidGrade::Four),
     ] {
-        let parsed =
-            ValidGrade::from_u8(value).unwrap_or_else(|_| panic!("expected {value} to be valid"));
+        let parsed = ValidGrade::from_u8(value).unwrap_or_else(|err| {
+            panic!(
+                "expected {value} to be valid but encountered {}",
+                err_label(&err)
+            )
+        });
 
         assert_eq!(parsed, grade);
         assert_eq!(parsed.to_u8(), value);
         assert_eq!(parsed.as_u8(), value);
         let parsed_try = match ValidGrade::try_from(value) {
             Ok(parsed) => parsed,
-            Err(_) => panic!("expected {value} to be valid"),
+            Err(err) => panic!(
+                "expected {value} to be valid but encountered {}",
+                err_label(&err)
+            ),
         };
         assert_eq!(parsed_try, grade);
     }

@@ -44,11 +44,11 @@ fn is_correct_checks_threshold() {
     let incorrect = [ValidGrade::Zero, ValidGrade::One, ValidGrade::Two];
 
     for grade in correct {
-        assert!(grade.is_correct(), "grade {:?} should be correct", grade);
+        assert!(grade.is_correct(), "grade {grade:?} should be correct");
     }
 
     for grade in incorrect {
-        assert!(!grade.is_correct(), "grade {:?} should be incorrect", grade);
+        assert!(!grade.is_correct(), "grade {grade:?} should be incorrect");
     }
 }
 
@@ -81,7 +81,10 @@ fn try_from_accepts_valid_grades() {
     ] {
         let parsed: ValidGrade = match ValidGrade::try_from(value) {
             Ok(parsed) => parsed,
-            Err(_) => panic!("grade {value} should parse"),
+            Err(err) => panic!(
+                "grade {value} should parse but returned error variant {}",
+                err_label(&err)
+            ),
         };
 
         assert_eq!(parsed, expected);

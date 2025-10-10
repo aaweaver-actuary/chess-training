@@ -43,21 +43,24 @@ test-steps:
 
 test-card-store:
 	cd $(PROJECT_ROOT)/crates/card-store && \
-	make rust-lint && \
+	cargo fmt --manifest-path $(PROJECT_ROOT)/Cargo.toml --package card-store && \
+	cargo clippy --manifest-path $(PROJECT_ROOT)/Cargo.toml -p card-store --all-targets --all-features -- -D clippy::all -D clippy::pedantic && \
 	cargo test && \
 	mkdir -p target/llvm-cov && \
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
 
 test-chess-training-pgn-import:
 	cd $(PROJECT_ROOT)/crates/chess-training-pgn-import && \
-	make rust-lint && \
+	cargo fmt --manifest-path $(PROJECT_ROOT)/Cargo.toml --package chess-training-pgn-import && \
+	cargo clippy --manifest-path $(PROJECT_ROOT)/Cargo.toml -p chess-training-pgn-import --all-targets --all-features -- -D clippy::all -D clippy::pedantic && \
 	cargo test && \
 	mkdir -p target/llvm-cov && \
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
 
 test-scheduler-core:
 	cd $(PROJECT_ROOT)/crates/scheduler-core && \
-	make rust-lint && \
+	cargo fmt --manifest-path $(PROJECT_ROOT)/Cargo.toml --package scheduler-core && \
+	cargo clippy --manifest-path $(PROJECT_ROOT)/Cargo.toml -p scheduler-core --all-targets --all-features -- -D clippy::all -D clippy::pedantic && \
 	cargo test && \
 	mkdir -p target/llvm-cov && \
 	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
