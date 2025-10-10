@@ -56,13 +56,10 @@ impl ChessPosition {
             .filter(|c| matches!(c, 'w' | 'b'))
             .ok_or(PositionError::InvalidSideToMove)?;
 
-        if !parts[0].chars().all(|c| {
-            matches!(
-                c,
-                '/' | '1'
-                    ..='8' | 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p'
-            )
-        }) {
+        if !parts[0]
+            .chars()
+            .all(|c| "/12345678KQRBNPkqrbnp".contains(c))
+        {
             return Err(PositionError::InvalidPiecePlacement);
         }
         let id = hash64(&[fen.as_bytes()]);
@@ -87,6 +84,22 @@ mod tests {
     }
 
     #[test]
+    fn position_errors_render_user_friendly_messages() {
+        assert_eq!(
+            PositionError::MalformedFen.to_string(),
+            "malformed FEN: expected 6 space-delimited fields"
+        );
+        assert_eq!(
+            PositionError::InvalidSideToMove.to_string(),
+            "malformed FEN: missing or invalid side-to-move field"
+        );
+        assert_eq!(
+            PositionError::InvalidPiecePlacement.to_string(),
+            "malformed FEN: invalid piece placement field"
+        );
+    }
+
+    #[test]
     fn malformed_fen_rejected() {
         let result = ChessPosition::new("invalid", 0);
         assert!(matches!(result, Err(PositionError::MalformedFen)));
@@ -97,6 +110,28 @@ mod tests {
         let fen = "8/8/8/8/8/8/8/8x w - - 0 1";
         let result = ChessPosition::new(fen, 0);
         assert!(matches!(result, Err(PositionError::InvalidPiecePlacement)));
+    }
+
+    #[test]
+    fn invalid_side_to_move_rejected() {
+        let fen = "8/8/8/8/8/8/8/8 x - - 0 1";
+        let result = ChessPosition::new(fen, 0);
+        assert!(matches!(result, Err(PositionError::InvalidSideToMove)));
+    }
+
+    #[test]
+    fn black_to_move_is_parsed() {
+        let fen = "8/8/8/8/8/8/8/8 b - - 0 1";
+        let position = ChessPosition::new(fen, 42).expect("valid position");
+        assert_eq!(position.side_to_move, 'b');
+        assert_eq!(position.ply, 42);
+    }
+
+    #[test]
+    fn empty_segment_rejected() {
+        let fen = "8/8/8/8/8/8/8/8  - - 0 1";
+        let result = ChessPosition::new(fen, 0);
+        assert!(matches!(result, Err(PositionError::MalformedFen)));
     }
 
     #[test]
