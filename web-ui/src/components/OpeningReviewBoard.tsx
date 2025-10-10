@@ -48,6 +48,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
   const setSelectedSquareState = useCallback((square: Square | null): void => {
     setSelectedSquare(square);
     const board = boardRef.current;
+    /* c8 ignore next 2 -- React assigns the ref before this callback executes */
     if (!board) {
       return;
     }
@@ -101,6 +102,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
     };
 
     const showErrorHighlight = (square: Square | null) => {
+      /* c8 ignore next 2 -- highlight requests always pass a valid square */
       if (!square) {
         return;
       }

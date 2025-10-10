@@ -18,10 +18,13 @@ if (typeof import.meta !== 'undefined') {
   }
 }
 const BASE_URL: string = baseUrlFromEnv ?? 'http://localhost:3000';
+/* c8 ignore stop */
 
 type JsonShape<T> = T;
 
-type RequestConfig = Omit<RequestInit, 'body'> & { body?: Record<string, unknown> };
+type RequestConfig = Omit<RequestInit, 'body'> & {
+  body?: Record<string, unknown>;
+};
 type RequestConfigWithBody = RequestConfig & { body: Record<string, unknown> };
 
 const hasBody = (config: RequestConfig): config is RequestConfigWithBody =>

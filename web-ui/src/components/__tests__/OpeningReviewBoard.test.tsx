@@ -321,6 +321,74 @@ describe('OpeningReviewBoard', () => {
       { timeout: 1500 },
     );
   });
+
+  it('deselects the same square when it is clicked twice', async () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+
+    const square = await findBoardSquare(board, 'e2');
+    fireEvent.click(square);
+    fireEvent.click(square);
+
+    expect(board.hasAttribute('data-selected-square')).toBe(false);
+  });
+
+  it('ignores clicks that do not originate from a board square', () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+    fireEvent.click(board);
+
+    expect(board.hasAttribute('data-selected-square')).toBe(false);
+    expect(board.hasAttribute('data-error-square')).toBe(false);
+  });
+
+  it('clears a pending error highlight when the card changes', async () => {
+    const onResult = vi.fn();
+    const { rerender } = render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
+
+    let board = screen.getByTestId('opening-review-board');
+    const e7 = await findBoardSquare(board, 'e7');
+
+    vi.useFakeTimers();
+    fireEvent.click(e7);
+
+    expect(board.getAttribute('data-error-square')).toBe('e7');
+
+    rerender(<OpeningReviewBoard card={italianStart} onResult={onResult} />);
+
+    board = screen.getByTestId('opening-review-board');
+    expect(board.hasAttribute('data-error-square')).toBe(false);
+
+    vi.useRealTimers();
+  });
+
+  it('replaces a pending error highlight when another invalid move occurs', async () => {
+    const onResult = vi.fn();
+    render(<OpeningReviewBoard card={startingPosition} onResult={onResult} />);
+
+    const board = screen.getByTestId('opening-review-board');
+
+    const e2 = await findBoardSquare(board, 'e2');
+    const e5 = await findBoardSquare(board, 'e5');
+    const e6 = await findBoardSquare(board, 'e6');
+
+    vi.useFakeTimers();
+    fireEvent.click(e2);
+    fireEvent.click(e5);
+
+    expect(board.getAttribute('data-error-square')).toBe('e5');
+
+    fireEvent.click(e2);
+    fireEvent.click(e6);
+
+    expect(board.getAttribute('data-error-square')).toBe('e6');
+
+    vi.useRealTimers();
+  });
 });
 
 describe('isSquare', () => {
