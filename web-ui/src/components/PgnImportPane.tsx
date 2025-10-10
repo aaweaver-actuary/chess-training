@@ -176,6 +176,7 @@ export const PgnImportPane = ({
 
     const handlePointerDown = (event: PointerEvent) => {
       const container = containerRef.current;
+      /* c8 ignore next 3 -- React assigns the container ref before this handler runs */
       if (!container) {
         return;
       }

@@ -5,9 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CommandConsole } from '../CommandConsole';
 
 describe('CommandConsole', () => {
-  const renderConsole = (
-    overrides: Partial<React.ComponentProps<typeof CommandConsole>> = {},
-  ) => {
+  const renderConsole = (overrides: Partial<React.ComponentProps<typeof CommandConsole>> = {}) => {
     const onClose = vi.fn();
     const onExecuteCommand = vi.fn<(command: string) => Promise<void>>();
     onExecuteCommand.mockResolvedValue(undefined);

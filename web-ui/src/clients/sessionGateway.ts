@@ -40,8 +40,8 @@ const toRequestInit = (init: RequestConfig): RequestInit => {
   return rest;
 };
 
-async function request<T>(path: string, init?: RequestConfig): Promise<JsonShape<T>> {
-  const config = init ? toRequestInit(init) : undefined;
+async function request<T>(path: string, init: RequestConfig = {}): Promise<JsonShape<T>> {
+  const config = toRequestInit(init);
   const response = await fetch(`${BASE_URL}${path}`, config);
   if (!response.ok) {
     throw new Error(`${path} failed: ${String(response.status)}`);

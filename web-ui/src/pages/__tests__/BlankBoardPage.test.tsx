@@ -23,12 +23,8 @@ describe('BlankBoardPage', () => {
     expect(board).toHaveStyle({ height: 'min(100vw, 100vh)' });
     expect(shell).toHaveStyle({ position: 'fixed' });
     expect(shell).toHaveStyle({ inset: '0px' });
-    expect(
-      screen.queryByRole('heading', { name: /Sandbox Board/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /back to dashboard/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Sandbox Board/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /back to dashboard/i })).not.toBeInTheDocument();
   });
 
   it('updates the board when a legal move is made', () => {
@@ -118,9 +114,7 @@ describe('BlankBoardPage', () => {
       throw new Error('The chess board should expose a shadow root in tests.');
     }
 
-    expect(
-      shadowRoot.querySelector('[data-square="e5"] [part~="piece"]'),
-    ).toBeNull();
+    expect(shadowRoot.querySelector('[data-square="e5"] [part~="piece"]')).toBeNull();
   });
 
   it('prevents pawns from moving illegally without a capture', () => {
@@ -155,8 +149,7 @@ describe('BlankBoardPage', () => {
       }),
     );
 
-    const expectedPosition =
-      'rnbqkbnr/pppppppp/8/8/P7/8/1PPPPPPP/RNBQKBNR b KQkq - 0 1';
+    const expectedPosition = 'rnbqkbnr/pppppppp/8/8/P7/8/1PPPPPPP/RNBQKBNR b KQkq - 0 1';
 
     expect(board).toHaveAttribute('position', expectedPosition);
 
@@ -176,15 +169,11 @@ describe('BlankBoardPage', () => {
     }
 
     await waitFor(() => {
-      expect(
-        shadowRoot.querySelector('[data-square="a4"] [part~="piece"]'),
-      ).not.toBeNull();
+      expect(shadowRoot.querySelector('[data-square="a4"] [part~="piece"]')).not.toBeNull();
     });
 
     await waitFor(() => {
-      expect(
-        shadowRoot.querySelector('[data-square="a2"] [part~="piece"]'),
-      ).toBeNull();
+      expect(shadowRoot.querySelector('[data-square="a2"] [part~="piece"]')).toBeNull();
     });
   });
 
@@ -374,5 +363,15 @@ describe('BlankBoardPage', () => {
     await waitFor(() => {
       expect(board).not.toHaveAttribute('data-active-square');
     });
+  });
+
+  it('ignores drop events that do not provide move details', () => {
+    renderPage();
+
+    const board = screen.getByTestId('sandbox-board');
+
+    board.dispatchEvent(new CustomEvent('drop'));
+
+    expect(board).toHaveAttribute('position', 'start');
   });
 });

@@ -183,9 +183,7 @@ describe('OpeningReviewBoard', () => {
 
   it('captures promotion metadata when moves are made via board clicks', async () => {
     const onResult = vi.fn();
-    render(
-      <OpeningReviewBoard card={promotionByClickCard} onResult={onResult} />,
-    );
+    render(<OpeningReviewBoard card={promotionByClickCard} onResult={onResult} />);
 
     const board = screen.getByTestId('opening-review-board');
 
@@ -194,9 +192,7 @@ describe('OpeningReviewBoard', () => {
 
     await waitFor(() => {
       expect(onResult).toHaveBeenCalledWith('Good', expect.any(Number));
-      expect(board.getAttribute('position')).toBe(
-        '3kQ3/8/8/8/8/8/8/4K3 b - - 0 1',
-      );
+      expect(board.getAttribute('position')).toBe('3kQ3/8/8/8/8/8/8/4K3 b - - 0 1');
     });
   });
 
