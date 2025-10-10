@@ -6,23 +6,18 @@ use crate::config::IngestConfig;
 use crate::model::{OpeningEdgeRecord, Position as ModelPosition, RepertoireEdge, Tactic};
 use crate::storage::{ImportInMemoryStore, Storage, UpsertOutcome};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 /// Tracks various metrics during the import process.
-///
-/// - `games_total`: The total number of games processed.
-/// - `opening_positions`: The number of unique opening positions inserted.
-/// - `opening_edges`: The number of opening edges (moves) inserted.
-/// - `repertoire_edges`: The number of repertoire edges (moves) inserted.
-/// - `tactics`: The number of tactics inserted.
-///
-/// These metrics are incremented when the corresponding items are successfully inserted
-/// during the import process, as tracked by the `note_*` methods.
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ImportMetrics {
+    /// Total number of games processed.
     pub games_total: usize,
+    /// Number of unique opening positions inserted.
     pub opening_positions: usize,
+    /// Number of opening edges (moves) inserted.
     pub opening_edges: usize,
+    /// Number of repertoire edges (moves) inserted.
     pub repertoire_edges: usize,
+    /// Number of tactic entries inserted.
     pub tactics: usize,
 }
 
@@ -52,14 +47,19 @@ impl ImportMetrics {
     }
 }
 
+/// Errors raised when parsing PGN files or deriving review data.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum ImportError {
+    /// The PGN text failed to parse.
     #[error("failed to parse PGN: {0}")]
     Pgn(String),
+    /// An embedded FEN string was invalid.
     #[error("invalid FEN {fen}")]
     InvalidFen { fen: String },
+    /// A `[FEN]` tag was present without the required `[SetUp "1"]` guard.
     #[error("missing SetUp header for FEN-tagged game {fen}")]
     MissingSetup { fen: String },
+    /// A SAN move was illegal in the current game context.
     #[error("illegal SAN `{san}` in game #{game}`")]
     IllegalSan { san: String, game: usize },
 }
@@ -86,6 +86,7 @@ pub enum ImportError {
 /// importer.ingest_pgn_str("owner", "repertoire", pgn_str).expect("ingest should succeed");
 /// let (store, metrics) = importer.finalize();
 /// ```
+/// PGN importer that persists normalized records into a [`Storage`] backend.
 pub struct Importer<S: Storage> {
     config: IngestConfig,
     store: S,
@@ -93,6 +94,7 @@ pub struct Importer<S: Storage> {
 }
 
 impl<S: Storage> Importer<S> {
+    /// Construct a new importer using the provided configuration and storage backend.
     #[must_use]
     pub fn new(config: IngestConfig, store: S) -> Self {
         Self {
@@ -129,6 +131,7 @@ impl<S: Storage> Importer<S> {
         Ok(())
     }
 
+    /// Consume the importer and return the storage backend along with collected metrics.
     #[must_use]
     pub fn finalize(self) -> (S, ImportMetrics) {
         (self.store, self.metrics)
@@ -136,6 +139,7 @@ impl<S: Storage> Importer<S> {
 }
 
 impl Importer<ImportInMemoryStore> {
+    /// Convenience constructor that wires the importer to an in-memory store.
     #[must_use]
     pub fn new_in_memory(config: IngestConfig) -> Self {
         Self::new(config, ImportInMemoryStore::default())

@@ -21,6 +21,9 @@ const computeAccuracy = (correct: number, total: number) =>
 
 const noop = () => undefined;
 
+/**
+ * Contract implemented by the session service orchestrating study sessions.
+ */
 export interface SessionService {
   start(userId: string): Promise<{
     sessionId: string;
@@ -63,6 +66,9 @@ const applyGrade = (
   return { ...current, currentCard: nextCard, stats, totalLatency };
 };
 
+/**
+ * Construct a session service backed by the provided dependencies.
+ */
 export const createSessionService = (
   deps: SessionServiceDependencies,
 ): SessionService => {

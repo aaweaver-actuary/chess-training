@@ -2,9 +2,13 @@
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SchedulerConfig {
+    /// Ease factor assigned to new cards on creation.
     pub initial_ease_factor: f32,
+    /// Lower bound applied to the ease factor after reviews.
     pub ease_minimum: f32,
+    /// Upper bound applied to the ease factor after reviews.
     pub ease_maximum: f32,
+    /// Minutes before each successive learning step becomes due.
     pub learning_steps_minutes: Vec<u32>,
 }
 

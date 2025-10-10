@@ -1,5 +1,8 @@
 import { SessionStore } from '../types.js';
 
+/**
+ * Create a simple in-memory session store suitable for tests and local development.
+ */
 export const createInMemorySessionStore = <T>(): SessionStore<T> => {
   const sessions = new Map<string, T>();
   return {

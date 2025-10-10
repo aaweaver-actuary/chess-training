@@ -2,6 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+/// Re-export shared review-domain types to simplify crate consumers.
 pub use review_domain::{EdgeInput, OpeningCard, ReviewRequest, StoredCardState, TacticCard};
 
 use review_domain::{

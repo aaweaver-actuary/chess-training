@@ -11,6 +11,12 @@ const envSchema = z.object({
     .default('info'),
 });
 
+/**
+ * Runtime configuration values derived from the environment.
+ */
 export type GatewayConfig = z.infer<typeof envSchema>;
 
+/**
+ * Load and validate configuration from the ambient environment variables.
+ */
 export const loadConfig = (): GatewayConfig => envSchema.parse(process.env);

@@ -32,6 +32,7 @@ use clap::error::Result as ClapResult;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use serde::Deserialize;
 
+/// Error type returned when configuration sources fail to parse or load.
 pub use crate::errors::ConfigError;
 use crate::errors::{IoError, ParseError};
 
@@ -39,10 +40,15 @@ use crate::errors::{IoError, ParseError};
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IngestConfig {
+    /// Enable tactic extraction from `[FEN]` tagged games.
     pub tactic_from_fen: bool,
+    /// Add FEN-rooted games to the opening trie when true.
     pub include_fen_in_trie: bool,
+    /// Require `[SetUp "1"]` whenever `[FEN]` is present.
     pub require_setup_for_fen: bool,
+    /// Skip games with malformed FEN headers instead of failing-fast.
     pub skip_malformed_fen: bool,
+    /// Maximum recursive annotation variation depth to traverse.
     pub max_rav_depth: u32,
 }
 

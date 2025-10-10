@@ -10,12 +10,18 @@ const sendSafe = (socket: WebSocket, payload: Message) => {
   }
 };
 
+/**
+ * Broadcasts updates to all websocket clients connected to a session.
+ */
 export interface Broadcaster {
   register(sessionId: string, socket: WebSocket): void;
   unregister(sessionId: string, socket: WebSocket): void;
   broadcast(sessionId: string, payload: Message): void;
 }
 
+/**
+ * Create a broadcaster that fans updates out to registered websocket clients.
+ */
 export const createBroadcaster = (): Broadcaster => {
   const channels = new Map<string, Set<WebSocket>>();
 

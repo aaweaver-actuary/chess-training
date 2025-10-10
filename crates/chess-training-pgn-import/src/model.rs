@@ -1,21 +1,29 @@
 use fnv::FnvHasher;
+/// Re-export of the shared opening edge structure from the review-domain crate.
 pub use review_domain::OpeningEdge;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+/// Schema version applied to hashed identifiers.
 pub const SCHEMA_VERSION: u32 = 1;
+/// Namespace seed used when hashing identifiers for reproducibility.
 pub const HASH_NAMESPACE: &str = "chess-training:pgn-import";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Position {
+    /// Stable identifier derived from hashing the FEN.
     pub id: u64,
+    /// Full FEN string describing the position.
     pub fen: String,
+    /// Side to move encoded as `'w'` or `'b'`.
     pub side_to_move: char,
+    /// Ply count from the start position.
     pub ply: u32,
 }
 
 impl Position {
+    /// Construct a position with a deterministic identifier derived from the FEN.
     #[must_use]
     pub fn new(fen: &str, side_to_move: char, ply: u32) -> Self {
         let id = hash_with_seed(HASH_NAMESPACE, SCHEMA_VERSION, &fen);
@@ -30,13 +38,16 @@ impl Position {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpeningEdgeRecord {
+    /// Canonical opening edge generated from the PGN game.
     #[serde(flatten)]
     pub edge: OpeningEdge,
+    /// Optional origin metadata for analytics or debugging.
     pub source_hint: Option<String>,
 }
 
 impl OpeningEdgeRecord {
     #[allow(clippy::too_many_arguments)]
+    /// Construct a canonical opening edge record from PGN move data.
     #[must_use]
     pub fn new(
         parent_id: u64,
@@ -53,12 +64,16 @@ impl OpeningEdgeRecord {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RepertoireEdge {
+    /// Owner identifier for the repertoire.
     pub owner: String,
+    /// Logical grouping key for the repertoire.
     pub repertoire_key: String,
+    /// Identifier of the edge stored in the repertoire.
     pub edge_id: u64,
 }
 
 impl RepertoireEdge {
+    /// Construct a repertoire edge linking an owner, repertoire key, and opening edge.
     #[must_use]
     pub fn new(owner: &str, repertoire_key: &str, edge_id: u64) -> Self {
         Self {
@@ -71,14 +86,20 @@ impl RepertoireEdge {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tactic {
+    /// Stable identifier derived from the FEN and principal variation.
     pub id: u64,
+    /// FEN string describing the tactic's starting position.
     pub fen: String,
+    /// Principal variation encoded as UCI moves.
     pub pv_uci: Vec<String>,
+    /// Optional tags applied to the tactic.
     pub tags: Vec<String>,
+    /// Optional hint describing the tactic's provenance.
     pub source_hint: Option<String>,
 }
 
 impl Tactic {
+    /// Construct a tactic entry with deterministic identifier based on the FEN and PV.
     #[must_use]
     pub fn new(
         fen: &str,

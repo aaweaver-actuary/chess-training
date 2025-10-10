@@ -17,6 +17,7 @@ pub mod position_helpers;
 pub mod reviews;
 pub mod unlocks;
 
+/// Public entry point for the in-memory card-store implementation used in tests and demos.
 pub use in_memory_card_store::InMemoryCardStore;
 
 use cards::{borrow_card_for_review, collect_due_cards_for_owner, store_opening_card};
