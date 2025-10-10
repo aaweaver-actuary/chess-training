@@ -56,6 +56,14 @@ describe('createCommandDispatcher', () => {
     expect(onUnknownCommand).toHaveBeenCalledWith('missing command');
   });
 
+  it('notifies when an unknown command has extra whitespace', async () => {
+    const { dispatcher, onUnknownCommand } = createDispatcher();
+
+    await dispatcher.dispatch('   missing command   ');
+
+    expect(onUnknownCommand).toHaveBeenCalledWith('missing command');
+  });
+
   it('emits result messages only when handler returns a non-empty string', async () => {
     const { dispatcher, onResult } = createDispatcher();
 
