@@ -111,7 +111,7 @@ export function OpeningReviewBoard({ card, onResult }: Props): JSX.Element {
 
       setErrorSquareState(square, setErrorSquare, boardRef);
       errorTimeoutRef.current = window.setTimeout(() => {
-        setErrorSquareState(square, setErrorSquare, boardRef);
+        setErrorSquareState(null, setErrorSquare, boardRef);
         errorTimeoutRef.current = null;
       }, 900);
     };
