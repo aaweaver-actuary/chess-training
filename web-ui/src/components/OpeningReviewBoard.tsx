@@ -311,7 +311,7 @@ function isSquare(value: unknown): value is Square {
     return false;
   }
 
-  return OVERLAY_SQUARE_SET.has(value);
+  return OVERLAY_SQUARE_SET.has(value as Square);
 }
 
 function extractTeachingArrow(meta?: CardSummary['meta']): string | null {
