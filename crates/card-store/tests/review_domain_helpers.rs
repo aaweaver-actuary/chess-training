@@ -19,12 +19,12 @@ fn card_kind_map_helpers_cover_all_variants() {
     let tactic_payload = String::from("skewer");
     match CardKind::<(), String>::Tactic(tactic_payload.clone()).as_ref() {
         CardKind::Tactic(reference) => assert_eq!(*reference, "skewer"),
-        CardKind::Opening(_) => panic!("expected tactic reference"),
+        CardKind::Opening(()) => panic!("expected tactic reference"),
     }
 
     let opening_payload = String::from("london");
     match CardKind::<String, ()>::Opening(opening_payload.clone()).as_ref() {
         CardKind::Opening(reference) => assert_eq!(*reference, "london"),
-        CardKind::Tactic(_) => panic!("expected opening reference"),
+        CardKind::Tactic(()) => panic!("expected opening reference"),
     }
 }
