@@ -335,7 +335,7 @@ describe('PgnImportPane', () => {
     expect(feedback).toHaveAttribute('role', 'status');
   });
 
-  it('recognizes a King\'s Knight Opening line from a short PGN import', async () => {
+  it("recognizes a King's Knight Opening line from a short PGN import", async () => {
     const onImportLine = vi.fn(
       (): ImportResult => ({
         added: true,

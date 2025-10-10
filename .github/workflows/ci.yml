@@ -10,11 +10,11 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
-  CARGO_INCREMENTAL: "0"
+  CARGO_INCREMENTAL: '0'
 
 jobs:
   rust:
-    name: "Rust checks (${{ matrix.crate }})"
+    name: 'Rust checks (${{ matrix.crate }})'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -77,7 +77,7 @@ jobs:
         run: cargo fmt --all -- --check
 
   javascript:
-    name: "JavaScript checks (${{ matrix.project }})"
+    name: 'JavaScript checks (${{ matrix.project }})'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -98,12 +98,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: '22'
           cache: npm
           cache-dependency-path: ${{ matrix.path }}/package-lock.json
       - name: Install dependencies (${{ matrix.project }})
         working-directory: ${{ matrix.path }}
         run: npm ci --prefer-offline --no-audit --fund=false
+      - name: Reformat (${{ matrix.project }})
+        working-directory: ${{ matrix.path }}
+        run: npm run format
       - name: Check formatting (${{ matrix.project }})
         working-directory: ${{ matrix.path }}
         run: npm run format:check
@@ -119,7 +122,7 @@ jobs:
       - name: Test with coverage (${{ matrix.project }})
         working-directory: ${{ matrix.path }}
         env:
-          CI: "true"
+          CI: 'true'
         run: npm run test:coverage -- --coverage.reporter=json-summary --coverage.reporter=text --run
       - name: Enforce 100% coverage (${{ matrix.project }})
         working-directory: ${{ matrix.path }}
