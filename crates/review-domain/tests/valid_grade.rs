@@ -17,7 +17,7 @@ fn from_u8_accepts_all_valid_grades() {
             }
             Err(err) => panic!(
                 "grade {value} should parse but returned error variant {}",
-                err_label(&err)
+                err_label(err)
             ),
         }
     }
@@ -28,7 +28,7 @@ fn from_u8_rejects_out_of_range_grades() {
     for value in [5, 6, u8::MAX] {
         let err = ValidGrade::from_u8(value).expect_err("grade should fail");
 
-        assert_eq!(err_variant(&err), ErrVariant::OutsideRange(value));
+        assert_eq!(err_variant(err), ErrVariant::OutsideRange(value));
     }
 }
 
@@ -92,7 +92,7 @@ fn try_from_rejects_invalid_grades() {
         let err: GradeError =
             ValidGrade::try_from(value).expect_err("grade should fail for invalid value");
 
-        assert_eq!(err_variant(&err), ErrVariant::Invalid(value));
+        assert_eq!(err_variant(err), ErrVariant::Invalid(value));
     }
 }
 
@@ -116,14 +116,14 @@ enum ErrVariant {
     Invalid(u8),
 }
 
-fn err_variant(error: &GradeError) -> ErrVariant {
+fn err_variant(error: GradeError) -> ErrVariant {
     match error {
-        GradeError::GradeOutsideRangeError { grade } => ErrVariant::OutsideRange(*grade),
-        GradeError::InvalidGradeError { grade } => ErrVariant::Invalid(*grade),
+        GradeError::GradeOutsideRangeError { grade } => ErrVariant::OutsideRange(grade),
+        GradeError::InvalidGradeError { grade } => ErrVariant::Invalid(grade),
     }
 }
 
-fn err_label(error: &GradeError) -> &'static str {
+fn err_label(error: GradeError) -> &'static str {
     match error {
         GradeError::GradeOutsideRangeError { .. } => "GradeOutsideRangeError",
         GradeError::InvalidGradeError { .. } => "InvalidGradeError",

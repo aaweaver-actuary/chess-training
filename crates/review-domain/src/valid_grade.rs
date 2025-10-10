@@ -99,8 +99,8 @@ impl PartialEq for GradeError {
             (
                 GradeError::GradeOutsideRangeError { grade: left },
                 GradeError::GradeOutsideRangeError { grade: right },
-            ) => left == right,
-            (
+            )
+            | (
                 GradeError::InvalidGradeError { grade: left },
                 GradeError::InvalidGradeError { grade: right },
             ) => left == right,

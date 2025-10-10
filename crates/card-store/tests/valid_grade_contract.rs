@@ -12,7 +12,7 @@ fn valid_grades_round_trip_between_enum_and_u8() {
         let parsed = ValidGrade::from_u8(value).unwrap_or_else(|err| {
             panic!(
                 "expected {value} to be valid but encountered {}",
-                err_label(&err)
+                err_label(err)
             )
         });
 
@@ -23,7 +23,7 @@ fn valid_grades_round_trip_between_enum_and_u8() {
             Ok(parsed) => parsed,
             Err(err) => panic!(
                 "expected {value} to be valid but encountered {}",
-                err_label(&err)
+                err_label(err)
             ),
         };
         assert_eq!(parsed_try, grade);
@@ -38,7 +38,7 @@ fn invalid_grades_surface_distinct_errors() {
             Err(GradeError::GradeOutsideRangeError { grade }) => assert_eq!(grade, value),
             Err(other) => panic!(
                 "unexpected error variant for value {value}: {}",
-                err_label(&other)
+                err_label(other)
             ),
         }
 
@@ -47,7 +47,7 @@ fn invalid_grades_surface_distinct_errors() {
             Err(GradeError::InvalidGradeError { grade }) => assert_eq!(grade, value),
             Err(other) => panic!(
                 "unexpected error variant for value {value}: {}",
-                err_label(&other)
+                err_label(other)
             ),
         }
     }
@@ -75,7 +75,24 @@ fn grade_helpers_cover_interval_and_ease_adjustments() {
     assert!(ValidGrade::Four.is_correct());
 }
 
-fn err_label(error: &GradeError) -> &'static str {
+#[test]
+fn grade_error_equality_is_value_based() {
+    let outside_left = GradeError::GradeOutsideRangeError { grade: 2 };
+    let outside_right = GradeError::GradeOutsideRangeError { grade: 2 };
+    let invalid_left = GradeError::InvalidGradeError { grade: 5 };
+    let invalid_right = GradeError::InvalidGradeError { grade: 5 };
+
+    assert_eq!(outside_left, outside_right);
+    assert_eq!(invalid_left, invalid_right);
+    assert_ne!(
+        outside_left,
+        GradeError::GradeOutsideRangeError { grade: 3 }
+    );
+    assert_ne!(invalid_left, GradeError::InvalidGradeError { grade: 6 });
+    assert_ne!(outside_left, invalid_left);
+}
+
+fn err_label(error: GradeError) -> &'static str {
     match error {
         GradeError::GradeOutsideRangeError { .. } => "GradeOutsideRangeError",
         GradeError::InvalidGradeError { .. } => "InvalidGradeError",

@@ -7,18 +7,18 @@ pub(super) fn apply_review(
     review: &ReviewRequest,
 ) -> Result<(), StoreError> {
     let grade = ValidGrade::new(review.grade)
-        .map_err(|error: review_domain::GradeError| map_grade_error(&error))?;
+        .map_err(|error: review_domain::GradeError| map_grade_error(error))?;
     state.apply_review(grade, review.reviewed_on);
     Ok(())
 }
 
-fn map_grade_error(error: &GradeError) -> StoreError {
+fn map_grade_error(error: GradeError) -> StoreError {
     let grade = match error {
         GradeError::GradeOutsideRangeError { grade } | GradeError::InvalidGradeError { grade } => {
             grade
         }
     };
-    StoreError::InvalidGrade { grade: *grade }
+    StoreError::InvalidGrade { grade }
 }
 
 #[cfg(test)]
@@ -63,7 +63,7 @@ mod tests {
 
     #[test]
     fn map_grade_error_handles_invalid_grade_variant() {
-        let err = map_grade_error(&GradeError::InvalidGradeError { grade: 7 });
+        let err = map_grade_error(GradeError::InvalidGradeError { grade: 7 });
         assert_eq!(err, StoreError::InvalidGrade { grade: 7 });
     }
 }
