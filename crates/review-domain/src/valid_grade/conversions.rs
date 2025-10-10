@@ -80,14 +80,7 @@ impl TryFrom<u8> for ValidGrade {
     type Error = GradeError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(ValidGrade::Zero),
-            1 => Ok(ValidGrade::One),
-            2 => Ok(ValidGrade::Two),
-            3 => Ok(ValidGrade::Three),
-            4 => Ok(ValidGrade::Four),
-            _ => Err(GradeError::InvalidGradeError { grade: value }),
-        }
+        from_u8(value)
     }
 }
 
