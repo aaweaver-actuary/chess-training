@@ -353,3 +353,7 @@ function toUci(move: Move): string {
 function chooseGrade(uci: string, expectedMoves: string[]): ReviewGrade {
   return expectedMoves.includes(uci) ? GOOD_RESULT : MISS_RESULT;
 }
+
+export const __testables = {
+  isSquare,
+};
