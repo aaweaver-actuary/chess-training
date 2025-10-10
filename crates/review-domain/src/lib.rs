@@ -9,10 +9,10 @@ mod opening;
 mod position;
 mod review;
 mod review_grade;
-mod study_stage;
+pub mod study_stage;
 mod tactic;
 mod unlock;
-mod valid_grade;
+pub mod valid_grade;
 
 /// Generic flashcard definition used across services.
 pub use card::Card;
