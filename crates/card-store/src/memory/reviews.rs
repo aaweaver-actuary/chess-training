@@ -239,23 +239,7 @@ mod tests {
 mod coverage_tests {
     use super::*;
     use std::panic;
-
-    fn sample_state() -> StoredCardState {
-        StoredCardState::new(
-            NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
-            NonZeroU8::new(1).unwrap(),
-            2.5,
-        )
-    }
-
-    fn sample_review(grade: u8) -> ReviewRequest {
-        ReviewRequest {
-            card_id: 1,
-            reviewed_on: NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
-            grade,
-        }
-    }
-
+    use crate::tests::util::{sample_state, sample_review};
     #[test]
     fn apply_review_updates_state() {
         let mut state = sample_state();
