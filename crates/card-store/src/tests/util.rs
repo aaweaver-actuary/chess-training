@@ -6,7 +6,7 @@ pub fn is_invalid_position(err: &StoreError) -> bool {
 
 pub fn assert_invalid_position(err: &StoreError) {
     assert!(
-        is_invalid_position(&err),
+        is_invalid_position(err),
         "expected invalid position error, got {err:?}"
     );
 }
