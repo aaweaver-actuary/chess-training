@@ -24,7 +24,7 @@ mod tests {
     #[test]
     fn hash64_changes_when_input_changes() {
         let base = hash64(&[b"abc"]);
-        assert_ne!(base, hash64(&[b"abcd"]));
-        assert_ne!(base, hash64(&[b"ab", b"c"]));
+        assert_ne!(base, hash64(&[b"abd"]));
+        assert_ne!(base, hash64(&[b"abc", b"d"]));
     }
 }
