@@ -112,7 +112,7 @@ fn commit_review_transition(
     state.due_on = transition.due_on;
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(coverage)))]
 mod tests {
     use super::*;
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -141,17 +141,25 @@ mod tests {
     }
 
     #[test]
+    fn apply_review_propagates_invalid_grade_error() {
+        let mut state = sample_state();
+        let review = sample_review(9);
+        let err = apply_review(&mut state, &review).unwrap_err();
+        assert_eq!(err, StoreError::InvalidGrade { grade: 9 });
+    }
+
+    #[test]
     fn derive_review_transition_validates_grade() {
         let state = sample_state();
         let review = sample_review(7);
         let err = derive_review_transition(&state, &review).unwrap_err();
-        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 7));
+        assert_eq!(err, StoreError::InvalidGrade { grade: 7 });
     }
 
     #[test]
     fn validate_grade_rejects_out_of_range_values() {
         let err = validate_grade(5).unwrap_err();
-        assert!(matches!(err, StoreError::InvalidGrade { grade } if grade == 5));
+        assert_eq!(err, StoreError::InvalidGrade { grade: 5 });
         assert!(validate_grade(4).is_ok());
     }
 
@@ -214,15 +222,130 @@ mod tests {
     #[test]
     fn commit_review_transition_updates_state() {
         let mut state = sample_state();
-        let transition = ReviewTransition {
-            interval: NonZeroU8::new(3).unwrap(),
-            ease: 2.1,
-            streak: 4,
-            due_on: naive_date(2023, 1, 4),
-        };
+        #[rustfmt::skip]
+        let transition = ReviewTransition { interval: NonZeroU8::new(3).unwrap(), ease: 2.1, streak: 4, due_on: naive_date(2023, 1, 4) };
         commit_review_transition(&mut state, naive_date(2023, 1, 2), transition);
         assert_eq!(state.interval.get(), 3);
         assert!((state.ease_factor - 2.1).abs() < f32::EPSILON);
         assert_eq!(state.due_on, naive_date(2023, 1, 4));
+    }
+}
+
+#[cfg(all(test, coverage))]
+mod coverage_tests {
+    use super::*;
+    use std::panic;
+
+    fn sample_state() -> StoredCardState {
+        StoredCardState::new(
+            NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
+            NonZeroU8::new(1).unwrap(),
+            2.5,
+        )
+    }
+
+    fn sample_review(grade: u8) -> ReviewRequest {
+        ReviewRequest {
+            card_id: 1,
+            reviewed_on: NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
+            grade,
+        }
+    }
+
+    #[test]
+    fn apply_review_updates_state() {
+        let mut state = sample_state();
+        let review = sample_review(3);
+        apply_review(&mut state, &review).unwrap();
+        assert_eq!(state.consecutive_correct, 1);
+        assert_eq!(state.last_reviewed_on, Some(review.reviewed_on));
+    }
+
+    #[test]
+    fn apply_review_returns_error_for_invalid_grade() {
+        let mut state = sample_state();
+        let review = sample_review(9);
+        let err = apply_review(&mut state, &review).unwrap_err();
+        assert_eq!(err, StoreError::InvalidGrade { grade: 9 });
+    }
+
+    #[test]
+    fn validate_grade_handles_bounds() {
+        assert!(validate_grade(4).is_ok());
+        assert_eq!(
+            validate_grade(6).unwrap_err(),
+            StoreError::InvalidGrade { grade: 6 }
+        );
+    }
+
+    #[test]
+    fn interval_after_grade_covers_branches() {
+        let base = NonZeroU8::new(3).unwrap();
+        assert_eq!(interval_after_grade(base, 0).get(), 1);
+        assert_eq!(interval_after_grade(base, 2), base);
+        assert_eq!(interval_after_grade(base, 3).get(), 4);
+        assert_eq!(interval_after_grade(base, 4).get(), 6);
+    }
+
+    #[test]
+    fn ease_delta_for_grade_covers_values() {
+        assert!(ease_delta_for_grade(0) < 0.0);
+        assert!(ease_delta_for_grade(1) < 0.0);
+        assert!(ease_delta_for_grade(2) < 0.0);
+        assert_eq!(ease_delta_for_grade(3), 0.0);
+        assert!(ease_delta_for_grade(4) > 0.0);
+    }
+
+    #[test]
+    fn ease_after_grade_clamps_extremes() {
+        assert_eq!(ease_after_grade(1.2, 0), 1.3);
+        assert_eq!(ease_after_grade(2.9, 4), 2.8);
+    }
+
+    #[test]
+    fn finalize_transition_collects_components() {
+        let state = sample_state();
+        let review = sample_review(3);
+        let interval = NonZeroU8::new(2).unwrap();
+        let transition = finalize_transition(&state, &review, interval, 2.1);
+        assert_eq!(transition.interval, interval);
+        assert!((transition.ease - 2.1).abs() < f32::EPSILON);
+        assert_eq!(transition.due_on, review.reviewed_on + Duration::days(2));
+    }
+
+    #[test]
+    fn next_streak_and_commit_review_transition() {
+        let mut state = sample_state();
+        let transition = ReviewTransition {
+            interval: NonZeroU8::new(4).unwrap(),
+            ease: 2.0,
+            streak: next_streak(5, 4),
+            due_on: NaiveDate::from_ymd_opt(2023, 1, 5).unwrap(),
+        };
+        commit_review_transition(&mut state, transition.due_on, transition);
+        assert_eq!(state.interval.get(), 4);
+        assert_eq!(state.consecutive_correct, 6);
+        assert_eq!(state.due_on, NaiveDate::from_ymd_opt(2023, 1, 5).unwrap());
+    }
+
+    #[test]
+    fn due_date_for_review_offsets_days() {
+        let start = NaiveDate::from_ymd_opt(2023, 1, 1).unwrap();
+        let interval = NonZeroU8::new(3).unwrap();
+        assert_eq!(
+            due_date_for_review(start, interval),
+            start + Duration::days(3)
+        );
+    }
+
+    #[test]
+    fn interval_after_grade_panics_on_out_of_range_values() {
+        let interval = NonZeroU8::new(3).unwrap();
+        assert!(panic::catch_unwind(|| interval_after_grade(interval, 9)).is_err());
+    }
+
+    #[test]
+    fn ease_delta_for_grade_panics_on_out_of_range_values() {
+        assert!(panic::catch_unwind(|| ease_delta_for_grade(9)).is_err());
     }
 }

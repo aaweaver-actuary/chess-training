@@ -40,6 +40,7 @@ fn validate_position_collision(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::PositionError;
 
     #[test]
     fn canonicalize_position_rejects_invalid_side_to_move() {
@@ -50,7 +51,10 @@ mod tests {
             ply: 0,
         };
         let err = canonicalize_position_for_storage(position).unwrap_err();
-        assert!(matches!(err, StoreError::InvalidPosition(_)));
+        assert_eq!(
+            err,
+            StoreError::InvalidPosition(PositionError::MalformedFen)
+        );
     }
 
     #[test]

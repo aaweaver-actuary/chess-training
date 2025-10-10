@@ -169,6 +169,7 @@ impl CardStore for InMemoryCardStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::PositionError;
     use crate::model::UnlockDetail;
     use chrono::NaiveDate;
     use std::sync::RwLock;
@@ -264,10 +265,10 @@ mod tests {
             ply: 0,
         };
         let err = store.upsert_position(invalid).unwrap_err();
-        match err {
-            StoreError::InvalidPosition(_) => {}
-            other => panic!("unexpected error: {other:?}"),
-        }
+        assert_eq!(
+            err,
+            StoreError::InvalidPosition(PositionError::MalformedFen)
+        );
     }
 
     #[test]
