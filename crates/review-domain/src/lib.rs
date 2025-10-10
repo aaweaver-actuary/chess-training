@@ -1,18 +1,18 @@
 //! Core domain types shared across the chess training back-end services.
 
-mod card;
-mod card_kind;
-mod card_state;
-mod hash;
-mod macros;
-mod opening;
-mod position;
-mod review;
-mod review_grade;
+pub mod card;
+pub mod card_kind;
+pub mod card_state;
+pub mod grade;
+pub mod hash;
+pub mod macros;
+pub mod opening;
+pub mod position;
+pub mod review;
+pub mod review_grade;
 pub mod study_stage;
-mod tactic;
-mod unlock;
-pub mod valid_grade;
+pub mod tactic;
+pub mod unlock;
 
 /// Generic flashcard definition used across services.
 pub use card::Card;
@@ -20,6 +20,8 @@ pub use card::Card;
 pub use card_kind::CardKind;
 /// Scheduling metadata tracked for each stored card.
 pub use card_state::StoredCardState;
+/// Validated review grades and related errors.
+pub use grade::{GradeError, ValidGrade};
 /// Deterministic hashing helper backed by BLAKE3.
 pub use hash::hash64;
 /// Opening-focused request and payload types.
@@ -36,5 +38,3 @@ pub use study_stage::StudyStage;
 pub use tactic::TacticCard;
 /// Unlock record details for progressive content releases.
 pub use unlock::{UnlockDetail, UnlockRecord};
-/// Validated review grades and related errors.
-pub use valid_grade::{GradeError, ValidGrade};

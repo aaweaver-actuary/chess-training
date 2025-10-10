@@ -4,10 +4,10 @@ The session gateway is a lightweight Express + WebSocket service that proxies re
 
 ## Features
 
-* **REST API** for starting sessions, grading cards, fetching stats, and ending sessions.
-* **WebSocket updates** so clients receive the next card and refreshed statistics in real time.
-* **Configurable scheduler client** that forwards requests to the `scheduler-core` HTTP surface.
-* **In-memory session store** for development and testing.
+- **REST API** for starting sessions, grading cards, fetching stats, and ending sessions.
+- **WebSocket updates** so clients receive the next card and refreshed statistics in real time.
+- **Configurable scheduler client** that forwards requests to the `scheduler-core` HTTP surface.
+- **In-memory session store** for development and testing.
 
 ## Getting Started
 
@@ -19,11 +19,11 @@ npm start
 
 Environment variables are loaded directly from `process.env`:
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `PORT` | HTTP port to listen on. | `3000` |
-| `SCHEDULER_URL` | Base URL for the scheduler service. | `http://localhost:4000` |
-| `LOG_LEVEL` | Pino log level (`info`, `debug`, etc.). | `info` |
+| Variable        | Description                             | Default                 |
+| --------------- | --------------------------------------- | ----------------------- |
+| `PORT`          | HTTP port to listen on.                 | `3000`                  |
+| `SCHEDULER_URL` | Base URL for the scheduler service.     | `http://localhost:4000` |
+| `LOG_LEVEL`     | Pino log level (`info`, `debug`, etc.). | `info`                  |
 
 ## Testing
 

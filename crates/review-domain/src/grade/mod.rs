@@ -1,9 +1,9 @@
 pub mod accuracy;
 pub mod adjustments;
 pub mod conversions;
-mod error;
-mod grade;
+pub mod error;
 pub mod intervals;
+pub mod valid_grade;
 
 pub use error::GradeError;
-pub use grade::ValidGrade;
+pub use valid_grade::ValidGrade;

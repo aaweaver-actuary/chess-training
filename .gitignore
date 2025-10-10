@@ -8,6 +8,10 @@ package-lock.json
 .vite/
 coverage/
 **/coverage/
+dist/**/
+**/dist/
+apps/session-gateway/dist/
+web-ui/dist/
 
 lcov-report/
 **/lcov-report/

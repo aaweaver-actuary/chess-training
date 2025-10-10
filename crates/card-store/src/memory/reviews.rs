@@ -66,4 +66,10 @@ mod tests {
         let err = map_grade_error(GradeError::InvalidGradeError { grade: 7 });
         assert_eq!(err, StoreError::InvalidGrade { grade: 7 });
     }
+
+    #[test]
+    fn map_grade_error_handles_outside_range_variant() {
+        let err = map_grade_error(GradeError::GradeOutsideRangeError { grade: 11 });
+        assert_eq!(err, StoreError::InvalidGrade { grade: 11 });
+    }
 }

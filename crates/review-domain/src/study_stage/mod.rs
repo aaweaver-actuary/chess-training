@@ -2,6 +2,6 @@
 
 pub mod conversions;
 pub mod queries;
-mod stage;
+pub mod stage;
 
 pub use stage::StudyStage;
