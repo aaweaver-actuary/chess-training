@@ -115,8 +115,6 @@ fn commit_review_transition(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::panic::catch_unwind;
-
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
     }
@@ -177,16 +175,16 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
     fn interval_after_grade_panics_on_out_of_range_values() {
         let interval = NonZeroU8::new(3).unwrap();
-        let result = catch_unwind(|| interval_after_grade(interval, 9));
-        assert!(result.is_err());
+        interval_after_grade(interval, 9);
     }
 
     #[test]
+    #[should_panic]
     fn ease_delta_for_grade_panics_on_out_of_range_values() {
-        let result = catch_unwind(|| ease_delta_for_grade(9));
-        assert!(result.is_err());
+        ease_delta_for_grade(9);
     }
 
     #[test]
