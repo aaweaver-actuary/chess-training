@@ -54,8 +54,8 @@ fn derive_review_transition(
     review: &ReviewRequest,
 ) -> Result<ReviewTransition, StoreError> {
     let grade = validate_grade(review.grade)?;
-    let interval = interval_after_grade(state.interval, grade);
-    let ease = ease_after_grade(state.ease_factor, grade);
+    let interval = interval_after_grade(state.interval, grade.as_u8())?;
+    let ease = ease_after_grade(state.ease_factor, grade.as_u8())?;
     Ok(finalize_transition(state, review, grade, interval, ease))
 }
 
@@ -81,7 +81,10 @@ fn interval_after_grade_validated(interval: NonZeroU8, grade: u8) -> NonZeroU8 {
             let doubled = interval.get().saturating_mul(2);
             NonZeroU8::new(doubled).unwrap()
         }
-        _ => unreachable!("Invalid grade value: grades must be 0-4 and validated before computing interval (got {})", grade.as_u8()),
+        _ => unreachable!(
+            "Invalid grade value: grades must be 0-4 and validated before computing interval (got {})",
+            grade
+        ),
     }
 }
 
@@ -212,21 +215,27 @@ mod tests {
         assert!(validate_grade(4).is_ok());
     }
 
+    fn get_clean_interval_after_grade(interval: NonZeroU8, grade: ValidGrade) -> u8 {
+        interval_after_grade(interval, grade.as_u8())
+            .expect("valid grade")
+            .get()
+    }
+
     #[test]
     fn interval_after_grade_adjusts_spacing() {
         let interval = NonZeroU8::new(3).unwrap();
-        assert_eq!(interval_after_grade(interval, valid_grade(0)).get(), 1);
-        assert_eq!(interval_after_grade(interval, valid_grade(1)).get(), 1);
-        assert_eq!(interval_after_grade(interval, valid_grade(2)), interval);
-        assert_eq!(interval_after_grade(interval, valid_grade(3)).get(), 4);
-        assert_eq!(interval_after_grade(interval, valid_grade(4)).get(), 6);
+        assert_eq!(get_clean_interval_after_grade(interval, valid_grade(0)), 1);
+        assert_eq!(get_clean_interval_after_grade(interval, valid_grade(1)), 1);
+        assert_eq!(get_clean_interval_after_grade(interval, valid_grade(2)), 1);
+        assert_eq!(get_clean_interval_after_grade(interval, valid_grade(3)), 4);
+        assert_eq!(get_clean_interval_after_grade(interval, valid_grade(4)), 6);
     }
 
     #[test]
     fn ease_delta_for_grade_matches_expectations() {
-        assert!(ease_delta_for_grade(valid_grade(0)) < 0.0);
-        assert!(ease_delta_for_grade(valid_grade(2)) < 0.0);
-        assert!(ease_delta_for_grade(valid_grade(4)) > 0.0);
+        assert!(ease_delta_for_grade(valid_grade(0).as_u8()).unwrap() < 0.0);
+        assert!(ease_delta_for_grade(valid_grade(2).as_u8()).unwrap() < 0.0);
+        assert!(ease_delta_for_grade(valid_grade(4).as_u8()).unwrap() > 0.0);
     }
 
     #[test]
@@ -261,7 +270,10 @@ mod tests {
     }
 
     #[test]
-        let eased = ease_after_grade(2.7, valid_grade(4));
+    fn ease_after_grade_clamps_extremes_correctly() {
+        let eased = ease_after_grade(1.2, valid_grade(0).as_u8()).expect("valid");
+        assert!((eased - 1.3).abs() < f32::EPSILON);
+        let eased = ease_after_grade(2.7, valid_grade(4).as_u8()).expect("valid");
         assert!((eased - 2.8).abs() < f32::EPSILON);
     }
 
@@ -303,13 +315,7 @@ mod tests {
         assert!((state.ease_factor - 2.1).abs() < f32::EPSILON);
         assert_eq!(state.due_on, naive_date(2023, 1, 4));
     }
-}
 
-#[cfg(all(test, coverage))]
-mod coverage_tests {
-    use super::*;
-    use std::panic;
-    use crate::tests::util::{sample_state, sample_review};
     #[test]
     fn apply_review_updates_state() {
         let mut state = sample_state();
@@ -339,29 +345,42 @@ mod coverage_tests {
     #[test]
     fn interval_after_grade_covers_branches() {
         let base = NonZeroU8::new(3).unwrap();
-        assert_eq!(interval_after_grade(base, 0).get(), 1);
-        assert_eq!(interval_after_grade(base, 2), base);
-        assert_eq!(interval_after_grade(base, 3).get(), 4);
-        assert_eq!(interval_after_grade(base, 4).get(), 6);
+        assert_eq!(
+            interval_after_grade(base, 0).unwrap(),
+            NonZeroU8::new(1).unwrap()
+        );
+        assert_eq!(
+            interval_after_grade(base, 1).unwrap(),
+            NonZeroU8::new(1).unwrap()
+        );
+        assert_eq!(interval_after_grade(base, 2).unwrap(), base);
+        assert_eq!(
+            interval_after_grade(base, 3).unwrap(),
+            NonZeroU8::new(4).unwrap()
+        );
+        assert_eq!(
+            interval_after_grade(base, 4).unwrap(),
+            NonZeroU8::new(6).unwrap()
+        );
     }
 
     #[test]
     fn ease_delta_for_grade_covers_values() {
-        assert!(ease_delta_for_grade(0) < 0.0);
-        assert!(ease_delta_for_grade(1) < 0.0);
-        assert!(ease_delta_for_grade(2) < 0.0);
-        assert_eq!(ease_delta_for_grade(3), 0.0);
-        assert!(ease_delta_for_grade(4) > 0.0);
+        assert!(ease_delta_for_grade(0).unwrap() < 0.0);
+        assert!(ease_delta_for_grade(1).unwrap() < 0.0);
+        assert!(ease_delta_for_grade(2).unwrap() < 0.0);
+        assert_eq!(ease_delta_for_grade(3).unwrap(), 0.0);
+        assert!(ease_delta_for_grade(4).unwrap() > 0.0);
     }
 
     #[test]
     fn ease_after_grade_clamps_extremes() {
-        assert_eq!(ease_after_grade(1.2, 0), 1.3);
-        assert_eq!(ease_after_grade(2.9, 4), 2.8);
+        assert_eq!(ease_after_grade(1.2, 0).unwrap(), 1.3);
+        assert_eq!(ease_after_grade(2.9, 4).unwrap(), 2.8);
     }
 
     #[test]
-    fn finalize_transition_collects_components() {
+    fn finalize_transition_collects_components_part2() {
         let state = sample_state();
         let review = sample_review(3);
         let interval = NonZeroU8::new(2).unwrap();
