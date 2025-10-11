@@ -18,7 +18,7 @@ export const createOpeningLineScheduler = (
     const scheduledFor = scheduleDate(baseDate, offset);
     return {
       ...line,
-      id: ['import', baseDate.getTime().toString(), offset.toString()].join('-'),
+      id: crypto.randomUUID(),
       scheduledFor,
     };
   };

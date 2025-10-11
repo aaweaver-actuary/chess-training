@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { JSX } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useSyncExternalStore } from 'react';
 
 import { sampleSnapshot } from '../fixtures/sampleSnapshot';
 import { BlankBoardPage } from '../pages/BlankBoardPage';
