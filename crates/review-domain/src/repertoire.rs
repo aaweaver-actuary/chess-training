@@ -91,6 +91,11 @@ impl Repertoire {
     ///
     /// The implementation will later enforce business rules around duplicates and merge
     /// policies. For now it communicates intent through the returned error value.
+    ///
+    /// # Errors
+    ///
+    /// Always returns [`RepertoireError::NotImplemented`] until the insertion logic is
+    /// implemented.
     pub fn add_move(&mut self, _move_entry: RepertoireMove) -> Result<(), RepertoireError> {
         Err(RepertoireError::not_implemented("add_move"))
     }
@@ -99,6 +104,11 @@ impl Repertoire {
     ///
     /// Future implementations will prune the internal store and return success if the move is
     /// found. The current stub advertises the missing functionality to consumers.
+    ///
+    /// # Errors
+    ///
+    /// Always returns [`RepertoireError::NotImplemented`] until the removal logic is
+    /// implemented.
     pub fn remove_move(&mut self, _edge_id: u64) -> Result<(), RepertoireError> {
         Err(RepertoireError::not_implemented("remove_move"))
     }
@@ -106,6 +116,11 @@ impl Repertoire {
     /// Provides the Avro schema for [`Repertoire`] when the `avro` feature is enabled.
     #[cfg(feature = "avro")]
     #[must_use]
+    ///
+    /// # Panics
+    ///
+    /// Panics if the hard-coded Avro schema definition fails to parse, indicating the
+    /// embedded JSON is invalid.
     pub fn avro_schema() -> apache_avro::schema::Schema {
         apache_avro::schema::Schema::parse_str(Self::AVRO_SCHEMA_JSON)
             .expect("repertoire schema is valid")

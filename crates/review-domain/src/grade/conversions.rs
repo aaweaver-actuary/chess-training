@@ -73,7 +73,10 @@ impl TryFrom<u8> for ValidGrade {
     type Error = GradeError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        new(value)
+        match from_u8(value) {
+            Ok(grade) => Ok(grade),
+            Err(_) => Err(GradeError::InvalidGradeError { grade: value }),
+        }
     }
 }
 
