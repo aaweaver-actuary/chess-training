@@ -48,6 +48,98 @@ runs:
           dest="$repo_root/ci-errors/${timestamp}_${safe_label}.log"
           cp "$tmp_log" "$dest"
           echo "Saved CI error log to $dest"
+
+          if [ -n "$GITHUB_TOKEN" ] && [ -n "$GITHUB_REPOSITORY" ]; then
+            issue_title="CI failure: $label ($timestamp)"
+            issue_api_url="https://api.github.com/repos/$GITHUB_REPOSITORY/issues"
+
+            export ISSUE_TITLE="$issue_title"
+            export ISSUE_LABEL="$label"
+            export ISSUE_TIMESTAMP="$timestamp"
+            export ISSUE_LOG_PATH="$tmp_log"
+
+            issue_payload=$(python3 <<'PY'
+import json
+import os
+import sys
+
+title = os.environ.get("ISSUE_TITLE", "CI failure")
+label = os.environ.get("ISSUE_LABEL", "step")
+timestamp = os.environ.get("ISSUE_TIMESTAMP", "")
+log_path = os.environ.get("ISSUE_LOG_PATH")
+
+if not log_path:
+    print("::warning::Missing CI log path; cannot create GitHub issue.", file=sys.stderr)
+    sys.exit(0)
+
+try:
+    max_log_bytes = 65536  # 64 KB
+    with open(log_path, "rb") as handle:
+        handle.seek(0, os.SEEK_END)
+        file_size = handle.tell()
+        if file_size > max_log_bytes:
+            handle.seek(-max_log_bytes, os.SEEK_END)
+            log_bytes = handle.read(max_log_bytes)
+            log_content = log_bytes.decode("utf-8", errors="replace")
+            log_content = "[...truncated, showing last 64 KB...]\n" + log_content
+        else:
+            handle.seek(0)
+            log_bytes = handle.read()
+            log_content = log_bytes.decode("utf-8", errors="replace")
+except OSError as exc:
+    print(f"::warning::Failed to read CI log: {exc}", file=sys.stderr)
+    sys.exit(0)
+
+body = f"CI step `{label}` failed at {timestamp}.\n\n```\n{log_content}\n```"
+
+print(json.dumps({"title": title, "body": body}))
+PY
+)
+
+            if [ -n "$issue_payload" ]; then
+              # Capture stderr separately to provide detailed error messages
+              curl_stderr=$(mktemp)
+              response=$(curl -sS -X POST \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                -H "Content-Type: application/json" \
+                "$issue_api_url" \
+                -d "$issue_payload" 2>"$curl_stderr")
+
+              curl_status=$?
+              if [ "$curl_status" -ne 0 ]; then
+                error_details=$(cat "$curl_stderr" 2>/dev/null || echo "No error details available")
+                echo "::warning::Failed to contact GitHub API to create CI failure issue. Exit code: $curl_status. Details: $error_details"
+                rm -f "$curl_stderr"
+              else
+                rm -f "$curl_stderr"
+                issue_number=$(python3 <<'PY'
+import json
+import sys
+
+try:
+    data = json.load(sys.stdin)
+except json.JSONDecodeError:
+    sys.exit(1)
+
+number = data.get("number")
+if number is not None:
+    print(number)
+PY
+ <<<"$response")
+
+                if [ -n "$issue_number" ]; then
+                  echo "Created GitHub issue #$issue_number for CI failure logs."
+                else
+                  echo "::warning::Received unexpected response while creating GitHub issue."
+                fi
+              fi
+            else
+              echo "::warning::Failed to build GitHub issue payload for CI failure."
+            fi
+          else
+            echo "::warning::Skipping GitHub issue creation; missing GITHUB_TOKEN or GITHUB_REPOSITORY."
+          fi
         fi
 
         rm -f "$tmp_log" "$tmp_script"
