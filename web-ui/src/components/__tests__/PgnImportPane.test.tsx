@@ -516,6 +516,52 @@ describe('PgnImportPane', () => {
     expect(fileInput).toHaveAttribute('type', 'file');
   });
 
+  it('assigns distinct textarea ids to paste and upload modes', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PgnImportPane
+        onImportLine={() => ({
+          added: false,
+          line: {
+            id: 'upload-id-test',
+            opening: 'Danish Gambit',
+            color: 'White',
+            moves: [],
+            display: '',
+            scheduledFor: new Date().toISOString(),
+          },
+        })}
+      />,
+    );
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const pasteOption = await screen.findByRole('button', { name: /paste pgn/i });
+    await user.click(pasteOption);
+
+    const pasteLabel = await screen.findByText(/paste moves/i);
+    const pasteTextarea = await screen.findByLabelText(/pgn move input/i);
+    expect(pasteTextarea).toHaveAttribute('id');
+    const pasteTextareaId = pasteTextarea.getAttribute('id');
+    expect(pasteTextareaId).not.toBeNull();
+    expect(pasteLabel).toHaveAttribute('for', pasteTextareaId as string);
+
+    const uploadOption = await screen.findByRole('button', { name: /upload pgn/i });
+    await user.click(uploadOption);
+
+    const uploadLabel = await screen.findByText(/review moves/i);
+    const uploadTextarea = await screen.findByLabelText(/pgn move input/i);
+    expect(uploadTextarea).toHaveAttribute('id');
+    const uploadTextareaId = uploadTextarea.getAttribute('id');
+    expect(uploadTextareaId).not.toBeNull();
+    expect(uploadLabel).toHaveAttribute('for', uploadTextareaId as string);
+
+    expect(uploadTextarea).not.toBe(pasteTextarea);
+    expect(uploadTextareaId).not.toEqual(pasteTextareaId);
+  });
+
   it('treats uploaded PGNs the same as pasted PGNs', async () => {
     const user = userEvent.setup();
 
