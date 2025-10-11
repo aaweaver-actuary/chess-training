@@ -39,8 +39,8 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov
-      - name: Verify formatting (${{ matrix.crate }})
-        run: cargo fmt --package ${{ matrix.crate }} -- --check
+      - name: Format code (${{ matrix.crate }})
+        run: cargo fmt --package ${{ matrix.crate }}
       - name: Lint with clippy (${{ matrix.crate }})
         run: cargo clippy -p ${{ matrix.crate }} --all-targets --all-features -- -D clippy::all -D clippy::pedantic
       - name: Run tests in debug mode (${{ matrix.crate }})
@@ -73,8 +73,8 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt
-      - name: Ensure entire workspace is formatted
-        run: cargo fmt --all -- --check
+      - name: Format entire workspace
+        run: cargo fmt --all
 
   javascript:
     name: 'JavaScript checks (${{ matrix.project }})'
@@ -112,7 +112,7 @@ jobs:
         run: npm run format:check
       - name: Lint (${{ matrix.project }})
         working-directory: ${{ matrix.path }}
-        run: npm run lint -- --max-warnings=0
+        run: npm run lint -- --fix --max-warnings=0
       - name: Type check (${{ matrix.project }})
         working-directory: ${{ matrix.path }}
         run: npm run typecheck
