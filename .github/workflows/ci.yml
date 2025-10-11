@@ -11,6 +11,7 @@ env:
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
   CARGO_INCREMENTAL: '0'
+  GPT_ISSUE_KEY: ${{ secrets.GPT_ISSUE_KEY }}
 
 jobs:
   rust:
