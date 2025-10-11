@@ -241,7 +241,7 @@ jobs:
     steps:
       - name: Create issue about failure
         if: ${{ failure() }}
-        uses: JasonEtco/create-an-issue@v3
+        uses: JasonEtco/create-an-issue@v2
         with:
           title: "${{ github.workflow }} failed (run #${{ github.run_number }})"
           body: |
