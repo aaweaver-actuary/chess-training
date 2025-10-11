@@ -226,3 +226,27 @@ jobs:
         with:
           command: echo "All checks succeeded."
           label: confirm-success
+
+  create-failure-issue:
+    name: Create failure issue
+    # We run on ubuntu-latest here because JasonEtco/create-an-issue@v3 relies on Node 20,
+    # which receives first-class support and faster startup times on the default Ubuntu runner
+    # compared to alternative Linux images or non-Linux runners.
+    runs-on: ubuntu-latest
+    needs:
+      - rust
+      - rust-fmt-workspace
+      - javascript
+    if: ${{ always() }}
+    steps:
+      - name: Create issue about failure
+        if: ${{ failure() }}
+        uses: JasonEtco/create-an-issue@v3
+        with:
+          title: "${{ github.workflow }} failed (run #${{ github.run_number }})"
+          body: |
+            The workflow **${{ github.workflow }}** in repo `${{ github.repository }}` failed.
+            - Run: ${{ github.run_id }}
+            - View logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ env.GPT_ISSUE_KEY }}
