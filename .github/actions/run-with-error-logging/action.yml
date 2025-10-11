@@ -1,0 +1,54 @@
+name: Run with CI error logging
+description: Run a command and capture logs when it exits with code 1.
+inputs:
+  command:
+    description: Command to execute.
+    required: true
+  label:
+    description: Identifier used to name the log file.
+    required: false
+  working-directory:
+    description: Directory in which to run the command.
+    required: false
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      run: |
+        set -o pipefail
+
+        repo_root="$(pwd)"
+        workdir="${{ inputs.working-directory }}"
+        if [ -n "$workdir" ]; then
+          cd "$workdir"
+        fi
+
+        tmp_log="$(mktemp)"
+        tmp_script="$(mktemp)"
+
+        printf '%s\n' "${{ inputs.command }}" >"$tmp_script"
+
+        
+        bash "$tmp_script" 2>&1 | tee "$tmp_log"
+        status=${PIPESTATUS[0]}
+
+        if [ "$status" -eq 1 ]; then
+          mkdir -p "$repo_root/ci-errors"
+          label="${{ inputs.label }}"
+          if [ -z "$label" ]; then
+            label="step"
+          fi
+          safe_label=$(echo "$label" | tr '[:space:]/' '__')
+          safe_label=$(echo "$safe_label" | tr -cd '[:alnum:]_.-')
+          if [ -z "$safe_label" ]; then
+            safe_label="step"
+          fi
+          timestamp=$(date -u +"%Y%m%dT%H%M%SZ")
+          dest="$repo_root/ci-errors/${timestamp}_${safe_label}.log"
+          cp "$tmp_log" "$dest"
+          echo "Saved CI error log to $dest"
+        fi
+
+        rm -f "$tmp_log" "$tmp_script"
+        exit "$status"
