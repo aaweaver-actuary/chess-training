@@ -46,7 +46,7 @@ impl ValidGrade {
     /// Creates a new `ValidGrade` if the provided value is between 0 and 4
     /// inclusive. Returns a `GradeError` otherwise.
     /// # Errors
-    /// Returns `GradeError::InvalidGrade` if the provided value is not between
+    /// Returns `GradeError::GradeOutsideRangeError` if the provided value is not between
     /// 0 and 4 inclusive.
     pub fn new(grade: u8) -> Result<Self, GradeError> {
         Self::from_u8(grade)
