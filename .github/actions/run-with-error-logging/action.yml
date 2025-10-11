@@ -73,8 +73,19 @@ if not log_path:
     sys.exit(0)
 
 try:
-    with open(log_path, "r", encoding="utf-8") as handle:
-        log_content = handle.read()
+    max_log_bytes = 65536  # 64 KB
+    with open(log_path, "rb") as handle:
+        handle.seek(0, os.SEEK_END)
+        file_size = handle.tell()
+        if file_size > max_log_bytes:
+            handle.seek(-max_log_bytes, os.SEEK_END)
+            log_bytes = handle.read(max_log_bytes)
+            log_content = log_bytes.decode("utf-8", errors="replace")
+            log_content = "[...truncated, showing last 64 KB...]\n" + log_content
+        else:
+            handle.seek(0)
+            log_bytes = handle.read()
+            log_content = log_bytes.decode("utf-8", errors="replace")
 except OSError as exc:
     print(f"::warning::Failed to read CI log: {exc}", file=sys.stderr)
     sys.exit(0)
