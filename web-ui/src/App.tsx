@@ -89,25 +89,16 @@ const App = (): JSX.Element => {
     };
   }, [handleCloseConsole, handleOpenConsole, isConsoleOpen]);
 
-  const handleImportLine = useCallback(
-    (line: DetectedOpeningLine): ImportResult => {
-      let importResult: ImportResult | undefined;
-      setImportedLines((previous) => {
-        const existing = previous.find((candidate) => linesMatch(candidate, line));
-        if (existing) {
-          importResult = { added: false, line: existing };
-          return previous;
-        }
+  const handleImportLine = (line: DetectedOpeningLine): ImportResult => {
+    const existing = importedLines.find((candidate) => linesMatch(candidate, line));
+    if (existing) {
+      return { added: false, line: existing };
+    }
 
-        const nextLine = scheduleOpeningLine(line, previous.length);
-        importResult = { added: true, line: nextLine };
-        return [...previous, nextLine];
-      });
-
-      return importResult as ImportResult;
-    },
-    [scheduleOpeningLine],
-  );
+    const nextLine = scheduleOpeningLine(line, importedLines.length);
+    setImportedLines((previous) => [...previous, nextLine]);
+    return { added: true, line: nextLine };
+  };
 
   const handleExecuteCommand = useCallback(
     async (input: string) => {

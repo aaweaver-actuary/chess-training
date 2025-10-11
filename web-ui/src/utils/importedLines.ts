@@ -10,7 +10,9 @@ const scheduleDate = (baseDate: Date, offset: number): string => {
   return nextDate.toISOString().slice(0, 10);
 };
 
-export const createOpeningLineScheduler = (clock: Clock = () => new Date()): OpeningLineScheduler => {
+export const createOpeningLineScheduler = (
+  clock: Clock = () => new Date(),
+): OpeningLineScheduler => {
   return (line, offset) => {
     const baseDate = clock();
     const scheduledFor = scheduleDate(baseDate, offset);
@@ -34,5 +36,7 @@ export const linesMatch = (
     return false;
   }
 
-  return candidate.moves.every((move, index) => move.toLowerCase() === target.moves[index]?.toLowerCase());
+  return candidate.moves.every(
+    (move, index) => move.toLowerCase() === target.moves[index]?.toLowerCase(),
+  );
 };
