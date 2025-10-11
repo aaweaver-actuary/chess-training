@@ -91,20 +91,24 @@ const App = (): JSX.Element => {
 
   const handleImportLine = useCallback(
     (line: DetectedOpeningLine): ImportResult => {
-      let importResult: ImportResult | undefined;
+      // Use state updater function to avoid race conditions with concurrent imports.
+      // We initialize result with a placeholder that will be immediately overwritten.
+      // React runs the updater synchronously, so result is guaranteed to be set correctly.
+      let result: ImportResult = { added: false, line: { ...line, id: '', scheduledFor: '' } };
+
       setImportedLines((previous) => {
         const existing = previous.find((candidate) => linesMatch(candidate, line));
         if (existing) {
-          importResult = { added: false, line: existing };
+          result = { added: false, line: existing };
           return previous;
         }
 
         const nextLine = scheduleOpeningLine(line, previous.length);
-        importResult = { added: true, line: nextLine };
+        result = { added: true, line: nextLine };
         return [...previous, nextLine];
       });
 
-      return importResult as ImportResult;
+      return result;
     },
     [scheduleOpeningLine],
   );

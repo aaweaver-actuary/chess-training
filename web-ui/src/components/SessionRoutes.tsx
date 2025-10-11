@@ -51,7 +51,11 @@ const enhanceOverview = (
   return extendOverviewWithImports(overview, importedLines);
 };
 
-export const SessionRoutes = ({ importedLines, onImportLine, commandDispatcher }: SessionRoutesProps): JSX.Element => {
+export const SessionRoutes = ({
+  importedLines,
+  onImportLine,
+  commandDispatcher,
+}: SessionRoutesProps): JSX.Element => {
   const session = useSessionState();
   const { stats, currentCard, start, submitGrade } = session;
   useSessionLifecycle(start);
