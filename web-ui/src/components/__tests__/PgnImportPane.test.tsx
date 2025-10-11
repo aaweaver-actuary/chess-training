@@ -1,12 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { CommandDispatcher } from '../../utils/commandDispatcher';
 import type { ImportResult } from '../../types/repertoire';
 import { PgnImportPane } from '../PgnImportPane';
 
 describe('PgnImportPane', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it('expands when the pointer enters the pane container', () => {
     render(
       <PgnImportPane
@@ -181,6 +186,110 @@ describe('PgnImportPane', () => {
     await waitFor(() => {
       expect(handle).toHaveAttribute('aria-expanded', 'false');
     });
+  });
+
+  it('keeps the upload tools open when the file input loses focus without a next target', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PgnImportPane
+        onImportLine={() => ({
+          added: false,
+          line: {
+            id: 'focus-upload',
+            opening: 'Danish Gambit',
+            color: 'White',
+            moves: [],
+            display: '',
+            scheduledFor: new Date().toISOString(),
+          },
+        })}
+      />,
+    );
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const uploadOption = await screen.findByRole('button', { name: /upload pgn/i });
+    await user.click(uploadOption);
+
+    const fileInput = await screen.findByLabelText(/upload pgn file/i);
+    fileInput.focus();
+    fireEvent.blur(fileInput, { relatedTarget: null });
+
+    expect(handle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('keeps the upload tools open when focus moves within the upload form', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PgnImportPane
+        onImportLine={() => ({
+          added: false,
+          line: {
+            id: 'upload-focus-internal',
+            opening: 'Danish Gambit',
+            color: 'White',
+            moves: [],
+            display: '',
+            scheduledFor: new Date().toISOString(),
+          },
+        })}
+      />,
+    );
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const uploadOption = await screen.findByRole('button', { name: /upload pgn/i });
+    await user.click(uploadOption);
+
+    const fileInput = await screen.findByLabelText(/upload pgn file/i);
+    const textarea = await screen.findByLabelText(/pgn move input/i);
+
+    fileInput.focus();
+    fireEvent.blur(fileInput, { relatedTarget: textarea });
+
+    expect(handle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('keeps the upload tools open when the file input blurs to an external element', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <div>
+        <PgnImportPane
+          onImportLine={() => ({
+            added: false,
+            line: {
+              id: 'upload-focus-exit',
+              opening: 'Danish Gambit',
+              color: 'White',
+              moves: [],
+              display: '',
+              scheduledFor: new Date().toISOString(),
+            },
+          })}
+        />
+        <button type="button">Outside</button>
+      </div>,
+    );
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const uploadOption = await screen.findByRole('button', { name: /upload pgn/i });
+    await user.click(uploadOption);
+
+    const fileInput = await screen.findByLabelText(/upload pgn file/i);
+    const outsideButton = screen.getByRole('button', { name: 'Outside' });
+
+    fileInput.focus();
+    fireEvent.blur(fileInput, { relatedTarget: outsideButton });
+    outsideButton.focus();
+
+    expect(handle).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('resets the detected line when the PGN input becomes empty', async () => {
@@ -374,5 +483,245 @@ describe('PgnImportPane', () => {
       moves: ['e4', 'e5', 'Nf3'],
       display: '1.e4 e5 2.Nf3',
     });
+  });
+
+  it('offers a PGN upload option alongside paste import', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PgnImportPane
+        onImportLine={() => ({
+          added: false,
+          line: {
+            id: 'upload-test',
+            opening: 'Danish Gambit',
+            color: 'White',
+            moves: [],
+            display: '',
+            scheduledFor: new Date().toISOString(),
+          },
+        })}
+      />,
+    );
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const uploadOption = await screen.findByRole('button', { name: /upload pgn/i });
+    expect(uploadOption).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(uploadOption);
+
+    const fileInput = await screen.findByLabelText(/upload pgn file/i);
+    expect(fileInput).toHaveAttribute('type', 'file');
+  });
+
+  it('treats uploaded PGNs the same as pasted PGNs', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PgnImportPane
+        onImportLine={() => ({
+          added: false,
+          line: {
+            id: 'equivalence-test',
+            opening: 'Danish Gambit',
+            color: 'White',
+            moves: [],
+            display: '',
+            scheduledFor: new Date().toISOString(),
+          },
+        })}
+      />,
+    );
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const pasteOption = await screen.findByRole('button', { name: /paste pgn/i });
+    await user.click(pasteOption);
+
+    const textarea = await screen.findByLabelText(/pgn move input/i);
+    await user.type(textarea, '1. e4 e5 2.d4');
+
+    const pasteAlert = await screen.findByRole('alert');
+    const pasteMessage = pasteAlert.textContent;
+    expect(pasteMessage).toMatch(/could not recognize/i);
+
+    await user.clear(textarea);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    const uploadOption = await screen.findByRole('button', { name: /upload pgn/i });
+    await user.click(uploadOption);
+
+    const fileInput = await screen.findByLabelText(/upload pgn file/i);
+    const file = new File(['1. e4 e5 2.d4'], 'line.pgn', {
+      type: 'application/x-chess-pgn',
+    });
+    await user.upload(fileInput, file);
+
+    const uploadTextarea = await screen.findByLabelText(/pgn move input/i);
+    await waitFor(() => {
+      expect(uploadTextarea).toHaveValue('1. e4 e5 2.d4');
+    });
+
+    await user.type(uploadTextarea, ' e5');
+    await waitFor(() => {
+      expect(uploadTextarea).toHaveValue('1. e4 e5 2.d4 e5');
+    });
+
+    const uploadAlert = await screen.findByRole('alert');
+    expect(uploadAlert.textContent).toBe(pasteMessage);
+  });
+
+  it('falls back to FileReader when File.text is unavailable', async () => {
+    const user = userEvent.setup();
+    const onImportLine = vi.fn(
+      (): ImportResult => ({
+        added: true,
+        line: {
+          id: 'fallback-line',
+          opening: 'Danish Gambit',
+          color: 'White',
+          moves: ['e4', 'e5', 'd4', 'exd4', 'c3'],
+          display: '1.e4 e5 2.d4 exd4 3.c3',
+          scheduledFor: new Date().toISOString(),
+        },
+      }),
+    );
+
+    const readAsText = vi.fn(function (
+      this: { onload: ((event: ProgressEvent<FileReader>) => void) | null; result: string },
+      file: Blob,
+    ) {
+      void file;
+      this.result = '1.e4 e5 2.d4 exd4 3.c3';
+      this.onload?.({
+        target: this as unknown as FileReader,
+      } as ProgressEvent<FileReader>);
+    });
+
+    vi.stubGlobal(
+      'FileReader',
+      vi.fn(
+        () =>
+          ({
+            onload: null,
+            onerror: null,
+            readAsText,
+            result: '',
+          }) as unknown as FileReader,
+      ) as unknown as typeof FileReader,
+    );
+
+    render(<PgnImportPane onImportLine={onImportLine} />);
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const uploadOption = await screen.findByRole('button', { name: /upload pgn/i });
+    await user.click(uploadOption);
+
+    const fileInput = await screen.findByLabelText(/upload pgn file/i);
+    const fallbackFile = {
+      name: 'fallback.pgn',
+      type: 'application/x-chess-pgn',
+      size: 29,
+    } as File;
+
+    Object.defineProperty(fileInput, 'files', {
+      configurable: true,
+      value: [fallbackFile],
+    });
+    fireEvent.change(fileInput);
+
+    const confirmButton = await screen.findByRole('button', {
+      name: /add to danish gambit \(white\)/i,
+    });
+    await user.click(confirmButton);
+
+    expect(onImportLine).toHaveBeenCalledWith({
+      opening: 'Danish Gambit',
+      color: 'White',
+      moves: ['e4', 'e5', 'd4', 'exd4', 'c3'],
+      display: '1.e4 e5 2.d4 exd4 3.c3',
+    });
+    expect(readAsText).toHaveBeenCalledWith(fallbackFile);
+  });
+
+  it('notifies the user when an uploaded PGN cannot be read', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PgnImportPane
+        onImportLine={() => ({
+          added: false,
+          line: {
+            id: 'unreadable-file',
+            opening: 'Danish Gambit',
+            color: 'White',
+            moves: [],
+            display: '',
+            scheduledFor: new Date().toISOString(),
+          },
+        })}
+      />,
+    );
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const uploadOption = await screen.findByRole('button', { name: /upload pgn/i });
+    await user.click(uploadOption);
+
+    const fileInput = await screen.findByLabelText(/upload pgn file/i);
+    const brokenFile = new File(['1. e4 e5 2.d4'], 'broken.pgn', {
+      type: 'application/x-chess-pgn',
+    });
+    Object.defineProperty(brokenFile, 'text', {
+      configurable: true,
+      value: () => Promise.reject(new Error('cannot read file')),
+    });
+
+    await user.upload(fileInput, brokenFile);
+
+    const feedback = await screen.findByRole('alert');
+    expect(feedback).toHaveTextContent('We could not read that PGN file. Please try again.');
+  });
+
+  it('ignores upload change events when no file is selected', async () => {
+    const user = userEvent.setup();
+    const onImportLine = vi.fn(
+      (): ImportResult => ({
+        added: true,
+        line: {
+          id: 'unused',
+          opening: 'Danish Gambit',
+          color: 'White',
+          moves: [],
+          display: '',
+          scheduledFor: new Date().toISOString(),
+        },
+      }),
+    );
+
+    render(<PgnImportPane onImportLine={onImportLine} />);
+
+    const handle = screen.getByRole('button', { name: /open pgn import tools/i });
+    fireEvent.pointerEnter(handle);
+
+    const uploadOption = await screen.findByRole('button', { name: /upload pgn/i });
+    await user.click(uploadOption);
+
+    const fileInput = await screen.findByLabelText(/upload pgn file/i);
+    Object.defineProperty(fileInput, 'files', {
+      configurable: true,
+      value: null,
+    });
+
+    fireEvent.change(fileInput);
+
+    expect(onImportLine).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
