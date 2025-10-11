@@ -53,6 +53,8 @@ impl SchedulerConfigPatch {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::float_cmp)]
+
     use super::*;
 
     fn baseline() -> SchedulerConfig {
