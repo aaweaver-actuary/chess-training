@@ -1,5 +1,5 @@
 import type { ChangeEvent, FocusEvent, JSX } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import './PgnImportPane.css';
 import type { DetectedOpeningLine, ImportResult } from '../types/repertoire';
@@ -118,6 +118,8 @@ export const PgnImportPane = ({
   commandDispatcher,
 }: PgnImportPaneProps): JSX.Element => {
   const containerRef = useRef<HTMLElement | null>(null);
+  const pasteTextareaDomId = `pgn-import-textarea-paste-${useId()}`;
+  const uploadTextareaDomId = `pgn-import-textarea-upload-${useId()}`;
   const [isExpanded, setIsExpanded] = useState(false);
   type ImportMode = 'idle' | 'paste' | 'upload';
   const [mode, setMode] = useState<ImportMode>('idle');
@@ -354,11 +356,11 @@ export const PgnImportPane = ({
 
           {isPasteMode ? (
             <div className="pgn-import-form" role="region" aria-label="Paste PGN">
-              <label className="pgn-import-label" htmlFor="pgn-import-textarea">
+              <label className="pgn-import-label" htmlFor={pasteTextareaDomId}>
                 Paste moves
               </label>
               <textarea
-                id="pgn-import-textarea"
+                id={pasteTextareaDomId}
                 value={pgnText}
                 onChange={(event) => {
                   handlePgnChange(event.target.value);
@@ -382,11 +384,11 @@ export const PgnImportPane = ({
                 aria-label="Upload PGN file"
                 onChange={handleFileChange}
               />
-              <label className="pgn-import-label" htmlFor="pgn-import-textarea">
+              <label className="pgn-import-label" htmlFor={uploadTextareaDomId}>
                 Review moves
               </label>
               <textarea
-                id="pgn-import-textarea"
+                id={uploadTextareaDomId}
                 value={pgnText}
                 onChange={(event) => {
                   handlePgnChange(event.target.value);
