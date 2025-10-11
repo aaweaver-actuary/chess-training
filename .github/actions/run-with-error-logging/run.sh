@@ -65,7 +65,7 @@ if [[ "$status" -ne 0 ]]; then
   cp "$tmp_log" "$dest"
   echo "Saved CI error log to $dest"
 
-  issue_token="${GPT_ISSUE_KEY:-${GITHUB_TOKEN-}}"
+  issue_token="${GPT_ISSUE_KEY:-${GITHUB_TOKEN:-}}"
 
   if [[ -n "${issue_token:-}" && -n "${GITHUB_REPOSITORY:-}" ]]; then
     issue_title="CI failure: $log_label ($timestamp)"
