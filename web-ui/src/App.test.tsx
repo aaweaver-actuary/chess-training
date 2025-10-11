@@ -242,6 +242,61 @@ describe('App', () => {
       });
     });
 
+    it('opens the practice board with the cb command and supports click-to-move', async () => {
+      const user = setupUser();
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockedStore.getState().start).toHaveBeenCalled();
+      });
+
+      await user.keyboard(':');
+
+      const input = await screen.findByRole('textbox', { name: /command input/i });
+      await user.type(input, 'CB{Enter}');
+
+      const board = await screen.findByTestId('sandbox-board');
+      expect(board).toBeInTheDocument();
+
+      const shadowRoot = board.shadowRoot;
+      if (!shadowRoot) {
+        throw new Error('Expected the sandbox board to expose a shadow root.');
+      }
+
+      await waitFor(() => {
+        expect(shadowRoot.querySelector('[data-square="e2"]')).not.toBeNull();
+        expect(shadowRoot.querySelector('[data-square="e4"]')).not.toBeNull();
+      });
+
+      const e2 = shadowRoot.querySelector('[data-square="e2"]');
+      const e4 = shadowRoot.querySelector('[data-square="e4"]');
+      if (!e2 || !e4) {
+        throw new Error('Expected squares e2 and e4 to exist on the board.');
+      }
+
+      fireEvent.click(e2);
+      expect(board).toHaveAttribute('data-active-square', 'e2');
+
+      fireEvent.click(e4);
+
+      await waitFor(() => {
+        expect(board).not.toHaveAttribute('data-active-square');
+      });
+      expect(board).toHaveAttribute(
+        'position',
+        'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+      );
+
+      expect(alertSpy).not.toHaveBeenCalledWith('CB');
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: /command console/i })).not.toBeInTheDocument();
+      });
+    });
+
     it('closes the PGN import pane when the x command is dispatched', async () => {
       const user = setupUser();
       render(
