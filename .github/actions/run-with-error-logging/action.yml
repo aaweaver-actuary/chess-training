@@ -97,17 +97,22 @@ PY
 )
 
             if [ -n "$issue_payload" ]; then
+              # Capture stderr separately to provide detailed error messages
+              curl_stderr=$(mktemp)
               response=$(curl -sS -X POST \
                 -H "Authorization: Bearer $GITHUB_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
                 -H "Content-Type: application/json" \
                 "$issue_api_url" \
-                -d "$issue_payload")
+                -d "$issue_payload" 2>"$curl_stderr")
 
               curl_status=$?
               if [ "$curl_status" -ne 0 ]; then
-                echo "::warning::Failed to contact GitHub API to create CI failure issue."
+                error_details=$(cat "$curl_stderr" 2>/dev/null || echo "No error details available")
+                echo "::warning::Failed to contact GitHub API to create CI failure issue. Exit code: $curl_status. Details: $error_details"
+                rm -f "$curl_stderr"
               else
+                rm -f "$curl_stderr"
                 issue_number=$(python3 <<'PY'
 import json
 import sys
