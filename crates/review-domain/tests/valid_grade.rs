@@ -92,7 +92,7 @@ fn try_from_rejects_invalid_grades() {
         let err: GradeError =
             ValidGrade::try_from(value).expect_err("grade should fail for invalid value");
 
-        assert_eq!(err_variant(err), ErrVariant::Invalid(value));
+        assert_eq!(err_variant(err), ErrVariant::OutsideRange(value));
     }
 }
 

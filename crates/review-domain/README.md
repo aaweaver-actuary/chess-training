@@ -6,6 +6,7 @@
 
 * Generic card representation that parameterises the owner, card kind, and scheduling state.
 * Opening and tactic payloads with deterministic hashing helpers.
+* Opening repertoire aggregate that serializes to JSON or Avro for downstream services.
 * Unlock record types for progressive content releases.
 * Study stage, review grade, and validated grade enums reused by the scheduler and storage layers.
 

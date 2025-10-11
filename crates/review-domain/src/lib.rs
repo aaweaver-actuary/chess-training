@@ -8,6 +8,7 @@ pub mod hash;
 pub mod macros;
 pub mod opening;
 pub mod position;
+pub mod repertoire;
 pub mod review;
 pub mod review_grade;
 pub mod study_stage;
@@ -28,6 +29,8 @@ pub use hash::hash64;
 pub use opening::{EdgeInput, OpeningCard, OpeningEdge};
 /// Normalized chess position representation and related errors.
 pub use position::{ChessPosition, PositionError};
+/// Opening repertoire store and associated move representation.
+pub use repertoire::{Repertoire, RepertoireError, RepertoireMove};
 /// Review submission payload capturing user input.
 pub use review::ReviewRequest;
 /// Grading scale for spaced repetition reviews.
