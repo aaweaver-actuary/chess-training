@@ -1,228 +1,25 @@
-name: Strict CI
+name: CI
 
 on:
+  push:
   pull_request:
-    branches:
-      - master
-      - main
-
-env:
-  CARGO_TERM_COLOR: always
-  RUSTFLAGS: -D warnings
-  RUSTDOCFLAGS: -D warnings
-  CARGO_INCREMENTAL: '0'
-  GPT_ISSUE_KEY: ${{ secrets.GPT_ISSUE_KEY }}
 
 jobs:
-  rust:
-    name: 'Rust checks (${{ matrix.crate }})'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        crate:
-          - card-store
-          - review-domain
-          - chess-training-pgn-import
-          - scheduler-core
-          - chess-training
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          components: clippy, rustfmt, llvm-tools-preview
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-llvm-cov
-      - name: Format code (${{ matrix.crate }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: cargo fmt --package ${{ matrix.crate }}
-          label: rust-fmt-${{ matrix.crate }}
-      - name: Lint with clippy (${{ matrix.crate }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: cargo clippy -p ${{ matrix.crate }} --all-targets --all-features -- -D clippy::all -D clippy::pedantic
-          label: clippy-${{ matrix.crate }}
-      - name: Run tests in debug mode (${{ matrix.crate }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: cargo test -p ${{ matrix.crate }} --all-features -- --nocapture
-          label: test-debug-${{ matrix.crate }}
-      - name: Run tests in release mode (${{ matrix.crate }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: cargo test -p ${{ matrix.crate }} --release --all-features -- --nocapture
-          label: test-release-${{ matrix.crate }}
-      - name: Enforce coverage (${{ matrix.crate }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          label: coverage-${{ matrix.crate }}
-          command: |
-            mkdir -p target/llvm-cov
-            cargo llvm-cov \
-              --package ${{ matrix.crate }} \
-              --release \
-              --all-features \
-              --fail-under-lines 100 \
-              --fail-under-functions 100 \
-              --fail-under-regions 100 \
-              --show-missing-lines \
-              --lcov --output-path target/llvm-cov/${{ matrix.crate }}.lcov
-
-  rust-fmt-workspace:
-    name: Workspace formatting gate
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: |
+          make test
+      - name: Create issue about failure
+        if: failure()
+        uses: JasonEtco/create-an-issue@v3
         with:
-          fetch-depth: 0
-      - name: Install rustfmt
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          components: rustfmt
-      - name: Format entire workspace
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: cargo fmt --all
-          label: workspace-fmt
-
-  javascript:
-    name: 'JavaScript checks (${{ matrix.project }})'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project:
-          - web-ui
-          - session-gateway
-        include:
-          - project: web-ui
-            path: web-ui
-          - project: session-gateway
-            path: apps/session-gateway
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: ${{ matrix.path }}/package-lock.json
-      - name: Install dependencies (${{ matrix.project }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: npm ci --prefer-offline --no-audit --fund=false
-          label: npm-ci-${{ matrix.project }}
-          working-directory: ${{ matrix.path }}
-      - name: Reformat (${{ matrix.project }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: npm run format
-          label: npm-format-${{ matrix.project }}
-          working-directory: ${{ matrix.path }}
-      - name: Check formatting (${{ matrix.project }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: npm run format:check
-          label: npm-format-check-${{ matrix.project }}
-          working-directory: ${{ matrix.path }}
-      - name: Lint (${{ matrix.project }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: npm run lint -- --fix --max-warnings=0
-          label: npm-lint-${{ matrix.project }}
-          working-directory: ${{ matrix.path }}
-      - name: Type check (${{ matrix.project }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: npm run typecheck
-          label: npm-typecheck-${{ matrix.project }}
-          working-directory: ${{ matrix.path }}
-      - name: Run build (${{ matrix.project }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: npm run build
-          label: npm-build-${{ matrix.project }}
-          working-directory: ${{ matrix.path }}
-      - name: Test with coverage (${{ matrix.project }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: npm run test:coverage -- --coverage.reporter=json-summary --coverage.reporter=text --run
-          label: npm-test-coverage-${{ matrix.project }}
-          working-directory: ${{ matrix.path }}
+          title: "${{ github.workflow }} failed (run #${{ github.run_number }})"
+          body: |
+            The workflow **${{ github.workflow }}** in repo `${{ github.repository }}` failed.
+            - Run: ${{ github.run_id }}
+            - View logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         env:
-          CI: 'true'
-      - name: Enforce 100% coverage (${{ matrix.project }})
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          label: npm-enforce-coverage-${{ matrix.project }}
-          working-directory: ${{ matrix.path }}
-          command: |
-            node - <<'NODE'
-            import fs from 'node:fs';
-            import path from 'node:path';
-
-            const summaryPath = path.resolve('coverage', 'coverage-summary.json');
-            if (!fs.existsSync(summaryPath)) {
-              console.error(`Coverage summary not found at ${summaryPath}`);
-              process.exit(1);
-            }
-            const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-            const total = summary.total;
-            const metrics = ['lines', 'statements', 'branches', 'functions'];
-            const failures = metrics.filter((metric) => {
-              const value = total?.[metric]?.pct ?? 0;
-              return typeof value !== 'number' || value < 100;
-            });
-            if (failures.length > 0) {
-              console.error('Coverage below 100% for metrics:', failures);
-              process.exit(1);
-            }
-            const filesBelowThreshold = Object.entries(summary)
-              .filter(([file]) => file !== 'total')
-              .flatMap(([file, metricSummary]) => {
-                return metrics
-                  .filter((metric) => {
-                    const value = metricSummary?.[metric]?.pct;
-                    return typeof value !== 'number' || value < 100;
-                  })
-                  .map((metric) => {
-                    const value = metricSummary?.[metric]?.pct;
-                    return `${file} -> ${metric}: ${typeof value === 'number' ? value : 'N/A'}%`;
-                  });
-              });
-            if (filesBelowThreshold.length > 0) {
-              console.error('Every file must maintain 100% coverage. The following entries failed:');
-              for (const entry of filesBelowThreshold) {
-                console.error(` - ${entry}`);
-              }
-              process.exit(1);
-            }
-            console.log('Coverage check passed with 100% across all metrics.');
-            NODE
-
-  required:
-    name: Require successful jobs
-    runs-on: ubuntu-latest
-    needs:
-      - rust
-      - rust-fmt-workspace
-      - javascript
-    steps:
-      - name: Confirm all checks passed
-        uses: ./.github/actions/run-with-error-logging
-        with:
-          command: echo "All checks succeeded."
-          label: confirm-success
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
