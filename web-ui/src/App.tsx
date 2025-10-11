@@ -89,16 +89,28 @@ const App = (): JSX.Element => {
     };
   }, [handleCloseConsole, handleOpenConsole, isConsoleOpen]);
 
-  const handleImportLine = (line: DetectedOpeningLine): ImportResult => {
-    const existing = importedLines.find((candidate) => linesMatch(candidate, line));
-    if (existing) {
-      return { added: false, line: existing };
-    }
+  const handleImportLine = useCallback(
+    (line: DetectedOpeningLine): ImportResult => {
+      // Use state updater function to avoid race conditions with concurrent imports.
+      // The result variable is assigned synchronously within the updater.
+      let result!: ImportResult;
 
-    const nextLine = scheduleOpeningLine(line, importedLines.length);
-    setImportedLines((previous) => [...previous, nextLine]);
-    return { added: true, line: nextLine };
-  };
+      setImportedLines((previous) => {
+        const existing = previous.find((candidate) => linesMatch(candidate, line));
+        if (existing) {
+          result = { added: false, line: existing };
+          return previous;
+        }
+
+        const nextLine = scheduleOpeningLine(line, previous.length);
+        result = { added: true, line: nextLine };
+        return [...previous, nextLine];
+      });
+
+      return result;
+    },
+    [scheduleOpeningLine],
+  );
 
   const handleExecuteCommand = useCallback(
     async (input: string) => {
