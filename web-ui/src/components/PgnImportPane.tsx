@@ -1,10 +1,11 @@
-import type { FocusEvent, JSX } from 'react';
+import type { ChangeEvent, FocusEvent, JSX } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import './PgnImportPane.css';
 import type { DetectedOpeningLine, ImportResult } from '../types/repertoire';
 import { formatUnlockDate, UNLOCK_DATE_FALLBACK_LABEL } from '../utils/formatUnlockDate';
 import type { CommandDispatcher, CommandHandler } from '../utils/commandDispatcher';
+import { readFileText } from './_helpers/readFileText';
 
 type PgnImportPaneProps = {
   onImportLine: (line: DetectedOpeningLine) => ImportResult;
@@ -118,14 +119,18 @@ export const PgnImportPane = ({
 }: PgnImportPaneProps): JSX.Element => {
   const containerRef = useRef<HTMLElement | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isPasteMode, setIsPasteMode] = useState(false);
+  type ImportMode = 'idle' | 'paste' | 'upload';
+  const [mode, setMode] = useState<ImportMode>('idle');
   const [pgnText, setPgnText] = useState('');
   const [detectedLine, setDetectedLine] = useState<DetectedOpeningLine | undefined>(undefined);
   const [feedback, setFeedback] = useState<FeedbackState>(undefined);
 
   const collapsePane = useCallback(() => {
     setIsExpanded(false);
-    setIsPasteMode(false);
+    setMode('idle');
+    setPgnText('');
+    setDetectedLine(undefined);
+    setFeedback(undefined);
   }, []);
 
   const paneContainsFocus = () => {
@@ -147,14 +152,35 @@ export const PgnImportPane = ({
       return;
     }
 
+    const target = event.target as HTMLElement | null;
+    const isUploadFileBlur =
+      mode === 'upload' &&
+      target?.id === 'pgn-import-file-input' &&
+      (!nextTarget || !containerRef.current?.contains(nextTarget));
+
+    if (isUploadFileBlur) {
+      return;
+    }
+
     if (!paneContainsFocus()) {
       collapsePane();
     }
   };
 
-  const handlePasteOption = () => {
-    setIsPasteMode(true);
+  const activateMode = (nextMode: ImportMode) => {
+    setMode(nextMode);
     setIsExpanded(true);
+    setPgnText('');
+    setDetectedLine(undefined);
+    setFeedback(undefined);
+  };
+
+  const handlePasteOption = () => {
+    activateMode('paste');
+  };
+
+  const handleUploadOption = () => {
+    activateMode('upload');
   };
 
   const handlePgnChange = (value: string) => {
@@ -180,6 +206,32 @@ export const PgnImportPane = ({
       message:
         "We could not recognize that PGN yet. Try a standard Danish Gambit or King's Knight Opening line.",
     });
+  };
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setMode('upload');
+    setIsExpanded(true);
+
+    void readFileText(file)
+      .then((text) => {
+        handlePgnChange(text);
+      })
+      .catch(() => {
+        setFeedback({
+          kind: 'error',
+          message: 'We could not read that PGN file. Please try again.',
+        });
+      })
+      .finally(() => {
+        input.value = '';
+      });
   };
 
   const handleConfirm = (line: DetectedOpeningLine) => {
@@ -235,6 +287,28 @@ export const PgnImportPane = ({
     };
   }, [collapsePane, commandDispatcher]);
 
+  const isPasteMode = mode === 'paste';
+  const isUploadMode = mode === 'upload';
+
+  const detectionContent = detectedLine ? (
+    <div className="pgn-import-detection" role="status">
+      <p>
+        Detected <strong>{detectedLine.opening}</strong> for the{' '}
+        <strong>{detectedLine.color.toLowerCase()}</strong> pieces.
+      </p>
+      <p className="pgn-import-preview">{detectedLine.display}</p>
+      <button
+        type="button"
+        className="pgn-import-confirm"
+        onClick={() => {
+          handleConfirm(detectedLine);
+        }}
+      >
+        Add to {detectedLine.opening} ({detectedLine.color})
+      </button>
+    </div>
+  ) : null;
+
   return (
     <aside
       ref={containerRef}
@@ -269,6 +343,15 @@ export const PgnImportPane = ({
             Paste PGN
           </button>
 
+          <button
+            type="button"
+            className="pgn-import-option"
+            onClick={handleUploadOption}
+            aria-pressed={isUploadMode}
+          >
+            Upload PGN
+          </button>
+
           {isPasteMode ? (
             <div className="pgn-import-form" role="region" aria-label="Paste PGN">
               <label className="pgn-import-label" htmlFor="pgn-import-textarea">
@@ -283,24 +366,35 @@ export const PgnImportPane = ({
                 placeholder="1.e4 e5 2.d4 exd4 3.c3"
                 aria-label="PGN move input"
               />
-              {detectedLine ? (
-                <div className="pgn-import-detection" role="status">
-                  <p>
-                    Detected <strong>{detectedLine.opening}</strong> for the{' '}
-                    <strong>{detectedLine.color.toLowerCase()}</strong> pieces.
-                  </p>
-                  <p className="pgn-import-preview">{detectedLine.display}</p>
-                  <button
-                    type="button"
-                    className="pgn-import-confirm"
-                    onClick={() => {
-                      handleConfirm(detectedLine);
-                    }}
-                  >
-                    Add to {detectedLine.opening} ({detectedLine.color})
-                  </button>
-                </div>
-              ) : null}
+              {detectionContent}
+            </div>
+          ) : null}
+
+          {isUploadMode ? (
+            <div className="pgn-import-form" role="region" aria-label="Upload PGN">
+              <label className="pgn-import-label" htmlFor="pgn-import-file-input">
+                Upload PGN file
+              </label>
+              <input
+                id="pgn-import-file-input"
+                type="file"
+                accept=".pgn"
+                aria-label="Upload PGN file"
+                onChange={handleFileChange}
+              />
+              <label className="pgn-import-label" htmlFor="pgn-import-textarea">
+                Review moves
+              </label>
+              <textarea
+                id="pgn-import-textarea"
+                value={pgnText}
+                onChange={(event) => {
+                  handlePgnChange(event.target.value);
+                }}
+                placeholder="1.e4 e5 2.d4 exd4 3.c3"
+                aria-label="PGN move input"
+              />
+              {detectionContent}
             </div>
           ) : null}
         </div>
