@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { JSX } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useSyncExternalStore } from 'react';
