@@ -190,3 +190,64 @@ fn missing_issue_token_skips_issue_creation() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
+#[test]
+fn non_zero_exit_codes_trigger_logging() -> Result<(), Box<dyn Error>> {
+    let script_path = action_script_path();
+    assert!(script_path.exists());
+
+    for exit_code in [2, 127, 255] {
+        let temp = tempdir()?;
+        let log_dir = temp.path().join("ci-logs");
+        let bin_dir = temp.path().join("bin");
+        fs::create_dir_all(&bin_dir)?;
+        write_curl_stub(&bin_dir)?;
+
+        let mut cmd = Command::new("bash");
+        cmd.arg(&script_path)
+            .arg("--command")
+            .arg(format!(
+                "bash -c 'echo exit-code-{exit_code}; exit {exit_code}'"
+            ))
+            .arg("--label")
+            .arg(format!("test-exit-{exit_code}"))
+            .arg("--working-directory")
+            .arg(temp.path().to_string_lossy().to_string())
+            .env("GPT_ISSUE_KEY", "test-token")
+            .env("GITHUB_REPOSITORY", "example/repo")
+            .env("CI_ERROR_LOG_DIR", log_dir.to_string_lossy().to_string())
+            .env(
+                "CURL_STUB_OUTPUT_DIR",
+                temp.path().to_string_lossy().to_string(),
+            )
+            .env(
+                "PATH",
+                format!(
+                    "{}:{}",
+                    bin_dir.to_string_lossy(),
+                    std::env::var("PATH").unwrap_or_default()
+                ),
+            );
+
+        cmd.assert().failure();
+
+        assert!(
+            log_dir.exists(),
+            "log directory was not created for exit code {exit_code}"
+        );
+        assert_log_contains(&log_dir, &format!("exit-code-{exit_code}"))?;
+
+        let payload_path = temp.path().join("payload.json");
+        assert!(
+            payload_path.exists(),
+            "issue payload was not created for exit code {exit_code}"
+        );
+        let payload = read_payload(&payload_path)?;
+        assert!(
+            payload.body.contains(&format!("exit-code-{exit_code}")),
+            "issue body did not contain output for exit code {exit_code}"
+        );
+    }
+
+    Ok(())
+}
