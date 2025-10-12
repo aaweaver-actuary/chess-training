@@ -21,7 +21,7 @@ The following three workstreams capture all existing plans while clarifying sequ
 **Goals:** Extract orchestration logic from React, deliver reusable components (including the chessboard), and expose testable contracts.
 
 **Key Milestones:**
-1. Establish `application/` layer scaffolding with services/controllers/view models as outlined in the separation plan.【F:docs/ui-separation-plan.md†L39-L94】
+1. ✅ Establish `application/` layer scaffolding with services/controllers/view models as outlined in the separation plan. The scaffolding now ships symbol tokens and TypeScript contract definitions under `web-ui/src/application/`, giving follow-on work a stable import surface.【F:docs/ui-separation-plan.md†L39-L129】【F:web-ui/src/application/index.ts†L1-L26】
 2. Execute UI refactor roadmap checklists, starting with PGN import and dashboard view models for quick wins, then session controller and command palette hooks.【F:docs/ui-component-refactor-roadmap.md†L63-L168】
 3. Deliver the reusable chessboard base component with configuration API and documentation, integrating it into the new controllers/hooks.【F:docs/chessboard_implementation_plan.md†L1-L33】
 4. Update UI tests to cover hooks/services headlessly and components via snapshots as prescribed across the UI plans.【F:docs/chessboard_implementation_plan.md†L22-L29】【F:docs/ui-component-refactor-roadmap.md†L19-L26】
