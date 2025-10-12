@@ -1,59 +1,154 @@
 .floating-corner-button {
+  --floating-corner-inline-offset: 0;
+  --floating-corner-block-offset: 0;
+  --floating-corner-translate-x: 50%;
+  --floating-corner-translate-y: -50%;
+  --floating-corner-hover-translate-x: var(--floating-corner-translate-x);
+  --floating-corner-hover-translate-y: calc(var(--floating-corner-translate-y) - 10%);
+  --floating-corner-active-translate-x: var(--floating-corner-translate-x);
+  --floating-corner-active-translate-y: calc(var(--floating-corner-translate-y) + 5%);
+  --floating-corner-radius: 9999px;
+  --floating-corner-padding-block: 0.625rem;
+  --floating-corner-padding-inline: 1.25rem;
+  --floating-corner-gap: 0.5rem;
+  --floating-corner-background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(245, 247, 255, 0.98)
+  );
+  --floating-corner-text-color: #1b1f3b;
+  --floating-corner-shadow-rest:
+    0 0 0 1px rgba(27, 31, 59, 0.05),
+    0 8px 16px rgba(27, 31, 59, 0.18);
+  --floating-corner-shadow-hover:
+    0 0 0 1px rgba(27, 31, 59, 0.08),
+    0 12px 24px rgba(27, 31, 59, 0.28);
+  --floating-corner-shadow-focus:
+    0 0 0 3px rgba(82, 110, 255, 0.3),
+    0 0 0 1px rgba(27, 31, 59, 0.1),
+    0 12px 24px rgba(27, 31, 59, 0.28);
+  --floating-corner-shadow-active:
+    0 0 0 1px rgba(27, 31, 59, 0.1),
+    0 6px 14px rgba(27, 31, 59, 0.2);
+  --floating-corner-shadow-disabled:
+    0 0 0 1px rgba(27, 31, 59, 0.05),
+    0 4px 8px rgba(27, 31, 59, 0.12);
+  --floating-corner-opacity: 1;
+
   position: absolute;
-  top: 0;
-  right: 0;
-  transform: translate(50%, -50%);
+  inset-block-start: auto;
+  inset-block-end: auto;
+  inset-inline-start: auto;
+  inset-inline-end: auto;
+  transform: translate(
+    var(--floating-corner-translate-x),
+    var(--floating-corner-translate-y)
+  );
   z-index: 10;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
-  border-radius: 9999px;
+  gap: var(--floating-corner-gap);
+  padding: var(--floating-corner-padding-block) var(--floating-corner-padding-inline);
+  border-radius: var(--floating-corner-radius);
   border: none;
   font-weight: 600;
   line-height: 1;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 255, 0.98));
-  color: #1b1f3b;
-  box-shadow:
-    0 0 0 1px rgba(27, 31, 59, 0.05),
-    0 8px 16px rgba(27, 31, 59, 0.18);
+  background: var(--floating-corner-background);
+  color: var(--floating-corner-text-color);
+  box-shadow: var(--floating-corner-shadow-rest);
   cursor: pointer;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
     background-color 160ms ease,
-    filter 160ms ease;
+    filter 160ms ease,
+    opacity 160ms ease;
+  opacity: var(--floating-corner-opacity);
+}
+
+.floating-corner-button--top-right {
+  inset-block-start: var(--floating-corner-block-offset);
+  inset-inline-end: var(--floating-corner-inline-offset);
+  --floating-corner-translate-x: 50%;
+  --floating-corner-translate-y: -50%;
+  --floating-corner-hover-translate-x: var(--floating-corner-translate-x);
+  --floating-corner-hover-translate-y: calc(-50% - 10%);
+  --floating-corner-active-translate-x: var(--floating-corner-translate-x);
+  --floating-corner-active-translate-y: calc(-50% + 5%);
+}
+
+.floating-corner-button--top-left {
+  inset-block-start: var(--floating-corner-block-offset);
+  inset-inline-start: var(--floating-corner-inline-offset);
+  --floating-corner-translate-x: -50%;
+  --floating-corner-translate-y: -50%;
+  --floating-corner-hover-translate-x: var(--floating-corner-translate-x);
+  --floating-corner-hover-translate-y: calc(-50% - 10%);
+  --floating-corner-active-translate-x: var(--floating-corner-translate-x);
+  --floating-corner-active-translate-y: calc(-50% + 5%);
+}
+
+.floating-corner-button--bottom-right {
+  inset-block-end: var(--floating-corner-block-offset);
+  inset-inline-end: var(--floating-corner-inline-offset);
+  --floating-corner-translate-x: 50%;
+  --floating-corner-translate-y: 50%;
+  --floating-corner-hover-translate-x: var(--floating-corner-translate-x);
+  --floating-corner-hover-translate-y: calc(50% + 10%);
+  --floating-corner-active-translate-x: var(--floating-corner-translate-x);
+  --floating-corner-active-translate-y: calc(50% - 5%);
+}
+
+.floating-corner-button--bottom-left {
+  inset-block-end: var(--floating-corner-block-offset);
+  inset-inline-start: var(--floating-corner-inline-offset);
+  --floating-corner-translate-x: -50%;
+  --floating-corner-translate-y: 50%;
+  --floating-corner-hover-translate-x: var(--floating-corner-translate-x);
+  --floating-corner-hover-translate-y: calc(50% + 10%);
+  --floating-corner-active-translate-x: var(--floating-corner-translate-x);
+  --floating-corner-active-translate-y: calc(50% - 5%);
+}
+
+.floating-corner-button--strategy-absolute {
+  position: absolute;
+}
+
+.floating-corner-button--strategy-fixed {
+  position: fixed;
 }
 
 .floating-corner-button:hover,
 .floating-corner-button:focus-visible {
-  transform: translate(50%, -60%);
-  box-shadow:
-    0 0 0 1px rgba(27, 31, 59, 0.08),
-    0 12px 24px rgba(27, 31, 59, 0.28);
+  transform: translate(
+    var(--floating-corner-hover-translate-x),
+    var(--floating-corner-hover-translate-y)
+  );
+  box-shadow: var(--floating-corner-shadow-hover);
   filter: brightness(1.02);
 }
 
 .floating-corner-button:focus-visible {
   outline: none;
-  box-shadow:
-    0 0 0 3px rgba(82, 110, 255, 0.3),
-    0 0 0 1px rgba(27, 31, 59, 0.1),
-    0 12px 24px rgba(27, 31, 59, 0.28);
+  box-shadow: var(--floating-corner-shadow-focus);
 }
 
 .floating-corner-button:active {
-  transform: translate(50%, -45%);
-  box-shadow:
-    0 0 0 1px rgba(27, 31, 59, 0.1),
-    0 6px 14px rgba(27, 31, 59, 0.2);
+  transform: translate(
+    var(--floating-corner-active-translate-x),
+    var(--floating-corner-active-translate-y)
+  );
+  box-shadow: var(--floating-corner-shadow-active);
 }
 
 .floating-corner-button:disabled {
   cursor: not-allowed;
+  box-shadow: var(--floating-corner-shadow-disabled);
   opacity: 0.7;
-  box-shadow:
-    0 0 0 1px rgba(27, 31, 59, 0.05),
-    0 4px 8px rgba(27, 31, 59, 0.12);
+}
+
+.floating-corner-button[data-state='active'] {
+  filter: brightness(1.04);
+  box-shadow: var(--floating-corner-shadow-hover);
 }

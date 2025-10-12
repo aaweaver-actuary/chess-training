@@ -5,6 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { FloatingCornerButton } from '../FloatingCornerButton';
 
+const placements = ['top-right', 'top-left', 'bottom-right', 'bottom-left'] as const;
+
+type Placement = (typeof placements)[number];
+
 describe('FloatingCornerButton', () => {
   it('renders children inside the button and keeps it clickable', () => {
     const onClick = vi.fn();
@@ -43,5 +47,56 @@ describe('FloatingCornerButton', () => {
     expect(ref.current).toBe(button);
     expect(button).toHaveAttribute('type', 'button');
     expect(button.className.split(' ')).toContain('test-class');
+    expect(button.className.split(' ')).toContain('floating-corner-button--top-right');
+    expect(button.className.split(' ')).toContain('floating-corner-button--strategy-absolute');
+  });
+
+  it.each(placements)(
+    'applies placement specific class when placement is %s',
+    (placement: Placement) => {
+      render(
+        <FloatingCornerButton placement={placement}>
+          Place me
+        </FloatingCornerButton>,
+      );
+
+      const button = screen.getByRole('button');
+      expect(button.className.split(' ')).toContain(
+        `floating-corner-button--${placement}`,
+      );
+    },
+  );
+
+  it('applies fixed strategy modifier when requested', () => {
+    render(
+      <FloatingCornerButton strategy="fixed">Pin me</FloatingCornerButton>,
+    );
+
+    const button = screen.getByRole('button');
+    expect(button.className.split(' ')).toContain(
+      'floating-corner-button--strategy-fixed',
+    );
+  });
+
+  it('exposes a data-state flag when active', () => {
+    render(
+      <FloatingCornerButton isActive>Toggle</FloatingCornerButton>,
+    );
+
+    const button = screen.getByRole('button');
+    expect(button).toHaveAttribute('data-state', 'active');
+  });
+
+  it('renders as an anchor without forcing a button type attribute', () => {
+    render(
+      <FloatingCornerButton as="a" href="#dest">
+        Link to somewhere
+      </FloatingCornerButton>,
+    );
+
+    const anchor = screen.getByRole('link');
+    expect(anchor.tagName.toLowerCase()).toBe('a');
+    expect(anchor).not.toHaveAttribute('type');
+    expect(anchor).toHaveAttribute('href', '#dest');
   });
 });
