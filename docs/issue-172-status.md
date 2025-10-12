@@ -4,20 +4,16 @@
 - **Issue:** [#172](https://github.com/aaweaver-actuary/chess-training/issues/172)
 - **Created:** 2025-10-11T14:29:28Z
 - **Assignee:** _Unassigned_
-- **Status:** Open
+- **Status:** ✅ Resolved (no code changes required)
 
 ## Current observations
-- The PGN import pane renders two `<textarea>` elements that both use the `id="pgn-import-textarea"` attribute, one in paste mode and one in upload mode. This duplicates the HTML `id` and breaks the one-to-one relationship expected by assistive technologies and `label` elements.
-- Both labels in each mode point at the shared `id`, so whichever textarea renders last will be associated with both labels, creating confusing focus and accessibility semantics.
-
-Relevant source lines:
-- `web-ui/src/components/PgnImportPane.tsx`, lines 334-399.
+- Both paste-mode and upload-mode textareas already receive distinct IDs generated with React's `useId()` hook (`pgn-import-textarea-paste-*` and `pgn-import-textarea-upload-*`).
+- Each `<label>` references the matching textarea via `htmlFor`, so focus and accessibility semantics are correct.
+- An automated regression test covers this behavior: `web-ui/src/components/__tests__/PgnImportPane.test.tsx` (`assigns distinct textarea ids to paste and upload modes`).
 
 ## Suggested next steps
-- Give the upload-mode textarea a distinct identifier (for example, `pgn-import-review-textarea`) and update its associated `<label>`.
-- Add a unit test in the PGN import pane test suite that mounts the component in both modes and asserts that the textareas expose distinct `id` attributes. This would prevent regressions.
-- Manually verify the PGN import workflow in both paste and upload modes after adjusting identifiers to ensure no references or CSS selectors rely on the old value.
+- Close the upstream issue as "already fixed" and reference this verification note.
 
 ## Notes
-- No active development is tracked on this issue (no assignee or linked pull request).
-- No automated tests or builds were executed during this triage step.
+- Manual inspection of `web-ui/src/components/PgnImportPane.tsx` confirms unique IDs in both modes of the component.
+- Existing Jest test coverage exercises both modes and asserts distinct `id` values.
