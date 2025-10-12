@@ -88,12 +88,10 @@ mod tests {
         let clone = original.clone();
 
         assert_eq!(original, clone);
-
-        let original_ptr = core::ptr::addr_of!(original);
-        let clone_ptr = core::ptr::addr_of!(clone);
-
-        assert!(core::ptr::addr_eq(original_ptr, original_ptr));
-        assert!(!core::ptr::addr_eq(original_ptr, clone_ptr));
+        let original_ptr = std::ptr::addr_of!(original);
+        let clone_ptr = std::ptr::addr_of!(clone);
+        assert_eq!(original_ptr, original_ptr);
+        assert_ne!(original_ptr, clone_ptr);
     }
 
     #[test]
