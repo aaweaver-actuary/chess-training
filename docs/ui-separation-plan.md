@@ -1,5 +1,10 @@
 # UI–Backend Separation Plan
 
+> **Status update (May 2024):** The end-to-end sequencing for this plan now lives in
+> [`docs/strategic-roadmap.md`](./strategic-roadmap.md) under Workstream 1. Refer to that
+> document for the consolidated roadmap and cross-functional dependencies; keep this file
+> handy for the deeper architectural details and rationale behind each contract.
+
 ## Goal
 Establish a dedicated presentation/application layer that encapsulates all domain and orchestration logic between the React UI and the backend gateways. This layer will expose explicit contracts that the UI consumes, ensuring the UI focuses solely on rendering and interaction while the backend focuses on persistence and core domain operations.
 

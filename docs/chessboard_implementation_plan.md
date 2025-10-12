@@ -1,5 +1,10 @@
 # Reusable Chessboard Implementation Plan
 
+> **Status update (May 2024):** This plan now feeds the "Application Layer & UI Readiness"
+> workstream in [`docs/strategic-roadmap.md`](./strategic-roadmap.md). Consult that document
+> for prioritization and cross-team sequencing; keep this file for the component-level
+> objectives and testing strategy.
+
 ## Objectives
 - Extract a reusable chessboard UI component that can be shared across multiple application contexts (e.g., openings, tactics).
 - Provide configuration options (colors, orientation, coordinates display, interaction hooks) to support diverse use cases.

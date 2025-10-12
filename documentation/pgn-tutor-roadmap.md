@@ -1,5 +1,10 @@
 # PGN Tutor Readiness Assessment
 
+> **Status update (May 2024):** This assessment now informs Workstream 3 (and portions of
+> Workstream 2) in [`docs/strategic-roadmap.md`](../docs/strategic-roadmap.md). Use that
+> consolidated roadmap for cross-team sequencing while referencing this file for the detailed
+> gap analysis and proposed minimum viable path.
+
 ## Executive Summary
 - The PGN importer crate can parse games, normalise openings and tactics, and persist them into an abstract storage backend while collecting ingestion metrics, but it currently stops at an in-memory store that is not wired into the rest of the system.【F:crates/chess-training-pgn-import/src/importer.rs†L9-L164】【F:crates/chess-training-pgn-import/src/storage.rs†L1-L108】
 - The card-store crate defines the persistence trait for positions, edges, cards, reviews, and unlocks plus a thread-safe in-memory implementation, yet no service layer promotes imported data into learner-specific cards or synchronises with the scheduler pipeline.【F:crates/card-store/src/store.rs†L1-L87】【F:crates/card-store/src/memory/in_memory_card_store.rs†L1-L115】
