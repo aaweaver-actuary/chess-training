@@ -26,7 +26,7 @@ pub use grade::{GradeError, ValidGrade};
 /// Deterministic hashing helper backed by BLAKE3.
 pub use hash::hash64;
 /// Opening-focused request and payload types.
-pub use opening::{EdgeInput, OpeningCard, OpeningEdge};
+pub use opening::{EdgeInput, OpeningCard, OpeningEdge, OpeningGraph, PositionNode};
 /// Normalized chess position representation and related errors.
 pub use position::{ChessPosition, PositionError};
 /// Opening repertoire store and associated move representation.
