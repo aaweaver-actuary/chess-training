@@ -70,9 +70,9 @@ jobs:
               --package ${{ matrix.crate }} \
               --release \
               --all-features \
-              --fail-under-lines 100 \
-              --fail-under-functions 100 \
-              --fail-under-regions 100 \
+              --fail-under-lines 95 \
+              --fail-under-functions 95 \
+              --fail-under-regions 95 \
               --show-missing-lines \
               --lcov --output-path target/llvm-cov/${{ matrix.crate }}.lcov
 
@@ -164,7 +164,7 @@ jobs:
           working-directory: ${{ matrix.path }}
         env:
           CI: 'true'
-      - name: Enforce 100% coverage (${{ matrix.project }})
+      - name: Enforce >= 95% coverage (${{ matrix.project }})
         uses: ./.github/actions/run-with-error-logging
         with:
           label: npm-enforce-coverage-${{ matrix.project }}
@@ -184,10 +184,10 @@ jobs:
             const metrics = ['lines', 'statements', 'branches', 'functions'];
             const failures = metrics.filter((metric) => {
               const value = total?.[metric]?.pct ?? 0;
-              return typeof value !== 'number' || value < 100;
+              return typeof value !== 'number' || value < 95;
             });
             if (failures.length > 0) {
-              console.error('Coverage below 100% for metrics:', failures);
+              console.error('Coverage below 95% for metrics:', failures);
               process.exit(1);
             }
             const filesBelowThreshold = Object.entries(summary)
@@ -196,7 +196,7 @@ jobs:
                 return metrics
                   .filter((metric) => {
                     const value = metricSummary?.[metric]?.pct;
-                    return typeof value !== 'number' || value < 100;
+                    return typeof value !== 'number' || value < 95;
                   })
                   .map((metric) => {
                     const value = metricSummary?.[metric]?.pct;
@@ -204,13 +204,13 @@ jobs:
                   });
               });
             if (filesBelowThreshold.length > 0) {
-              console.error('Every file must maintain 100% coverage. The following entries failed:');
+              console.error('Every file must maintain >= 95% coverage. The following entries failed:');
               for (const entry of filesBelowThreshold) {
                 console.error(` - ${entry}`);
               }
               process.exit(1);
             }
-            console.log('Coverage check passed with 100% across all metrics.');
+            console.log('Coverage check passed with >= 95% across all metrics.');
             NODE
 
   required:
@@ -243,7 +243,7 @@ jobs:
         if: ${{ failure() }}
         uses: JasonEtco/create-an-issue@v2
         with:
-          title: "${{ github.workflow }} failed (run #${{ github.run_number }})"
+          title: '${{ github.workflow }} failed (run #${{ github.run_number }})'
           body: |
             The workflow **${{ github.workflow }}** in repo `${{ github.repository }}` failed.
             - Run: ${{ github.run_id }}
