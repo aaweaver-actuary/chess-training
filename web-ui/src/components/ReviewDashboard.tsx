@@ -1,6 +1,6 @@
 import type { FC } from 'react';
 
-import type { ReviewOverview } from '../services/ReviewPlanner';
+import type { ReviewOverview } from '../types/reviewOverview';
 import { formatUnlockDate } from '../utils/formatUnlockDate';
 
 type MetricCardProps = {

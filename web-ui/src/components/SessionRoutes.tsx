@@ -2,20 +2,18 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { JSX } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import { sampleSnapshot } from '../fixtures/sampleSnapshot';
+import { baselineReviewOverview } from '../fixtures/baselineOverview';
 import { BlankBoardPage } from '../pages/BlankBoardPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { OpeningReviewPage } from '../pages/OpeningReviewPage';
-import { ReviewPlanner } from '../services/ReviewPlanner';
-import type { ReviewOverview } from '../services/ReviewPlanner';
+import type { ReviewOverview } from '../types/reviewOverview';
 import type { CardSummary, ReviewGrade } from '../types/gateway';
 import type { DetectedOpeningLine, ImportResult, ScheduledOpeningLine } from '../types/repertoire';
 import { sessionStore } from '../state/sessionStore';
 import { composeOverview, extendOverviewWithImports } from '../utils/dashboardOverview';
 import type { CommandDispatcher } from '../utils/commandDispatcher';
 
-const planner = new ReviewPlanner();
-const baselineOverview = planner.buildOverview(sampleSnapshot);
+const baselineOverview = baselineReviewOverview;
 
 const useSessionState = () =>
   useSyncExternalStore(sessionStore.subscribe, sessionStore.getState, sessionStore.getState);

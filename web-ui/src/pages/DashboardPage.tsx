@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { PgnImportPane } from '../components/PgnImportPane';
 import { ReviewDashboard } from '../components/ReviewDashboard';
-import type { ReviewOverview } from '../services/ReviewPlanner';
+import type { ReviewOverview } from '../types/reviewOverview';
 import type { DetectedOpeningLine, ImportResult } from '../types/repertoire';
 import type { CommandDispatcher } from '../utils/commandDispatcher';
 

@@ -1,4 +1,4 @@
-import type { ReviewOverview } from '../services/ReviewPlanner';
+import type { ReviewOverview } from '../types/reviewOverview';
 import type { SessionStats } from '../types/gateway';
 import type { ScheduledOpeningLine } from '../types/repertoire';
 

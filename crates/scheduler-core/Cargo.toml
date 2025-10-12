@@ -9,6 +9,7 @@ review-domain={ path="../review-domain" }
 thiserror="1"
 uuid     ={ version="1", features=["v4"] }
 num-traits="0.2"
+serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 maplit="1"

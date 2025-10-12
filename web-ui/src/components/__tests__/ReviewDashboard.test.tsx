@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ReviewDashboard } from '../ReviewDashboard';
 import { UNLOCK_DATE_FALLBACK_LABEL } from '../../utils/formatUnlockDate';
-import type { ReviewOverview } from '../../services/ReviewPlanner';
+import type { ReviewOverview } from '../../types/reviewOverview';
 
 describe('ReviewDashboard', () => {
   const overview: ReviewOverview = {

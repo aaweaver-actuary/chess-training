@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 import { DashboardPage } from '../DashboardPage';
-import type { ReviewOverview } from '../../services/ReviewPlanner';
+import type { ReviewOverview } from '../../types/reviewOverview';
 import type { ImportResult } from '../../types/repertoire';
 
 const buildOverview = (overrides: Partial<ReviewOverview> = {}): ReviewOverview => ({

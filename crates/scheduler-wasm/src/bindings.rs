@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use chrono::NaiveDate;
-use scheduler_core::SchedulerConfig;
+use scheduler_core::{ReviewPlanner, ReviewSnapshot, SchedulerConfig};
 use serde_wasm_bindgen::{from_value, to_value};
 use uuid::Uuid;
 use wasm_bindgen::prelude::*;
@@ -48,6 +48,18 @@ impl WasmScheduler {
         let length = self.facade.queue_length(owner_id, today);
         u32::try_from(length).map_err(|_| JsValue::from_str("queue length exceeds u32"))
     }
+}
+
+/// Builds the review overview using the Rust planner and returns it as a JSON value.
+#[wasm_bindgen(js_name = "buildReviewOverview")]
+pub fn build_review_overview(snapshot: JsValue) -> Result<JsValue, JsValue> {
+    let snapshot: ReviewSnapshot =
+        from_value(snapshot).map_err(|err| JsValue::from_str(&err.to_string()))?;
+    let planner = ReviewPlanner::new();
+    let overview = planner
+        .build_overview(&snapshot)
+        .map_err(|err| JsValue::from_str(&err.to_string()))?;
+    to_value(&overview).map_err(|err| JsValue::from_str(&err.to_string()))
 }
 
 /// Provides the default scheduler configuration for bootstrapping the wasm module.

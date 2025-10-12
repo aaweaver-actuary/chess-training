@@ -855,6 +855,7 @@ dependencies = [
  "maplit",
  "num-traits",
  "review-domain",
+ "serde",
  "thiserror",
  "uuid",
 ]

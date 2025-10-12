@@ -8,6 +8,8 @@ pub mod domain;
 pub mod errors;
 /// Review queue construction helpers.
 pub mod queue;
+/// Review planning helpers exposed to front-end consumers.
+pub mod review_planner;
 /// High-level scheduler façade orchestrating reviews.
 pub mod scheduler;
 /// SM-2 calculation utilities.
@@ -28,6 +30,11 @@ pub use errors::SchedulerError;
 pub use queue::build_queue_for_day;
 /// Review grade shared with review-domain consumers.
 pub use review_domain::ReviewGrade;
+/// Review planner exports.
+pub use review_planner::{
+    AccuracyRisk, BacklogPressure, Recommendation, ReviewOverview, ReviewPlanner,
+    ReviewPlannerError, ReviewSnapshot, UpcomingUnlock,
+};
 /// Scheduler façade orchestrating queue building and review processing.
 pub use scheduler::Scheduler;
 /// Storage trait and in-memory implementation used by the scheduler.
