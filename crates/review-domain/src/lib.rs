@@ -5,6 +5,7 @@ pub mod card_kind;
 pub mod card_state;
 pub mod grade;
 pub mod hash;
+pub mod ids;
 pub mod macros;
 pub mod opening;
 pub mod position;
