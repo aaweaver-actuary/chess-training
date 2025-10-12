@@ -28,8 +28,8 @@ export type PgnImportOutcome = {
   errors: string[];
 };
 
-export interface PgnImportService {
-  detect(source: PgnImportSource): Promise<PgnImportOutcome>;
-  acknowledge(outcome: PgnImportOutcome): void;
-  clear(): void;
-}
+export type PgnImportService = {
+  detect: (source: PgnImportSource) => Promise<PgnImportOutcome>;
+  acknowledge: (outcome: PgnImportOutcome) => void;
+  clear: () => void;
+};
