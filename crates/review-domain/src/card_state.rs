@@ -6,6 +6,8 @@ use chrono::{Duration, NaiveDate};
 
 use crate::ValidGrade;
 
+pub mod invariants;
+
 /// Mutable scheduling state of a card stored by review services.
 #[derive(Clone, Debug, PartialEq)]
 pub struct StoredCardState {
