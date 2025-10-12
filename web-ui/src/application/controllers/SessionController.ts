@@ -22,12 +22,12 @@ export type SessionSnapshot = {
   error?: string;
 };
 
-export interface SessionController {
-  getSnapshot(): SessionSnapshot;
-  subscribe(listener: (snapshot: SessionSnapshot) => void): () => void;
-  start(): Promise<void>;
-  startDemo(): Promise<void>;
-  submitGrade(grade: ReviewGrade, latencyMs: number): Promise<void>;
-  preloadNext(): Promise<void>;
-  reset(): void;
-}
+export type SessionController = {
+  getSnapshot: () => SessionSnapshot;
+  subscribe: (listener: (snapshot: SessionSnapshot) => void) => () => void;
+  start: () => Promise<void>;
+  startDemo: () => Promise<void>;
+  submitGrade: (grade: ReviewGrade, latencyMs: number) => Promise<void>;
+  preloadNext: () => Promise<void>;
+  reset: () => void;
+};
