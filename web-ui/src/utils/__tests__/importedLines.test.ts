@@ -75,4 +75,24 @@ describe('importedLines utilities', () => {
       ),
     ).toBe(false);
   });
+
+  it('generates unique IDs for lines scheduled at the same time', () => {
+    // Use a fixed clock to ensure multiple lines are created at exactly the same millisecond
+    const fixedClock = () => new Date('2024-03-01T00:00:00Z');
+    const scheduler = createOpeningLineScheduler(fixedClock);
+
+    // Create multiple lines with the same offset at the same time
+    // With the old implementation using timestamp + offset, these would have the same ID
+    const first = scheduler(line, 0);
+    const secondLine: DetectedOpeningLine = {
+      opening: "Queen's Gambit",
+      color: 'White',
+      moves: ['d4', 'd5', 'c4'],
+      display: '1.d4 d5 2.c4',
+    };
+    const second = scheduler(secondLine, 0);
+
+    // IDs should be unique even with same timestamp and offset
+    expect(first.id).not.toBe(second.id);
+  });
 });

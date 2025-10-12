@@ -44,7 +44,7 @@ fn invalid_grades_surface_distinct_errors() {
 
         match ValidGrade::try_from(value) {
             Ok(_) => panic!("expected {value} to be outside range"),
-            Err(GradeError::InvalidGradeError { grade }) => assert_eq!(grade, value),
+            Err(GradeError::GradeOutsideRangeError { grade }) => assert_eq!(grade, value),
             Err(other) => panic!(
                 "unexpected error variant for value {value}: {}",
                 err_label(other)
