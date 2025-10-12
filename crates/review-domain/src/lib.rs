@@ -29,8 +29,8 @@ pub use hash::hash64;
 pub use opening::{EdgeInput, OpeningCard, OpeningEdge};
 /// Normalized chess position representation and related errors.
 pub use position::{ChessPosition, PositionError};
-/// Opening repertoire store and associated move representation.
-pub use repertoire::{Repertoire, RepertoireError, RepertoireMove};
+/// Opening repertoire store, adjacency graph, and associated move representation.
+pub use repertoire::{OpeningGraph, Repertoire, RepertoireError, RepertoireMove};
 /// Review submission payload capturing user input.
 pub use review::ReviewRequest;
 /// Grading scale for spaced repetition reviews.
