@@ -1,5 +1,10 @@
 # Review Domain Redesign Plan
 
+> **Status update (May 2024):** The milestones from this redesign now appear in Workstream 2
+> of [`docs/strategic-roadmap.md`](./strategic-roadmap.md). Rely on that file for the overall
+> sequencing and integration touchpoints while keeping this document for the in-depth domain
+> rationale and implementation notes.
+
 ## Purpose
 This document captures the implementation outline for improving the review domain crate. It summarizes the current pain points, proposes concrete actions, and provides a recommended delivery roadmap. The goals are to strengthen invariants, improve traversal and reuse of opening data, and make card scheduling safer and more ergonomic.
 

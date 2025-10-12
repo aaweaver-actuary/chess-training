@@ -1,5 +1,10 @@
 # UI Component Refactor Roadmap
 
+> **Status update (May 2024):** This roadmap is represented within Workstream 1 of the
+> consolidated [`docs/strategic-roadmap.md`](./strategic-roadmap.md). Use that file for
+> sequencing, dependencies, and progress tracking while retaining this document for the
+> detailed checklists and component-specific guidance.
+
 ## Purpose
 The current web UI concentrates application logic, derived view state, and imperative browser hooks directly inside React components. This document captures concrete opportunities to extract reusable, testable units so the UI tree can focus on presentation. Each workstream below links to the source responsible today and proposes new boundaries (controllers, hooks, services, or pure components) with a checklist to guide incremental delivery.
 
