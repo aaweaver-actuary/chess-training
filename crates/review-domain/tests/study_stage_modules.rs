@@ -1,16 +1,16 @@
-use review_domain::study_stage::{self, conversions, queries};
+use review_domain::study_stage::{self, queries};
 
 #[test]
-fn exposes_conversion_functions_in_submodule() {
+fn exposes_conversion_function_on_stage_type() {
     assert_eq!(
-        conversions::from_char('n'),
+        study_stage::StudyStage::from_char('n'),
         Some(study_stage::StudyStage::New)
     );
     assert_eq!(
-        conversions::from_char('R'),
+        study_stage::StudyStage::from_char('R'),
         Some(study_stage::StudyStage::Review)
     );
-    assert_eq!(conversions::from_char('x'), None);
+    assert_eq!(study_stage::StudyStage::from_char('x'), None);
 }
 
 #[test]
