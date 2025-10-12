@@ -1,6 +1,7 @@
 //! Core domain types shared across the chess training back-end services.
 
 pub mod card;
+pub mod card_aggregate;
 pub mod card_kind;
 pub mod card_state;
 pub mod grade;
@@ -17,6 +18,8 @@ pub mod unlock;
 
 /// Generic flashcard definition used across services.
 pub use card::Card;
+/// Aggregate wrapper around the default card representation.
+pub use card_aggregate::CardAggregate;
 /// High-level classification of review cards.
 pub use card_kind::CardKind;
 /// Scheduling metadata tracked for each stored card.
