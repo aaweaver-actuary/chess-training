@@ -5,6 +5,7 @@ pub mod card_kind;
 pub mod card_state;
 pub mod grade;
 pub mod hash;
+pub mod ids;
 pub mod macros;
 pub mod opening;
 pub mod position;
@@ -25,6 +26,8 @@ pub use card_state::StoredCardState;
 pub use grade::{GradeError, ValidGrade};
 /// Deterministic hashing helper backed by BLAKE3.
 pub use hash::hash64;
+/// Identifier wrappers used throughout the review domain.
+pub use ids::{CardId, EdgeId, IdentifierError, LearnerId, MoveId, PositionId, UnlockId};
 /// Opening-focused request and payload types.
 pub use opening::{EdgeInput, OpeningCard, OpeningEdge};
 /// Normalized chess position representation and related errors.
