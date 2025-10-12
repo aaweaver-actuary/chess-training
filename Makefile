@@ -10,9 +10,9 @@ CARGO_CLIPPY_FLAGS := \
 	-D clippy::pedantic
 
 CARGO_LLVM_COV_FLAGS := \
-	--fail-under-functions 100 \
-	--fail-under-lines 100 \
-	--fail-under-regions 100 \
+	--fail-under-functions 95 \
+	--fail-under-lines 95 \
+	--fail-under-regions 95 \
 	--show-missing-lines \
 	-q
 

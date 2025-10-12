@@ -66,13 +66,20 @@ mod tests {
         }
     }
 
+    fn approx_eq(lhs: f32, rhs: f32) -> bool {
+        (lhs - rhs).abs() <= f32::EPSILON
+    }
+
     #[test]
     fn dto_reflects_configuration_values() {
         let config = baseline();
         let dto = SchedulerConfigDto::from(&config);
-        assert_eq!(dto.initial_ease_factor, config.initial_ease_factor);
-        assert_eq!(dto.ease_minimum, config.ease_minimum);
-        assert_eq!(dto.ease_maximum, config.ease_maximum);
+        assert!(approx_eq(
+            dto.initial_ease_factor,
+            config.initial_ease_factor
+        ));
+        assert!(approx_eq(dto.ease_minimum, config.ease_minimum));
+        assert!(approx_eq(dto.ease_maximum, config.ease_maximum));
         assert_eq!(dto.learning_steps_minutes, config.learning_steps_minutes);
     }
 
@@ -85,9 +92,9 @@ mod tests {
             learning_steps_minutes: Some(vec![1, 5, 10]),
         };
         let patched = patch.apply(baseline());
-        assert_eq!(patched.initial_ease_factor, 2.8);
-        assert_eq!(patched.ease_minimum, 1.3);
-        assert_eq!(patched.ease_maximum, 3.0);
+        assert!(approx_eq(patched.initial_ease_factor, 2.8));
+        assert!(approx_eq(patched.ease_minimum, 1.3));
+        assert!(approx_eq(patched.ease_maximum, 3.0));
         assert_eq!(patched.learning_steps_minutes, vec![1, 5, 10]);
     }
 }
