@@ -1,7 +1,4 @@
-import type {
-  DetectedOpeningLine,
-  ScheduledOpeningLine,
-} from '../../types/repertoire';
+import type { DetectedOpeningLine, ScheduledOpeningLine } from '../../types/repertoire';
 
 export type ImportPlan = {
   line: ScheduledOpeningLine;
@@ -9,8 +6,8 @@ export type ImportPlan = {
   messages: string[];
 };
 
-export interface ImportPlanner {
-  planLine(line: DetectedOpeningLine, referenceDate?: Date): ImportPlan;
-  planBulk(lines: DetectedOpeningLine[], referenceDate?: Date): ImportPlan[];
-  persist(plan: ImportPlan): Promise<void>;
-}
+export type ImportPlanner = {
+  planLine: (line: DetectedOpeningLine, referenceDate?: Date) => ImportPlan;
+  planBulk: (lines: DetectedOpeningLine[], referenceDate?: Date) => ImportPlan[];
+  persist: (plan: ImportPlan) => Promise<void>;
+};

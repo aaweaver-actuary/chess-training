@@ -20,13 +20,13 @@ export type CommandExecution = {
 
 export type CommandHandler = (
   context: CommandContext,
-) => Promise<CommandExecution | void> | CommandExecution | void;
+) => Promise<CommandExecution | undefined> | CommandExecution | undefined;
 
-export interface CommandPaletteService {
-  register(command: CommandRegistration, handler: CommandHandler): void;
-  unregister(commandId: string): void;
-  list(): CommandRegistration[];
-  execute(commandId: string, context?: Partial<CommandContext>): Promise<CommandExecution>;
-  subscribe(listener: (execution: CommandExecution) => void): () => void;
-  reset(): void;
-}
+export type CommandPaletteService = {
+  register: (command: CommandRegistration, handler: CommandHandler) => void;
+  unregister: (commandId: string) => void;
+  list: () => CommandRegistration[];
+  execute: (commandId: string, context?: Partial<CommandContext>) => Promise<CommandExecution>;
+  subscribe: (listener: (execution: CommandExecution) => void) => () => void;
+  reset: () => void;
+};
