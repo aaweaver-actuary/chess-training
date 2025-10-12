@@ -88,8 +88,9 @@ mod tests {
         let clone = original.clone();
 
         assert_eq!(original, clone);
-        assert!(std::ptr::eq(&original, &original));
-        assert!(!std::ptr::eq(&original, &clone));
+        let original_ptr = std::ptr::from_ref(&original);
+        assert!(std::ptr::eq(original_ptr, std::ptr::from_ref(&original)));
+        assert!(!std::ptr::eq(original_ptr, std::ptr::from_ref(&clone)));
     }
 
     #[test]
@@ -101,11 +102,11 @@ mod tests {
             state: CardState::new(2.5, 10, 0),
         };
 
-        card.state.ease = 2.8;
+        card.state.ease = 2.8_f32;
         card.state.interval_days += 5;
         card.state.lapses += 1;
 
-        assert_eq!(card.state.ease, 2.8);
+        assert!((card.state.ease - 2.8_f32).abs() < f32::EPSILON);
         assert_eq!(card.state.interval_days, 15);
         assert_eq!(card.state.lapses, 1);
     }

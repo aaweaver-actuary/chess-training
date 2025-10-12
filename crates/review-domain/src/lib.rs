@@ -11,6 +11,7 @@ pub mod position;
 pub mod repertoire;
 pub mod review;
 pub mod review_grade;
+pub mod scheduler_contract;
 pub mod study_stage;
 pub mod tactic;
 pub mod unlock;
@@ -35,6 +36,11 @@ pub use repertoire::{Repertoire, RepertoireError, RepertoireMove};
 pub use review::ReviewRequest;
 /// Grading scale for spaced repetition reviews.
 pub use review_grade::ReviewGrade;
+/// HTTP contract types for interacting with the scheduler service.
+pub use scheduler_contract::{
+    CardSummary, CardSummaryKind, CardSummaryMetaValue, GradeRequest, GradeResponse, QueueRequest,
+    QueueResponse, SessionStats,
+};
 /// Learning stage classification for cards.
 pub use study_stage::StudyStage;
 /// Tactic-focused card payloads.
