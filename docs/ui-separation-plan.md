@@ -44,6 +44,29 @@ Backend APIs ──> Gateway clients ──> Application Layer (new) ──> Rea
 | `CommandPaletteService` | Registers navigation/utility commands, exposes `execute`, and emits results or errors. | `CommandConsole`, `App` |
 | `ImportPlanner` | Determines schedule dates and IDs for new repertoire lines and persists them via backend APIs when available. | `SessionController`, `DashboardViewModel` |
 
+### Contract surface snapshot (May 2024)
+
+The scaffolding introduced in `web-ui/src/application/` formalizes each contract with concrete method signatures so the UI can
+depend on a stable surface area during migration:
+
+- **Service tokens:** `applicationServices`, `applicationControllers`, and `applicationViewModels` export symbol maps so React
+  adapters can resolve dependencies without importing individual files.【F:web-ui/src/application/index.ts†L1-L26】
+- **`PgnImportService`:** declares `detect`, `acknowledge`, and `clear` to manage the PGN import lifecycle and the feedback
+  messages emitted after an import attempt.【F:web-ui/src/application/services/PgnImportService.ts†L24-L29】
+- **`CommandPaletteService`:** includes `register`, `unregister`, `list`, `execute`, `subscribe`, and `reset` so palette
+  integrations can manage commands reactively and observe execution results.【F:web-ui/src/application/services/CommandPaletteService.ts†L18-L29】
+- **`ImportPlanner`:** provides `planLine`, `planBulk`, and `persist` so the UI can request deterministic schedules before any
+  persistence side effects occur.【F:web-ui/src/application/services/ImportPlanner.ts†L12-L15】
+- **`OpeningReviewController`:** exposes `getSnapshot`, `selectSquare`, `dropPiece`, `submitGrade`, `loadLine`, `reset`, and
+  `subscribe` so board widgets can react to state transitions without owning chess logic.【F:web-ui/src/application/controllers/OpeningReviewController.ts†L24-L39】
+- **`SessionController`:** surfaces `getSnapshot`, `subscribe`, `start`, `startDemo`, `submitGrade`, `preloadNext`, and `reset`
+  so routes can react to gateway updates without manually orchestrating queues.【F:web-ui/src/application/controllers/SessionController.ts†L22-L34】
+- **`DashboardViewModel`:** centralizes `load`, `refresh`, `subscribe`, `applyImportResults`, and `updateSessionStats` to
+  deliver ready-to-render dashboard payloads for React components.【F:web-ui/src/application/viewModels/DashboardViewModel.ts†L28-L36】
+
+Future updates to this document should replace these placeholder descriptions with links to the concrete implementations once
+they graduate from scaffolding to production logic.
+
 ## Migration Plan
 1. **Define application layer structure**
    * Create `web-ui/src/application/` with subfolders for `services/`, `controllers/`, and `viewModels/`.
