@@ -29,10 +29,10 @@ export type DashboardOverview = {
   stats: SessionStats | null;
 };
 
-export interface DashboardViewModel {
-  load(): Promise<DashboardOverview>;
-  refresh(): Promise<DashboardOverview>;
-  subscribe(listener: (overview: DashboardOverview) => void): () => void;
-  applyImportResults(results: ImportResult[]): void;
-  updateSessionStats(stats: SessionStats): void;
-}
+export type DashboardViewModel = {
+  load: () => Promise<DashboardOverview>;
+  refresh: () => Promise<DashboardOverview>;
+  subscribe: (listener: (overview: DashboardOverview) => void) => () => void;
+  applyImportResults: (results: ImportResult[]) => void;
+  updateSessionStats: (stats: SessionStats) => void;
+};
