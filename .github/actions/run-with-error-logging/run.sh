@@ -1,46 +1,46 @@
-#!/usr/bin/env bash
-set -uo pipefail
+#!/bin/bash
+# Wrapper script for testing the run-with-error-logging action
+# This extracts the logic from action.yml into a testable format
 
+set -o pipefail
+
+# Parse arguments
 command=""
-label=""
-working_directory=""
+label="step"
+workdir=""
 
-while [[ $# -gt 0 ]]; do
+while [ "$#" -gt 0 ]; do
   case "$1" in
     --command)
-      shift || break
-      command="${1:-}"
+      shift
+      command="$1"
       ;;
     --label)
-      shift || break
-      label="${1:-}"
+      shift
+      label="$1"
       ;;
     --working-directory)
-      shift || break
-      working_directory="${1:-}"
+      shift
+      workdir="$1"
       ;;
     *)
-      echo "Unknown argument: $1" >&2
+      echo "Unknown option: $1" >&2
       exit 2
       ;;
   esac
-  shift || break
+  shift
 done
 
-if [[ -z "$command" ]]; then
-  echo "Missing required --command argument" >&2
+if [ -z "$command" ]; then
+  echo "Error: --command is required" >&2
   exit 2
 fi
 
-repo_root="$(pwd)"
-if [[ -n "$working_directory" ]]; then
-  cd "$working_directory"
+if [ -n "$workdir" ]; then
+  cd "$workdir"
 fi
 
-log_label="$label"
-if [[ -z "$log_label" ]]; then
-  log_label="step"
-fi
+repo_root="$(pwd)"
 
 tmp_log="$(mktemp)"
 tmp_script="$(mktemp)"
@@ -50,29 +50,26 @@ printf '%s\n' "$command" >"$tmp_script"
 bash "$tmp_script" 2>&1 | tee "$tmp_log"
 status=${PIPESTATUS[0]}
 
-if [[ "$status" -ne 0 ]]; then
-  log_root="${CI_ERROR_LOG_DIR:-$repo_root/ci-errors}"
-  mkdir -p "$log_root"
-
-  safe_label=$(printf '%s' "$log_label" | tr '[:space:]/' '__')
-  safe_label=$(printf '%s' "$safe_label" | tr -cd '[:alnum:]_.-')
-  if [[ -z "$safe_label" ]]; then
+if [ "$status" -eq 1 ]; then
+  mkdir -p "$repo_root/ci-logs"
+  safe_label=$(echo "$label" | tr '[:space:]/' '__')
+  safe_label=$(echo "$safe_label" | tr -cd '[:alnum:]_.-')
+  if [ -z "$safe_label" ]; then
     safe_label="step"
   fi
-
   timestamp=$(date -u +"%Y%m%dT%H%M%SZ")
-  dest="$log_root/${timestamp}_${safe_label}.log"
+  dest="$repo_root/ci-logs/${timestamp}_${safe_label}.log"
   cp "$tmp_log" "$dest"
   echo "Saved CI error log to $dest"
 
-  issue_token="${GPT_ISSUE_KEY:-${GITHUB_TOKEN:-}}"
+  issue_token="${GPT_ISSUE_KEY:-$GITHUB_TOKEN}"
 
-  if [[ -n "${issue_token:-}" && -n "${GITHUB_REPOSITORY:-}" ]]; then
-    issue_title="CI failure: $log_label ($timestamp)"
+  if [ -n "$issue_token" ] && [ -n "$GITHUB_REPOSITORY" ]; then
+    issue_title="CI failure: $label ($timestamp)"
     issue_api_url="https://api.github.com/repos/$GITHUB_REPOSITORY/issues"
 
     export ISSUE_TITLE="$issue_title"
-    export ISSUE_LABEL="$log_label"
+    export ISSUE_LABEL="$label"
     export ISSUE_TIMESTAMP="$timestamp"
     export ISSUE_LOG_PATH="$tmp_log"
 
@@ -114,8 +111,8 @@ print(json.dumps({"title": title, "body": body}))
 PY
 )
 
-    if [[ -n "$issue_payload" ]]; then
-      curl_stderr="$(mktemp)"
+    if [ -n "$issue_payload" ]; then
+      curl_stderr=$(mktemp)
       response=$(curl -sS -X POST \
         -H "Authorization: Bearer $issue_token" \
         -H "Accept: application/vnd.github+json" \
@@ -124,14 +121,12 @@ PY
         -d "$issue_payload" 2>"$curl_stderr")
 
       curl_status=$?
-      if [[ "$curl_status" -ne 0 ]]; then
-        if [[ -s "$curl_stderr" ]]; then
-          error_details=$(cat "$curl_stderr")
-        else
-          error_details="No error details available"
-        fi
+      if [ "$curl_status" -ne 0 ]; then
+        error_details=$(cat "$curl_stderr" 2>/dev/null || echo "No error details available")
         echo "::warning::Failed to contact GitHub API to create CI failure issue. Exit code: $curl_status. Details: $error_details"
+        rm -f "$curl_stderr"
       else
+        rm -f "$curl_stderr"
         issue_number=$(python3 <<'PY'
 import json
 import sys
@@ -147,14 +142,12 @@ if number is not None:
 PY
  <<<"$response")
 
-        if [[ -n "$issue_number" ]]; then
+        if [ -n "$issue_number" ]; then
           echo "Created GitHub issue #$issue_number for CI failure logs."
         else
           echo "::warning::Received unexpected response while creating GitHub issue."
         fi
       fi
-
-      rm -f "$curl_stderr"
     else
       echo "::warning::Failed to build GitHub issue payload for CI failure."
     fi

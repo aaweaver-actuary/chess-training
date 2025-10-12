@@ -17,3 +17,7 @@ web-ui/dist/
 lcov-report/
 **/lcov-report/
 **/.vite/
+
+# CI error logs
+ci-logs/
+ci-errors/
