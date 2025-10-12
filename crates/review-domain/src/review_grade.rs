@@ -2,6 +2,8 @@
 
 /// Possible outcomes of a learner's review session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "PascalCase"))]
 pub enum ReviewGrade {
     /// The user failed to recall the item; schedule for immediate relearning.
     Again,
