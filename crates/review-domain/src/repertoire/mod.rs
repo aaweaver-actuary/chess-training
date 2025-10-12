@@ -1,10 +1,12 @@
 //! Canonical representation of stored opening repertoire moves.
 
 pub mod move_;
+pub mod opening_graph;
 pub mod repertoire_;
 pub mod repertoire_error;
 
 pub use move_::RepertoireMove;
+pub use opening_graph::{OpeningGraph, OpeningGraphBuildError, OpeningGraphBuilder};
 pub use repertoire_::Repertoire;
 pub use repertoire_error::RepertoireError;
 
