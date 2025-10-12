@@ -13,6 +13,20 @@ pub enum StudyStage {
     Relearning,
 }
 
+impl StudyStage {
+    /// Converts a character to a `StudyStage`.
+    #[must_use]
+    pub fn from_char(c: char) -> Option<Self> {
+        match c {
+            'N' | 'n' => Some(Self::New),
+            'L' | 'l' => Some(Self::Learning),
+            'R' | 'r' => Some(Self::Review),
+            'E' | 'e' => Some(Self::Relearning),
+            _ => None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
