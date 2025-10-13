@@ -10,7 +10,7 @@ The review examined the structs catalogued in `docs/rust-structs-glossary.md` to
 - **TacticCard vs. SchedulerTacticCard** – Review cards must reference tactic content IDs; the scheduler merely needs a marker so tactic-specific pacing rules can evolve independently.
 - **ChessPosition vs. importer Position** – The review domain enforces strict FEN validation and uses a different hashing salt than the PGN importer, which focuses on serde friendliness and namespace-specific determinism. Sharing a struct would force one side to compromise on guarantees.
 - **SchedulerConfig vs. SchedulerConfigDto/Patch** – The Rust configuration enforces invariants and defaults, while the wasm DTOs expose optional fields to JavaScript callers. A merged struct would either weaken validation or break the wasm contract.
-- **InMemoryCardStore/InMemoryStore vs. ImportInMemoryStore** – Each in-memory helper satisfies a different trait with unique data types and concurrency requirements. Generalising them would introduce unnecessary generics and feature flags into otherwise simple test fixtures.
+- **InMemoryCardStore/InMemoryStore vs. InMemoryImportStore** – Each in-memory helper satisfies a different trait with unique data types and concurrency requirements. Generalising them would introduce unnecessary generics and feature flags into otherwise simple test fixtures.
 
 ## Recommended Consolidations
 ### Consolidate `OpeningCard` and `UnlockDetail`

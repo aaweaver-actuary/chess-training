@@ -14,7 +14,7 @@ This file lists every `struct` and `enum` defined in the repository.
 | FileConfig | struct | `crates/chess-training-pgn-import/src/config.rs#L65` |
 | GameContext | struct | `crates/chess-training-pgn-import/src/importer.rs#L179` |
 | ImportError | enum | `crates/chess-training-pgn-import/src/importer.rs#L56` |
-| ImportInMemoryStore | struct | `crates/chess-training-pgn-import/src/storage.rs#L50` |
+| InMemoryImportStore | struct | `crates/chess-training-pgn-import/src/storage.rs#L50` |
 | ImportMetrics | struct | `crates/chess-training-pgn-import/src/importer.rs#L21` |
 | Importer | struct | `crates/chess-training-pgn-import/src/importer.rs#L89` |
 | InMemoryCardStore | struct | `crates/card-store/src/memory/in_memory_card_store.rs#L25` |

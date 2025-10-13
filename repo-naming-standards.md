@@ -29,12 +29,12 @@ Use verbs consistently to signal how an API behaves. When adding a new function,
 
 | Intent | Preferred Verb(s) | Avoid / Notes | Example |
 | ------ | ----------------- | ------------- | ------- |
-| Build a new value without side effects | `new_*`, `build_*`, `create_*` | Avoid `make_*` and `into_*` for constructors. `into_*` implies type conversion that consumes `self`. | `build_ingest_config` (preferred over `into_ingest_config`). |
+| Build a new value without side effects | `new_*`, `build_*`, `create_*` | Avoid `make_*` and `into_*` for constructors. `into_*` implies type conversion that consumes `self`. | `build_ingest_config`. |
 | Convert types while consuming the source | `into_*` | Only use when the method takes ownership and converts to another type. | `EdgeInput::into_edge`. |
 | Convert types without consuming | `as_*`, `to_*` | Follow Rust idioms: `to_*` returns owned data, `as_*` returns borrowed/cast views. | `Grade::to_u8`, `Grade::as_u8`. |
 | Persist or update storage | `upsert_*`, `record_*` | Avoid mixing `store_*`, `insert_*`, `save_*` for the same action. Pick the dominant verb in the module/crate and use it everywhere. | `upsert_canonical_position`, `record_unlock`. |
 | Read-only queries | `get_*`, `load_*`, `fetch_*` | Prefer a single verb per module (`get` vs `fetch`). Avoid `collect_*` unless building a derived collection. | `get_due_cards_for_owner`. |
-| Queue or workflow building | `build_*`, `prepare_*` | Avoid mixing `build_queue` with `build_queue_length`; expose `queue_len` for size checks. | `build_queue_for_day`, `queue_len`. |
+| Queue or workflow building | `build_*`, `prepare_*` | Avoid mixing `build_queue` with queue-length names; expose `queue_length` for size checks. | `build_queue_for_day`, `queue_length`. |
 
 ## Structs, Enums, and Type Aliases
 [Back to Top](#repository-naming-standards)
@@ -79,7 +79,7 @@ Use verbs consistently to signal how an API behaves. When adding a new function,
 
 Use this checklist when touching names:
 
-1. **Audit existing usage.** Search the repo (e.g., `rg "build_queue_length"`) to understand current patterns before changing anything.
+1. **Audit existing usage.** Search the repo (e.g., `rg "queue_length"`) to understand current patterns before changing anything.
 2. **Select verbs/nouns per this guide.** Ensure new names align with the tables and conventions above.
 3. **Update related items together.** When renaming a trait, adjust implementations, docs, and re-exports in the same change.
 4. **Refresh documentation.** Update this standard and the glossary when the repo’s naming expectations evolve.

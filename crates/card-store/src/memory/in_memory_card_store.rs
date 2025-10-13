@@ -15,9 +15,10 @@ use crate::{
         store_canonical_position, store_opening_card,
     },
     model::{
-        Card, CardMap, Edge, EdgeInput, EdgeMap, PositionMap, ReviewRequest, StoredCardState,
-        UnlockRecord, UnlockSet, card_id_for_opening,
+        build_opening_card_id, Card, CardMap, Edge, EdgeInput, EdgeMap, PositionMap, ReviewRequest,
+        StoredCardState, UnlockRecord, UnlockSet,
     },
+    CardStore, StoreError,
 };
 
 /// Thread-safe in-memory reference implementation of the storage trait.
@@ -134,7 +135,7 @@ impl ReviewCardStore for InMemoryCardStore {
         state: StoredCardState,
     ) -> Result<Card, StoreError> {
         self.ensure_edge_exists(edge.id)?;
-        let card_id = card_id_for_opening(owner_id, edge.id);
+        let card_id = build_opening_card_id(owner_id, edge.id);
         let mut cards = self.cards_write()?;
         store_opening_card(&mut cards, owner_id, edge, state, card_id)
     }

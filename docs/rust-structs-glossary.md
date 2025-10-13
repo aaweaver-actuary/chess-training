@@ -98,6 +98,48 @@ _Source:_ `crates/review-domain/src/unlock.rs`
 - Review storage writes `UnlockDetail` entries so historical logs remain compatible when the opening-edge payload grows.
 - Importer pipelines convert scheduler-oriented unlock data into `UnlockDetail`, ensuring unlock analytics consume the shared handle.
 
+### `IdKind`
+
+**Overview:** Enumerates the strongly typed identifiers used throughout the review domain. Provides readable labels that error messages and logs can rely on when conversions fail.
+
+**Definition:**
+```rust
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum IdKind {
+    Position,
+    Edge,
+    Move,
+    Card,
+    Learner,
+    Unlock,
+}
+```
+_Source:_ `crates/review-domain/src/ids.rs`
+
+**Usage in this repository:**
+- `crates/review-domain/src/ids.rs` emits `IdKind` values in conversion errors so callers can pinpoint which identifier wrapper overflowed or received an invalid value.
+- Integration tests under `crates/card-store/tests/identifier_wrappers.rs` assert that the kind labels render human-readable names like `"card"` when displayed.
+
+### `IdConversionError`
+
+**Overview:** Shared error type for converting raw integers into identifier wrappers. Tracks whether the issue was an overflow or a negative input and includes contextual metadata like the identifier kind and offending value.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum IdConversionError {
+    Overflow { kind: IdKind, value: u128, max: u64 },
+    Negative { kind: IdKind, value: i128 },
+}
+```
+_Source:_ `crates/review-domain/src/ids.rs`
+
+**Usage in this repository:**
+- The identifier macro in `crates/review-domain/src/ids.rs` returns `IdConversionError` from `TryFrom` implementations, ensuring overflow and negative values surface descriptive diagnostics.
+- Tests in `crates/review-domain/src/ids.rs` and `crates/card-store/tests/identifier_wrappers.rs` verify that the error conveys the expected bounds and identifier kind across success and failure paths.
+
 ### `ReviewRequest`
 
 **Overview:** Simple DTO representing the input a service sends when a learner grades a card. Storage implementations rely on it to update `StoredCardState` without exposing scheduler internals.
@@ -343,7 +385,7 @@ pub struct WasmScheduler {
 _Source:_ `crates/scheduler-wasm/src/bindings.rs`
 
 **Usage in this repository:**
-- The wasm bindings expose `WasmScheduler::build_queue_length` to JavaScript, allowing the web UI to request queue sizes without handling raw Rust types.
+- The wasm bindings expose `WasmScheduler::queue_length` to JavaScript, allowing the web UI to request queue sizes without handling raw Rust types.
 - `WasmScheduler::new` applies `SchedulerConfigPatch` values so JS callers can override defaults when initializing the module.
 
 ### `SchedulerConfigDto`
@@ -597,7 +639,7 @@ _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 **Usage in this repository:**
 - `crates/chess-training-pgn-import/src/importer.rs` builds `OpeningEdgeRecord` when processing SAN moves, allowing analytics to trace which event produced a move.
-- `ImportInMemoryStore::upsert_edge` stores these records, letting tests assert that repeated imports replace rather than duplicate edges.
+- `InMemoryImportStore::upsert_edge` stores these records, letting tests assert that repeated imports replace rather than duplicate edges.
 
 ### `RepertoireEdge`
 
@@ -616,7 +658,7 @@ _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 **Usage in this repository:**
 - Importer inserts `RepertoireEdge` entries whenever it records an opening move, linking the move back to the learner (`owner`) and repertoire grouping.
-- `ImportInMemoryStore::repertoire_edges` reconstructs `RepertoireEdge` instances from its internal set so tests can verify contents easily.
+- `InMemoryImportStore::repertoire_edges` reconstructs `RepertoireEdge` instances from its internal set so tests can verify contents easily.
 
 ### `Tactic`
 
@@ -722,7 +764,7 @@ _Source:_ `crates/chess-training-pgn-import/src/importer.rs`
 
 ### `Importer<S: Storage>`
 
-**Overview:** Orchestrates PGN ingestion: parsing games, updating storage, and capturing metrics. Parameterized over a storage implementation so tests can plug in `ImportInMemoryStore` while production can use real databases.
+**Overview:** Orchestrates PGN ingestion: parsing games, updating storage, and capturing metrics. Parameterized over a storage implementation so tests can plug in `InMemoryImportStore` while production can use real databases.
 
 **Definition:**
 ```rust
@@ -735,7 +777,7 @@ pub struct Importer<S: Storage> {
 _Source:_ `crates/chess-training-pgn-import/src/importer.rs`
 
 **Usage in this repository:**
-- CLI workflows instantiate `Importer::new_in_memory` for smoke tests, then call `ingest_pgn_str` with PGN text.
+- CLI workflows instantiate `Importer::with_in_memory_store` for smoke tests, then call `ingest_pgn_str` with PGN text.
 - After ingestion, `Importer::finalize` returns the storage backend and metrics, letting callers inspect inserted data or persist the store.
 
 ### `GameContext`
@@ -797,14 +839,14 @@ _Source:_ `crates/chess-training-pgn-import/src/importer.rs`
 - `parse_games` produces `RawGame` instances from PGN text, which `Importer::ingest_pgn_str` iterates over.
 - Tests inspect `RawGame::tag` results to ensure PGN header parsing preserves case-insensitive keys.
 
-### `ImportInMemoryStore`
+### `InMemoryImportStore`
 
 **Overview:** In-memory storage backend for the PGN importer. Uses `BTreeMap`/`BTreeSet` collections to track positions, edges, repertoire associations, and tactics without requiring external databases.
 
 **Definition:**
 ```rust
 #[derive(Default)]
-pub struct ImportInMemoryStore {
+pub struct InMemoryImportStore {
     positions: BTreeMap<u64, Position>,
     edges: BTreeMap<u64, OpeningEdgeRecord>,
     repertoire_edges: BTreeSet<(String, String, u64)>,
@@ -814,7 +856,7 @@ pub struct ImportInMemoryStore {
 _Source:_ `crates/chess-training-pgn-import/src/storage.rs`
 
 **Usage in this repository:**
-- `Importer::new_in_memory` wires the importer to an `ImportInMemoryStore`, making integration tests deterministic and side-effect free.
+- `Importer::with_in_memory_store` wires the importer to an `InMemoryImportStore`, making integration tests deterministic and side-effect free.
 - Accessor methods (`positions`, `edges`, `tactics`, `repertoire_edges`) let tests validate the importer produced the expected records.
 
 ### `IoError`
@@ -873,7 +915,7 @@ _Source:_ `crates/chess-training-pgn-import/src/config.rs`
 
 **Usage in this repository:**
 - `Importer::new` stores an `IngestConfig` copy to decide whether to record positions, tactics, or skip malformed FEN games.
-- `CliArgs::into_ingest_config` mutates `IngestConfig` based on CLI flags and configuration files, demonstrating how multiple configuration sources converge.
+- `CliArgs::build_ingest_config` mutates `IngestConfig` based on CLI flags and configuration files, demonstrating how multiple configuration sources converge.
 
 ### `FileConfig`
 
@@ -895,8 +937,8 @@ struct FileConfig {
 _Source:_ `crates/chess-training-pgn-import/src/config.rs`
 
 **Usage in this repository:**
-- `FileConfig::from_path` reads TOML files, turning them into optional overrides that `CliArgs::into_ingest_config` merges with CLI flags.
-- When inputs are provided via config file, `into_ingest_config` appends them to CLI-specified paths, ensuring both sources are respected.
+- `FileConfig::from_path` reads TOML files, turning them into optional overrides that `CliArgs::build_ingest_config` merges with CLI flags.
+- When inputs are provided via config file, `build_ingest_config` appends them to CLI-specified paths, ensuring both sources are respected.
 
 ### `CliArgs`
 
@@ -920,17 +962,17 @@ _Source:_ `crates/chess-training-pgn-import/src/config.rs`
 
 **Usage in this repository:**
 - `CliArgs::try_parse_from` builds the CLI using clap and parses arguments provided by integration tests or binaries.
-- `CliArgs::into_ingest_config` validates that at least one PGN input is provided (raising `ConfigError::NoInputs` otherwise) and merges CLI plus file-driven configuration.
+- `CliArgs::build_ingest_config` validates that at least one PGN input is provided (raising `ConfigError::NoInputs` otherwise) and merges CLI plus file-driven configuration.
 
 **Mermaid diagram:**
 ```mermaid
 flowchart LR
-    CLI[CliArgs] -->|into_ingest_config| CFG[IngestConfig]
+    CLI[CliArgs] -->|build_ingest_config| CFG[IngestConfig]
     FileConfig -->|overrides| CFG
     CFG -->|controls| Importer
     Importer -->|produces| Metrics[ImportMetrics]
     Importer -->|uses| StorageTrait[Storage]
-    StorageTrait -.-> ImportInMemoryStore
+    StorageTrait -.-> InMemoryImportStore
 ```
 
 ## Testing and Tooling Helpers

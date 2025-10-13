@@ -12,7 +12,7 @@ These types centralize tunable knobs, offer defaults, or translate user input (f
   - Stores connection pool limits, batching, and retry counts for card-store backends so deployments can tune persistence without code changes.
   - *Related items:* `SchedulerConfig` (SM-2 tuning), `IngestConfig` (PGN importer knobs), `SchedulerConfigDto`/`SchedulerConfigPatch` (wasm serialization/patching), `FileConfig` and `CliArgs` (PGN CLI).
 
-- **`IngestConfig`**, **`FileConfig::from_path`**, **`CliArgs::{command, from_matches, try_parse_from, into_ingest_config}`** (`crates/chess-training-pgn-import/src/config.rs`)
+- **`IngestConfig`**, **`FileConfig::from_path`**, **`CliArgs::{command, from_matches, try_parse_from, build_ingest_config}`** (`crates/chess-training-pgn-import/src/config.rs`)
   - Collect configuration inputs from TOML and command line, ensuring PGN ingestion has all required flags and default fallbacks.
   - *Related items:* `Importer::new` uses these settings; `SchedulerFacade::new` and `WasmScheduler::new` also merge optional patches before instantiating services.
 
@@ -33,7 +33,7 @@ These types centralize tunable knobs, offer defaults, or translate user input (f
   - *Related items:* tests guarding they don’t panic; all of these share placeholder naming and could eventually converge on `fn run()` helpers for consistency.
 
 **Naming observations for this group:**
-- Config structs consistently end with `Config`, but helper methods vary between `from_matches`, `try_parse_from`, `apply`, and `into_ingest_config`. They follow domain idioms, yet the CLI pipeline mixes `into_*` and `from_*` verbs. Consider renaming `CliArgs::into_ingest_config` to `build_ingest_config` to mirror other builders.
+- Config structs consistently end with `Config`, but helper methods vary between `from_matches`, `try_parse_from`, `apply`, and `build_ingest_config`. They follow domain idioms, yet the CLI pipeline mixes `into_*` and `from_*` verbs; adopting builder verbs (like `build_ingest_config`) keeps constructors consistent.
 
 ---
 
@@ -45,9 +45,9 @@ These types capture chess domain entities and strongly typed identifiers to avoi
   - Tailor generic review-domain types to store-specific key/value maps for clarity when manipulating in-memory data.
   - *Related items:* `CardAggregate` (review-domain) and scheduler-specific aliases (`Card`, `CardKind`). Consistency could improve by suffixing all aliases with `_Map` or `_Set` uniformly (some already do).
 
-- **`card_id_for_opening` / `card_id_for_tactic`** (`crates/card-store/src/model.rs`)
+- **`build_opening_card_id` / `build_tactic_card_id`** (`crates/card-store/src/model.rs`)
   - Deterministically hash owners with edges/tactics to create reproducible card IDs and prevent duplicates.
-  - *Related items:* `hash_with_seed` and `Position::new` in the importer, plus `hash64` in review-domain. The verb `card_id_for_*` differs from `hash_with_*`; aligning on `hash_*_id` might make intent clearer.
+  - *Related items:* `hash_with_seed` and `Position::new` in the importer, plus `hash64` in review-domain. The `build_*` prefix now matches other constructors like `build_opening_card`, though aligning on `hash_*_id` could further emphasize the hashing step.
 
 - **`Position`, `OpeningEdgeRecord`, `RepertoireEdge`, `Tactic`, `hash_with_seed`** (`crates/chess-training-pgn-import/src/model.rs`)
   - Encapsulate deterministic hashing and payload construction when importing PGNs, ensuring consistent IDs across runs.
@@ -59,7 +59,7 @@ These types capture chess domain entities and strongly typed identifiers to avoi
 
 - **`hash64`** (`crates/review-domain/src/hash.rs`)
   - Wraps BLAKE3 hashing for deterministic 64-bit IDs.
-  - *Related items:* `hash_with_seed`, `card_id_for_opening`. All use “hash” but some embed the target entity (`card_id_for_*`) and others don’t; consider exposing a shared `fn hash_entity(namespace, bytes)` helper for uniform terminology.
+  - *Related items:* `hash_with_seed`, `build_opening_card_id`. All use “hash” but some embed the target entity while others don’t; consider exposing a shared `fn hash_entity(namespace, bytes)` helper for uniform terminology.
 
 - **Strong ID macros in `crates/review-domain/src/ids.rs`**
   - Generate newtype wrappers (`PositionId`, `EdgeId`, `CardId`, etc.) to prevent ID misuse.
@@ -80,7 +80,7 @@ Everything here orchestrates saving/retrieving positions, edges, cards, and unlo
 
 - **`InMemoryCardStore`** and helper lock guards (`crates/card-store/src/memory/in_memory_card_store.rs`)
   - Provide a thread-safe demo backend using RwLocks; wrap lock acquisition in `*_read`/`*_write` helpers to centralize poison handling.
-  - *Related items:* `ImportInMemoryStore` (PGN importer) and scheduler-core’s `InMemoryStore`. Naming varies between `InMemoryCardStore` (noun) and `ImportInMemoryStore` (verb + noun). Aligning on `InMemory*Store` would increase predictability (e.g., `PgnInMemoryStore`).
+  - *Related items:* `InMemoryImportStore` (PGN importer) and scheduler-core’s `InMemoryStore`. Naming now aligns on the `InMemory*Store` prefix across fixtures.
 
 - **`store_opening_card`, `collect_due_cards_for_owner`, `borrow_card_for_review`, `validate_existing_opening_card`, `build_opening_card`** (`crates/card-store/src/memory/cards.rs`)
   - Manage the card map by inserting or reusing deterministic cards, retrieving due cards, and validating collisions.
@@ -102,7 +102,7 @@ Everything here orchestrates saving/retrieving positions, edges, cards, and unlo
   - Insert unlock records unless a duplicate date/edge combination already exists.
   - *Related items:* Scheduler-core’s `record_unlock` uses the `record_*` prefix; aligning on `record_unlock` vs. `insert_unlock` would help cross-crate comprehension.
 
-- **`Storage` trait, `UpsertOutcome`, `ImportInMemoryStore`** (`crates/chess-training-pgn-import/src/storage.rs`)
+- **`Storage` trait, `UpsertOutcome`, `InMemoryImportStore`** (`crates/chess-training-pgn-import/src/storage.rs`)
   - Wrap card-store persistence behind a simpler interface tailored for importer needs, tracking whether upserts inserted or replaced.
 - *Related items:* `ReviewCardStore` trait shares method names (`upsert_*`). `ImportInMemoryStore` parallels other in-memory stores but adds `*_records` getters; consider `into_*` naming for getters returning owned data to distinguish from clones.
 
@@ -111,7 +111,7 @@ Everything here orchestrates saving/retrieving positions, edges, cards, and unlo
   - *Related items:* Card-store’s trait; method names align (`upsert_card`, `due_cards_for_owner`) so developers can pivot between review persistence and scheduler code without context switching terminology.
 
 **Naming observations for this group:**
-- The verbs `store_*`, `insert_*`, `record_*`, `upsert_*`, and `build_*` mix across modules. Picking one convention per action type (e.g., `upsert_` for persistence, `build_` for constructors) would reduce mental load. `build_opening_card` vs. `card_id_for_opening` might both become `build_opening_card` and `build_opening_card_id` for symmetry.
+- The verbs `store_*`, `insert_*`, `record_*`, `upsert_*`, and `build_*` mix across modules. Picking one convention per action type (e.g., `upsert_` for persistence, `build_*` for constructors) would reduce mental load. The pairing of `build_opening_card` and `build_opening_card_id` now reflects this symmetry in practice.
 
 ---
 
@@ -119,7 +119,7 @@ Everything here orchestrates saving/retrieving positions, edges, cards, and unlo
 
 These items transform PGN text into stored openings and tactics.
 
-- **`Importer` struct & methods (`new`, `new_in_memory`, `ingest_pgn_str`, `process_game`, `ensure_setup_requirement_for_fen_games`, `initialize_game_context`, `load_initial_board_from_optional_fen`, `store_opening_data_if_requested`, `finalize_tactic_if_requested`)** (`crates/chess-training-pgn-import/src/importer.rs`)
+- **`Importer` struct & methods (`new`, `with_in_memory_store`, `ingest_pgn_str`, `process_game`, `ensure_setup_requirement_for_fen_games`, `initialize_game_context`, `load_initial_board_from_optional_fen`, `store_opening_data_if_requested`, `finalize_tactic_if_requested`)** (`crates/chess-training-pgn-import/src/importer.rs`)
   - Drive the ingest pipeline, enforcing configuration (e.g., `[SetUp]` tags), tracking per-game state, and writing to storage.
   - *Related items:* `GameContext` and `MoveContext` methods handle per-move state. Method prefixes vary between `ensure_`, `initialize_`, `load_`, `store_`, `finalize_`; overall consistent with their responsibilities.
 
@@ -136,7 +136,7 @@ These items transform PGN text into stored openings and tactics.
   - *Related items:* `parse_games`, `parse_tag`, `sanitize_tokens`, `sanitize_token`, `load_fen`, `move_to_uci`, `board_to_ply`, `position_from_board`. Parsers use `parse_*` or `sanitize_*`, consistently reflecting their action.
 
 **Naming observations for this group:**
-- `new_in_memory` mirrors naming from other modules, though it mixes `new` with a suffix. Alternative: `Importer::with_in_memory_store` to mirror `Scheduler::new` + `into_store` combos.
+- `with_in_memory_store` mirrors naming from other modules and aligns the importer helper with other `InMemory*Store` fixtures.
 - `ensure_setup_requirement_for_fen_games` is long but descriptive; similar functions use `ensure_*`. All good.
 
 ---
@@ -195,16 +195,16 @@ These items orchestrate SM-2 reviews, queue construction, and unlock tracking.
   - Assemble the daily review queue, merging due cards with unlocks and preventing duplicates.
   - *Related items:* `queue_length` in wasm calls into these helpers. Verb prefixes vary between `build_`, `extend_`, `skip_`, `unlock_`, which match their roles.
 
-- **`queue_length`** (`crates/scheduler-wasm/src/scheduler.rs`) & **`build_queue_length`** (`crates/scheduler-wasm/src/bindings.rs`)
-  - Provide wasm-friendly access to queue sizes.
-  - *Related items:* `build_queue_for_day`. Mixed naming (`queue_length` vs. `build_queue_length`) could standardize on `queue_length`.
+- **`queue_length`** (`crates/scheduler-wasm/src/scheduler.rs` and `crates/scheduler-wasm/src/bindings.rs`)
+  - Provide wasm-friendly access to queue sizes with consistent naming across the facade and bindings.
+  - *Related items:* `build_queue_for_day`. Naming now lines up with scheduler internals, keeping verbs focused on queue building while lengths use the shared noun phrase.
 
 - **Unlock handling**
   - `SchedulerUnlockDetail`, `UnlockRecord` alias (`crates/scheduler-core/src/domain/mod.rs`), scheduler store methods (`record_unlock`, `unlock_candidates`), and wasm binding helpers (`default_config`, `init_panic_hook` for environment setup).
   - *Related items:* `insert_unlock_or_error` (card-store). Method names `record_*` vs. `insert_*` highlight cross-crate inconsistency.
 
 **Naming observations for this group:**
-- `build_queue_length` vs. `queue_length` is an easy win—rename the wasm binding to `queue_length` or `queue_size` for clarity.
+- Continue to audit wasm exports when scheduler APIs change so naming alignment persists across Rust facades and bindings.
 - Scheduler store methods like `due_cards_for_owner` could align with card-store’s `collect_due_cards_for_owner` by picking either `due_cards` or `collect_due_cards` across crates.
 
 ---
@@ -223,7 +223,7 @@ These items orchestrate SM-2 reviews, queue construction, and unlock tracking.
 ## Cross-Cutting Naming Recommendations
 
 1. **Unify “build/make/store/insert/record/upsert” verbs.**
-   - Constructors: prefer `build_*` or `new_*`. For example, rename `card_id_for_opening` → `build_opening_card_id`, `build_opening_card` → `build_opening_card_payload` (if needed), and `make_input` closures in tests → `build_input` to match production code.
+   - Constructors: prefer `build_*` or `new_*`. Recent updates to `build_opening_card_id`/`build_tactic_card_id` follow this pattern; consider similarly renaming `build_opening_card` → `build_opening_card_payload` (if needed) and `make_input` closures in tests → `build_input` to match production code.
    - Persistence: reserve `upsert_*` for trait APIs, and ensure helpers underneath mirror the same verb (`store_canonical_position` → `upsert_canonical_position`).
    - Unlock operations: align on `record_unlock` (scheduler) or `insert_unlock` (card-store). Pick one and cascade.
 
@@ -237,7 +237,7 @@ These items orchestrate SM-2 reviews, queue construction, and unlock tracking.
    - Use `queue_length` everywhere instead of mixing `build_queue` (verb) with `build_queue_length`. Perhaps expose `fn queue(owner, date)` returning the full vector and separate `fn queue_len`. Consistency helps API consumers.
 
 5. **Harmonize importer store naming.**
-   - `ImportInMemoryStore` could become `InMemoryImportStore` to match `InMemoryCardStore` and `InMemoryStore`. Likewise, consider `Importer::with_in_memory_store` rather than `new_in_memory` for clarity.
+   - ✅ Completed: `ImportInMemoryStore` is now `InMemoryImportStore`, and the importer helper was renamed to `with_in_memory_store` to align with other fixtures.
 
 6. **Constructor verb consistency.**
    - Within domain models, prefer `::new_*` for specialized constructors (`CardAggregate::new_opening`, `SchedulerOpeningCard::new`). Avoid mixing `into_*` for builders unless performing conversions.
