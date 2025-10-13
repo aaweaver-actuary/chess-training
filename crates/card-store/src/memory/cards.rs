@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use chrono::NaiveDate;
 
-use crate::model::{Card, CardKind, Edge, OpeningCard, ReviewRequest, StoredCardState};
+use crate::model::{Card, Edge, ReviewRequest, StoredCardState};
 use crate::store::StoreError;
-use review_domain::CardKind as GenericCardKind;
+use review_domain::{CardAggregate, CardKind as GenericCardKind};
 
 pub(super) fn store_opening_card(
     cards: &mut HashMap<u64, Card>,
@@ -67,17 +67,13 @@ fn validate_existing_opening_card(
 }
 
 fn build_opening_card(owner_id: &str, edge: &Edge, state: StoredCardState, card_id: u64) -> Card {
-    Card {
-        id: card_id,
-        owner_id: owner_id.to_string(),
-        kind: CardKind::Opening(OpeningCard { edge_id: edge.id }),
-        state,
-    }
+    CardAggregate::new_opening(card_id, owner_id, edge.id, state).into()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::{CardKind, OpeningCard};
     use std::collections::HashMap;
     use std::num::NonZeroU8;
 
