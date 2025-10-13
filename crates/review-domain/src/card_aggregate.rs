@@ -2,7 +2,7 @@
 
 use chrono::NaiveDate;
 
-use crate::{CardKind, GradeError, StoredCardState, ValidGrade};
+use crate::{CardKind, GradeError, ReviewRequest, StoredCardState, ValidGrade};
 
 /// Concrete card aggregate tying together identifiers, payload, and state.
 #[derive(Clone, Debug, PartialEq)]
@@ -29,12 +29,22 @@ impl<Id, Owner, Opening, Tactic> CardAggregate<Id, Owner, Opening, Tactic> {
         self.state.apply_review(grade, reviewed_on);
         Ok(())
     }
+
+    /// Apply a [`ReviewRequest`] to the aggregate by delegating to [`Self::apply_review`].
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`GradeError`] when the grade embedded in the request falls
+    /// outside the supported spaced repetition scale.
+    pub fn apply_review_request(&mut self, review: &ReviewRequest) -> Result<(), GradeError> {
+        self.apply_review(review.grade, review.reviewed_on)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{OpeningCard, TacticCard};
+    use crate::{OpeningCard, ReviewRequest, TacticCard};
     use chrono::NaiveDate;
     use std::num::NonZeroU8;
 
@@ -81,5 +91,24 @@ mod tests {
 
         assert_eq!(error, GradeError::GradeOutsideRangeError { grade: 9 });
         assert_eq!(aggregate.state, original_state);
+    }
+
+    #[test]
+    fn apply_review_request_delegates_to_helper() {
+        let mut aggregate = sample_opening_card();
+        let reviewed_on = naive_date(2023, 1, 5);
+        let review = ReviewRequest {
+            card_id: aggregate.id,
+            reviewed_on,
+            grade: 4,
+        };
+
+        aggregate
+            .apply_review_request(&review)
+            .expect("grade should be accepted");
+
+        assert_eq!(aggregate.state.last_reviewed_on, Some(reviewed_on));
+        assert_eq!(aggregate.state.due_on, naive_date(2023, 1, 9));
+        assert_eq!(aggregate.state.interval.get(), 4);
     }
 }
