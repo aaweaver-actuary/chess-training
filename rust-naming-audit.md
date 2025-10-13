@@ -195,16 +195,16 @@ These items orchestrate SM-2 reviews, queue construction, and unlock tracking.
   - Assemble the daily review queue, merging due cards with unlocks and preventing duplicates.
   - *Related items:* `queue_length` in wasm calls into these helpers. Verb prefixes vary between `build_`, `extend_`, `skip_`, `unlock_`, which match their roles.
 
-- **`queue_length`** (`crates/scheduler-wasm/src/scheduler.rs`) & **`build_queue_length`** (`crates/scheduler-wasm/src/bindings.rs`)
-  - Provide wasm-friendly access to queue sizes.
-  - *Related items:* `build_queue_for_day`. Mixed naming (`queue_length` vs. `build_queue_length`) could standardize on `queue_length`.
+- **`queue_length`** (`crates/scheduler-wasm/src/scheduler.rs` and `crates/scheduler-wasm/src/bindings.rs`)
+  - Provide wasm-friendly access to queue sizes with consistent naming across the facade and bindings.
+  - *Related items:* `build_queue_for_day`. Naming now lines up with scheduler internals, keeping verbs focused on queue building while lengths use the shared noun phrase.
 
 - **Unlock handling**
   - `SchedulerUnlockDetail`, `UnlockRecord` alias (`crates/scheduler-core/src/domain/mod.rs`), scheduler store methods (`record_unlock`, `unlock_candidates`), and wasm binding helpers (`default_config`, `init_panic_hook` for environment setup).
   - *Related items:* `insert_unlock_or_error` (card-store). Method names `record_*` vs. `insert_*` highlight cross-crate inconsistency.
 
 **Naming observations for this group:**
-- `build_queue_length` vs. `queue_length` is an easy win—rename the wasm binding to `queue_length` or `queue_size` for clarity.
+- Continue to audit wasm exports when scheduler APIs change so naming alignment persists across Rust facades and bindings.
 - Scheduler store methods like `due_cards_for_owner` could align with card-store’s `collect_due_cards_for_owner` by picking either `due_cards` or `collect_due_cards` across crates.
 
 ---
