@@ -31,12 +31,14 @@ export type OpeningReviewEvent =
   | { type: 'status'; status: OpeningReviewStatus }
   | { type: 'error'; message: string };
 
-export interface OpeningReviewController {
-  getSnapshot(): OpeningReviewSnapshot;
-  selectSquare(square: string): void;
-  dropPiece(from: string, to: string): void;
-  submitGrade(grade: ReviewGrade): Promise<void>;
-  loadLine(lineId: string): Promise<void>;
-  reset(): void;
-  subscribe(listener: (snapshot: OpeningReviewSnapshot, event?: OpeningReviewEvent) => void): () => void;
-}
+export type OpeningReviewController = {
+  getSnapshot: () => OpeningReviewSnapshot;
+  selectSquare: (square: string) => void;
+  dropPiece: (from: string, to: string) => void;
+  submitGrade: (grade: ReviewGrade) => Promise<void>;
+  loadLine: (lineId: string) => Promise<void>;
+  reset: () => void;
+  subscribe: (
+    listener: (snapshot: OpeningReviewSnapshot, event?: OpeningReviewEvent) => void,
+  ) => () => void;
+};
