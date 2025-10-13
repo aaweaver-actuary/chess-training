@@ -6,7 +6,7 @@ use std::{
 use chrono::NaiveDate;
 
 use crate::{
-    CardStore, StoreError,
+    ReviewCardStore, StoreError,
     chess_position::ChessPosition,
     config::StorageConfig,
     memory::{
@@ -112,7 +112,7 @@ impl InMemoryCardStore {
     }
 }
 
-impl CardStore for InMemoryCardStore {
+impl ReviewCardStore for InMemoryCardStore {
     fn upsert_position(&self, position: ChessPosition) -> Result<ChessPosition, StoreError> {
         let canonical = canonicalize_position_for_storage(position)?;
         let mut positions = self.positions_write()?;

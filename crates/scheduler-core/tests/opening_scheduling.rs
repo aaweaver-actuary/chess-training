@@ -1,8 +1,8 @@
 use chrono::NaiveDate;
 use scheduler_core::domain::SchedulerOpeningCard;
 use scheduler_core::{
-    Card, CardKind, CardState, CardStore, ReviewGrade, Scheduler, SchedulerConfig, UnlockRecord,
-    build_queue_for_day, new_card,
+    Card, CardKind, CardState, ReviewGrade, Scheduler, SchedulerConfig, SchedulerStore,
+    UnlockRecord, build_queue_for_day, new_card,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
@@ -39,7 +39,7 @@ impl TimedStore {
     }
 }
 
-impl CardStore for TimedStore {
+impl SchedulerStore for TimedStore {
     fn get_card(&self, id: Uuid) -> Option<Card> {
         self.cards.get(&id).cloned()
     }

@@ -74,9 +74,9 @@ These types capture chess domain entities and strongly typed identifiers to avoi
 
 Everything here orchestrates saving/retrieving positions, edges, cards, and unlocks.
 
-- **`CardStore` trait & `StoreError` enum** (`crates/card-store/src/store.rs`)
+- **`ReviewCardStore` trait & `StoreError` enum** (`crates/card-store/src/store.rs`)
   - Abstract persistence across backends with operations to upsert positions, edges, cards, unlocks, and reviews; enumerate failure cases (missing data, collisions, invalid inputs).
-  - *Related items:* `Storage` trait (`chess-training-pgn-import/src/storage.rs`) and scheduler-core’s `CardStore` trait (`crates/scheduler-core/src/store.rs`). The duplicate trait names (`CardStore`) could confuse consumers when both crates are in scope—consider namespacing (e.g., `ReviewCardStore`, `SchedulerStore`).
+  - *Related items:* `Storage` trait (`chess-training-pgn-import/src/storage.rs`) and scheduler-core’s `SchedulerStore` trait (`crates/scheduler-core/src/store.rs`). The rename to `ReviewCardStore` differentiates the persistence contract from scheduler storage while keeping method vocabularies aligned.
 
 - **`InMemoryCardStore`** and helper lock guards (`crates/card-store/src/memory/in_memory_card_store.rs`)
   - Provide a thread-safe demo backend using RwLocks; wrap lock acquisition in `*_read`/`*_write` helpers to centralize poison handling.
@@ -104,11 +104,11 @@ Everything here orchestrates saving/retrieving positions, edges, cards, and unlo
 
 - **`Storage` trait, `UpsertOutcome`, `ImportInMemoryStore`** (`crates/chess-training-pgn-import/src/storage.rs`)
   - Wrap card-store persistence behind a simpler interface tailored for importer needs, tracking whether upserts inserted or replaced.
-  - *Related items:* `CardStore` trait shares method names (`upsert_*`). `ImportInMemoryStore` parallels other in-memory stores but adds `*_records` getters; consider `into_*` naming for getters returning owned data to distinguish from clones.
+- *Related items:* `ReviewCardStore` trait shares method names (`upsert_*`). `ImportInMemoryStore` parallels other in-memory stores but adds `*_records` getters; consider `into_*` naming for getters returning owned data to distinguish from clones.
 
-- **Scheduler-core `CardStore` trait & `InMemoryStore`** (`crates/scheduler-core/src/store.rs`)
+- **Scheduler-core `SchedulerStore` trait & `InMemoryStore`** (`crates/scheduler-core/src/store.rs`)
   - Handle SM-2 card persistence, due card queries, unlock candidate retrieval, and unlock logging.
-  - *Related items:* Card-store’s trait; method names align (`upsert_card`, `due_cards_for_owner`), which is good, but trait names colliding remains a concern.
+  - *Related items:* Card-store’s trait; method names align (`upsert_card`, `due_cards_for_owner`) so developers can pivot between review persistence and scheduler code without context switching terminology.
 
 **Naming observations for this group:**
 - The verbs `store_*`, `insert_*`, `record_*`, `upsert_*`, and `build_*` mix across modules. Picking one convention per action type (e.g., `upsert_` for persistence, `build_` for constructors) would reduce mental load. `build_opening_card` vs. `card_id_for_opening` might both become `build_opening_card` and `build_opening_card_id` for symmetry.
@@ -228,7 +228,7 @@ These items orchestrate SM-2 reviews, queue construction, and unlock tracking.
    - Unlock operations: align on `record_unlock` (scheduler) or `insert_unlock` (card-store). Pick one and cascade.
 
 2. **Differentiate similarly named traits/stores.**
-   - Having two `CardStore` traits (card-store crate and scheduler-core crate) is confusing. Consider `ReviewCardStore` vs. `SchedulerStore` to clarify domain boundaries.
+   - Renaming the overlapping traits to `ReviewCardStore` (card-store) and `SchedulerStore` (scheduler-core) resolves prior ambiguity when both crates are imported together.
 
 3. **Rename duplicated `CardAggregate`.**
    - Split into `StoredCardAggregate` (specialized) and `GenericCardAggregate` or move the generic type into a `generic` module to avoid import ambiguity.
