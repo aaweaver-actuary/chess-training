@@ -1,4 +1,7 @@
 use review_domain::CardKind;
+use std::convert::TryFrom;
+
+use review_domain::ids::{CardId, EdgeId, MoveId, PositionId};
 
 #[test]
 fn card_kind_map_helpers_cover_all_variants() {
@@ -27,4 +30,40 @@ fn card_kind_map_helpers_cover_all_variants() {
         CardKind::Opening(reference) => assert_eq!(*reference, "london"),
         CardKind::Tactic(()) => panic!("expected opening reference"),
     }
+}
+
+#[test]
+fn id_newtypes_round_trip_for_card_store() {
+    let position = PositionId::new(11_u64);
+    assert_eq!(position.into_inner(), 11);
+    assert_eq!(position.as_u64(), 11);
+    assert_eq!(PositionId::try_from(11_i64).unwrap(), position);
+    assert!(PositionId::try_from(-1_i64).is_err());
+    assert_eq!(PositionId::try_from(11_i128).unwrap(), position);
+    assert_eq!(PositionId::try_from(11_u128).unwrap(), position);
+
+    let edge = EdgeId::from(17_u64);
+    assert_eq!(u64::from(&edge), 17);
+    assert_eq!(edge.into_inner(), 17);
+    assert_eq!(EdgeId::try_from(17_i64).unwrap(), edge);
+    assert!(EdgeId::try_from(-1_i64).is_err());
+
+    assert_eq!(EdgeId::try_from(17_i128).unwrap(), edge);
+    assert_eq!(EdgeId::try_from(17_u128).unwrap(), edge);
+
+    let mv = MoveId::from(23_u64);
+    assert_eq!(format!("{mv}"), "23");
+    assert_eq!(format!("{mv:?}"), "MoveId(23)");
+    assert_eq!(MoveId::try_from(23_i64).unwrap(), mv);
+    assert!(MoveId::try_from(-1_i64).is_err());
+    assert_eq!(MoveId::try_from(23_i128).unwrap(), mv);
+    assert_eq!(MoveId::try_from(23_u128).unwrap(), mv);
+
+    let card = CardId::new(29_u64);
+    assert_eq!(card.to_string(), "29");
+    assert_eq!(u64::from(card), 29);
+    assert_eq!(CardId::try_from(29_i64).unwrap(), card);
+    assert!(CardId::try_from(-1_i64).is_err());
+    assert_eq!(CardId::try_from(29_i128).unwrap(), card);
+    assert_eq!(CardId::try_from(29_u128).unwrap(), card);
 }

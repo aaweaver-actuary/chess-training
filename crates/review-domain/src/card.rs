@@ -16,6 +16,7 @@ pub struct Card<Id, Owner, Kind, State> {
 #[cfg(test)]
 mod tests {
     use super::Card;
+    use core::ptr;
 
     #[derive(Clone, Debug, PartialEq)]
     struct Owner(u64);
