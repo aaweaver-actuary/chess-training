@@ -60,6 +60,11 @@ function normalizeConfig(init: RequestConfigWithBody): RequestInit {
   } satisfies RequestInit;
 }
 
+const buildStatsPath = (sessionId: string): string => {
+  const params = new URLSearchParams({ session_id: sessionId });
+  return `/api/session/stats?${params.toString()}`;
+};
+
 export const sessionGateway = {
   startSession(userId: string): Promise<StartSessionResponse> {
     return request<StartSessionResponse>('/api/session/start', {
@@ -68,16 +73,22 @@ export const sessionGateway = {
     });
   },
   grade(
+    sessionId: string,
     cardId: string,
     gradeValue: ReviewGrade,
     latencyMs: number,
-  ): Promise<{ next_card?: CardSummary }> {
-    return request<{ next_card?: CardSummary }>('/api/session/grade', {
+  ): Promise<{ next_card?: CardSummary; stats?: SessionStats }> {
+    return request<{ next_card?: CardSummary; stats?: SessionStats }>('/api/session/grade', {
       method: 'POST',
-      body: { card_id: cardId, grade: gradeValue, latency_ms: latencyMs },
+      body: {
+        session_id: sessionId,
+        card_id: cardId,
+        grade: gradeValue,
+        latency_ms: latencyMs,
+      },
     });
   },
-  stats(): Promise<SessionStats> {
-    return request<SessionStats>('/api/session/stats', { method: 'GET' });
+  stats(sessionId: string): Promise<SessionStats> {
+    return request<SessionStats>(buildStatsPath(sessionId), { method: 'GET' });
   },
 } as const;
