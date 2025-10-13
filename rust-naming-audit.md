@@ -45,9 +45,9 @@ These types capture chess domain entities and strongly typed identifiers to avoi
   - Tailor generic review-domain types to store-specific key/value maps for clarity when manipulating in-memory data.
   - *Related items:* `CardAggregate` (review-domain) and scheduler-specific aliases (`Card`, `CardKind`). Consistency could improve by suffixing all aliases with `_Map` or `_Set` uniformly (some already do).
 
-- **`card_id_for_opening` / `card_id_for_tactic`** (`crates/card-store/src/model.rs`)
+- **`build_opening_card_id` / `build_tactic_card_id`** (`crates/card-store/src/model.rs`)
   - Deterministically hash owners with edges/tactics to create reproducible card IDs and prevent duplicates.
-  - *Related items:* `hash_with_seed` and `Position::new` in the importer, plus `hash64` in review-domain. The verb `card_id_for_*` differs from `hash_with_*`; aligning on `hash_*_id` might make intent clearer.
+  - *Related items:* `hash_with_seed` and `Position::new` in the importer, plus `hash64` in review-domain. The `build_*` prefix now matches other constructors like `build_opening_card`, though aligning on `hash_*_id` could further emphasize the hashing step.
 
 - **`Position`, `OpeningEdgeRecord`, `RepertoireEdge`, `Tactic`, `hash_with_seed`** (`crates/chess-training-pgn-import/src/model.rs`)
   - Encapsulate deterministic hashing and payload construction when importing PGNs, ensuring consistent IDs across runs.
@@ -59,7 +59,7 @@ These types capture chess domain entities and strongly typed identifiers to avoi
 
 - **`hash64`** (`crates/review-domain/src/hash.rs`)
   - Wraps BLAKE3 hashing for deterministic 64-bit IDs.
-  - *Related items:* `hash_with_seed`, `card_id_for_opening`. All use “hash” but some embed the target entity (`card_id_for_*`) and others don’t; consider exposing a shared `fn hash_entity(namespace, bytes)` helper for uniform terminology.
+  - *Related items:* `hash_with_seed`, `build_opening_card_id`. All use “hash” but some embed the target entity while others don’t; consider exposing a shared `fn hash_entity(namespace, bytes)` helper for uniform terminology.
 
 - **Strong ID macros in `crates/review-domain/src/ids.rs`**
   - Generate newtype wrappers (`PositionId`, `EdgeId`, `CardId`, etc.) to prevent ID misuse.
@@ -111,7 +111,7 @@ Everything here orchestrates saving/retrieving positions, edges, cards, and unlo
   - *Related items:* Card-store’s trait; method names align (`upsert_card`, `due_cards_for_owner`), which is good, but trait names colliding remains a concern.
 
 **Naming observations for this group:**
-- The verbs `store_*`, `insert_*`, `record_*`, `upsert_*`, and `build_*` mix across modules. Picking one convention per action type (e.g., `upsert_` for persistence, `build_` for constructors) would reduce mental load. `build_opening_card` vs. `card_id_for_opening` might both become `build_opening_card` and `build_opening_card_id` for symmetry.
+- The verbs `store_*`, `insert_*`, `record_*`, `upsert_*`, and `build_*` mix across modules. Picking one convention per action type (e.g., `upsert_` for persistence, `build_*` for constructors) would reduce mental load. The pairing of `build_opening_card` and `build_opening_card_id` now reflects this symmetry in practice.
 
 ---
 
@@ -223,7 +223,7 @@ These items orchestrate SM-2 reviews, queue construction, and unlock tracking.
 ## Cross-Cutting Naming Recommendations
 
 1. **Unify “build/make/store/insert/record/upsert” verbs.**
-   - Constructors: prefer `build_*` or `new_*`. For example, rename `card_id_for_opening` → `build_opening_card_id`, `build_opening_card` → `build_opening_card_payload` (if needed), and `make_input` closures in tests → `build_input` to match production code.
+   - Constructors: prefer `build_*` or `new_*`. Recent updates to `build_opening_card_id`/`build_tactic_card_id` follow this pattern; consider similarly renaming `build_opening_card` → `build_opening_card_payload` (if needed) and `make_input` closures in tests → `build_input` to match production code.
    - Persistence: reserve `upsert_*` for trait APIs, and ensure helpers underneath mirror the same verb (`store_canonical_position` → `upsert_canonical_position`).
    - Unlock operations: align on `record_unlock` (scheduler) or `insert_unlock` (card-store). Pick one and cascade.
 
