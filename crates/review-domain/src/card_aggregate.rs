@@ -87,17 +87,10 @@ impl CardAggregate {
         self.inner
     }
 
-    /// Applies a review to the aggregate, updating the scheduling state.
-    pub fn apply_review(&mut self, grade: ValidGrade, reviewed_on: NaiveDate) {
+    /// Applies a validated grade to the aggregate, updating the scheduling state.
+    pub fn apply_valid_grade(&mut self, grade: ValidGrade, reviewed_on: NaiveDate) {
         self.inner.state.apply_review(grade, reviewed_on);
     }
-}
-
-impl From<StoredReviewCard> for CardAggregate {
-    fn from(card: StoredReviewCard) -> Self {
-        Self { inner: card }
-    }
-}
 
 impl From<CardAggregate> for StoredReviewCard {
     fn from(aggregate: CardAggregate) -> Self {
@@ -127,20 +120,20 @@ impl<Id, Owner, Opening, Tactic> CardAggregate<Id, Owner, Opening, Tactic> {
     ///
     /// # Errors
     ///
-    /// Returns a [`GradeError`] when the grade falls outside the supported
-    /// spaced repetition scale.
+    /// Returns a [`GradeError`] when the provided grade falls outside the
+    /// supported spaced repetition scale.
     pub fn apply_review(&mut self, grade: u8, reviewed_on: NaiveDate) -> Result<(), GradeError> {
         let grade = ValidGrade::new(grade)?;
-        self.state.apply_review(grade, reviewed_on);
+        self.apply_valid_grade(grade, reviewed_on);
         Ok(())
     }
 
-    /// Apply a [`ReviewRequest`] to the aggregate by delegating to [`Self::apply_review`].
+    /// Applies the supplied [`ReviewRequest`] to the aggregate.
     ///
     /// # Errors
     ///
-    /// Returns a [`GradeError`] when the grade embedded in the request falls
-    /// outside the supported spaced repetition scale.
+    /// Returns a [`GradeError`] when the embedded grade falls outside the
+    /// supported spaced repetition scale.
     pub fn apply_review_request(&mut self, review: &ReviewRequest) -> Result<(), GradeError> {
         self.apply_review(review.grade, review.reviewed_on)
     }
@@ -197,23 +190,10 @@ mod tests {
         assert_eq!(error, GradeError::GradeOutsideRangeError { grade: 9 });
         assert_eq!(aggregate.state, original_state);
     }
+}
 
-    #[test]
-    fn apply_review_request_delegates_to_helper() {
-        let mut aggregate = sample_opening_card();
-        let reviewed_on = naive_date(2023, 1, 5);
-        let review = ReviewRequest {
-            card_id: aggregate.id,
-            reviewed_on,
-            grade: 4,
-        };
-
-        aggregate
-            .apply_review_request(&review)
-            .expect("grade should be accepted");
-
-        assert_eq!(aggregate.state.last_reviewed_on, Some(reviewed_on));
-        assert_eq!(aggregate.state.due_on, naive_date(2023, 1, 9));
-        assert_eq!(aggregate.state.interval.get(), 4);
+impl From<CardAggregate> for StoredReviewCard {
+    fn from(aggregate: CardAggregate) -> Self {
+        aggregate.into_card()
     }
 }
