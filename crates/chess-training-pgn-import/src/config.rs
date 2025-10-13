@@ -217,13 +217,13 @@ impl CliArgs {
             .map(|matches| Self::from_matches(&matches))
     }
 
-    /// Converts the parsed CLI arguments into the runtime configuration and remaining inputs.
+    /// Builds the runtime configuration and remaining inputs from the parsed CLI arguments.
     ///
     /// # Errors
     ///
     /// Returns an error if a configuration file is requested but cannot be read or parsed,
     /// or if no PGN inputs are supplied after merging CLI and file sources.
-    pub fn into_ingest_config(self) -> ConfigResult<(IngestConfig, Vec<PathBuf>)> {
+    pub fn build_ingest_config(self) -> ConfigResult<(IngestConfig, Vec<PathBuf>)> {
         let CliArgs {
             inputs,
             config_file,

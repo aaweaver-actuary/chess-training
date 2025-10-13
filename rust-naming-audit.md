@@ -12,7 +12,7 @@ These types centralize tunable knobs, offer defaults, or translate user input (f
   - Stores connection pool limits, batching, and retry counts for card-store backends so deployments can tune persistence without code changes.
   - *Related items:* `SchedulerConfig` (SM-2 tuning), `IngestConfig` (PGN importer knobs), `SchedulerConfigDto`/`SchedulerConfigPatch` (wasm serialization/patching), `FileConfig` and `CliArgs` (PGN CLI).
 
-- **`IngestConfig`**, **`FileConfig::from_path`**, **`CliArgs::{command, from_matches, try_parse_from, into_ingest_config}`** (`crates/chess-training-pgn-import/src/config.rs`)
+- **`IngestConfig`**, **`FileConfig::from_path`**, **`CliArgs::{command, from_matches, try_parse_from, build_ingest_config}`** (`crates/chess-training-pgn-import/src/config.rs`)
   - Collect configuration inputs from TOML and command line, ensuring PGN ingestion has all required flags and default fallbacks.
   - *Related items:* `Importer::new` uses these settings; `SchedulerFacade::new` and `WasmScheduler::new` also merge optional patches before instantiating services.
 
@@ -33,7 +33,7 @@ These types centralize tunable knobs, offer defaults, or translate user input (f
   - *Related items:* tests guarding they don’t panic; all of these share placeholder naming and could eventually converge on `fn run()` helpers for consistency.
 
 **Naming observations for this group:**
-- Config structs consistently end with `Config`, but helper methods vary between `from_matches`, `try_parse_from`, `apply`, and `into_ingest_config`. They follow domain idioms, yet the CLI pipeline mixes `into_*` and `from_*` verbs. Consider renaming `CliArgs::into_ingest_config` to `build_ingest_config` to mirror other builders.
+- Config structs consistently end with `Config`, but helper methods vary between `from_matches`, `try_parse_from`, `apply`, and `build_ingest_config`. They follow domain idioms, yet the CLI pipeline mixes `into_*` and `from_*` verbs; adopting builder verbs (like `build_ingest_config`) keeps constructors consistent.
 
 ---
 
