@@ -18,8 +18,7 @@ Try to write all code using SOLID principles and idiomatic Rust practices. Prefe
 
 When writing tests, prefer property-based testing where applicable. This can help uncover edge cases that you might not have considered.
 
-
-**IMPORTANT:** Read ALL `README.md` files in the repository for additional context and instructions.
+Read ALL `README.md` files in the repository for additional context and instructions. After completing your changes, update any relevant documentation to reflect the new state of the codebase.
 
 **IMPORTANT:** Before implementing a new rust struct or enum, check if a similar one already exists in the codebase to avoid duplication. Check `docs/rust-structs-glossary.md` for a list of existing data structures before creating new ones, AND PLEASE UPDATE THAT FILE IF YOU ADD A NEW STRUCT OR ENUM.
 
