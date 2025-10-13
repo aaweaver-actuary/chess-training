@@ -86,20 +86,17 @@ _Source:_ `crates/review-domain/src/unlock.rs`
 
 ### `UnlockDetail`
 
-**Overview:** Minimal opening-specific payload embedded in unlock logs persisted by review-domain services. Keeps storage records small while the scheduler adds richer metadata via its own detail struct.
+**Overview:** Type alias to [`OpeningEdgeHandle`](#openingedgehandle) used when persisting unlock history. Aligns unlock logs with the payload stored on review cards.
 
 **Definition:**
 ```rust
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct UnlockDetail {
-    pub edge_id: u64,
-}
+pub type UnlockDetail = OpeningEdgeHandle;
 ```
 _Source:_ `crates/review-domain/src/unlock.rs`
 
 **Usage in this repository:**
-- `crates/review-domain/src/unlock.rs` exposes `UnlockDetail::new`, which review storage uses when writing unlock history to durable stores.
-- Importer pipelines convert scheduler-oriented unlock data into `UnlockDetail` before persisting, ensuring long-term logs only retain the opening edge identifier.
+- Review storage writes `UnlockDetail` entries so historical logs remain compatible when the opening-edge payload grows.
+- Importer pipelines convert scheduler-oriented unlock data into `UnlockDetail`, ensuring unlock analytics consume the shared handle.
 
 ### `ReviewRequest`
 
@@ -513,17 +510,31 @@ _Source:_ `crates/review-domain/src/opening/edge_input.rs`
 - `crates/card-store/src/memory/in_memory_card_store.rs` accepts `EdgeInput` in `upsert_edge`, converting it into an `OpeningEdge` after validating referenced positions.
 - Tests verify repeated `EdgeInput` submissions generate identical edge IDs, ensuring idempotent storage operations.
 
-### `OpeningCard`
+### `OpeningEdgeHandle`
 
-**Overview:** Lightweight payload used by review cards to reference a specific opening edge. Keeps scheduler and storage layers aligned around deterministic edge IDs.
+**Overview:** Shared handle that identifies a single opening edge. Centralises the edge identifier so card payloads and unlock logs stay in sync as fields evolve.
 
 **Definition:**
 ```rust
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct OpeningCard {
-    pub edge_id: u64,
+pub struct OpeningEdgeHandle {
+    pub edge_id: EdgeId,
 }
+```
+_Source:_ `crates/review-domain/src/opening/card.rs`
+
+**Usage in this repository:**
+- `OpeningCard` reuses the handle so stored review cards and unlock history reference the same payload type.
+- Unlock logging code stores `OpeningEdgeHandle` values, guaranteeing serde compatibility when additional metadata is introduced.
+
+### `OpeningCard`
+
+**Overview:** Type alias to [`OpeningEdgeHandle`](#openingedgehandle) used by review cards. Exposes the shared handle under a domain-specific name for card payloads.
+
+**Definition:**
+```rust
+pub type OpeningCard = OpeningEdgeHandle;
 ```
 _Source:_ `crates/review-domain/src/opening/card.rs`
 

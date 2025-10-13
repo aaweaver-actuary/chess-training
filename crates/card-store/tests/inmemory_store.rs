@@ -5,7 +5,8 @@ use card_store::chess_position::ChessPosition;
 use card_store::config::StorageConfig;
 use card_store::memory::InMemoryCardStore;
 use card_store::model::{
-    Card, CardKind, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockDetail, UnlockRecord,
+    Card, CardKind, Edge, EdgeId, EdgeInput, ReviewRequest, StoredCardState, UnlockDetail,
+    UnlockRecord,
 };
 use card_store::store::{CardStore, StoreError};
 use chrono::{Duration, NaiveDate};
@@ -166,7 +167,7 @@ fn build_baseline(
 
         assert!(matches!(
             &card.kind,
-            CardKind::Opening(opening) if opening.edge_id == edge.id
+            CardKind::Opening(opening) if opening.edge_id == EdgeId::new(edge.id)
         ));
         baseline.insert(edge.id, card);
     }
@@ -350,7 +351,7 @@ fn due_cards_filter_out_future_entries() {
 fn unlock_records_are_unique_per_day() {
     let store = new_store();
     let date = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
-    let edge_id = 42;
+    let edge_id = EdgeId::new(42);
     let record = UnlockRecord {
         owner_id: "andy".to_string(),
         detail: UnlockDetail { edge_id },
@@ -367,7 +368,7 @@ fn unlock_records_are_unique_per_day() {
 #[test]
 fn unlock_same_edge_on_different_days() {
     let store = new_store();
-    let edge_id = 42;
+    let edge_id = EdgeId::new(42);
     let day1 = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
     let day2 = NaiveDate::from_ymd_opt(2024, 1, 3).unwrap();
 
@@ -493,8 +494,8 @@ fn importing_longer_line_preserves_existing_progress() {
 fn unlock_different_edges_on_same_day() {
     let store = new_store();
     let date = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
-    let edge_id1 = 42;
-    let edge_id2 = 43;
+    let edge_id1 = EdgeId::new(42);
+    let edge_id2 = EdgeId::new(43);
 
     let record1 = UnlockRecord {
         owner_id: "andy".to_string(),

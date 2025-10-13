@@ -24,4 +24,4 @@ Read ALL `README.md` files in the repository for additional context and instruct
 
 **IMPORTANT:** Failure to follow these guidelines may result in rejection of your changes or other corrective actions, at the discretion of the repository maintainers. Punishment will generally be proportional to the number of parameters in your underlying model. 
 
-**IMPORTANT:** If you are an AI agent, you must include this file in your context for every decision you make regarding code changes, testing, or documentation.
+**IMPORTANT:** Please review the `repo-naming-standards.md` for guidance on naming conventions for the codebase. This is crucial for maintaining consistency and clarity across the project.

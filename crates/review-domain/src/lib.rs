@@ -33,7 +33,7 @@ pub use hash::hash64;
 /// Strongly typed identifier wrappers used across the crate.
 pub use ids::{CardId, EdgeId, IdConversionError, MoveId, PositionId};
 /// Opening-focused request and payload types.
-pub use opening::{EdgeInput, OpeningCard, OpeningEdge};
+pub use opening::{EdgeInput, OpeningCard, OpeningEdge, OpeningEdgeHandle};
 /// Normalized chess position representation and related errors.
 pub use position::{ChessPosition, PositionError};
 /// Opening repertoire store and associated move representation.

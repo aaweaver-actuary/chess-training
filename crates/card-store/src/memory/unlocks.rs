@@ -20,7 +20,7 @@ pub(super) fn insert_unlock_or_error(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::UnlockDetail;
+    use crate::model::{EdgeId, UnlockDetail};
     use chrono::NaiveDate;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -32,11 +32,19 @@ mod tests {
         let mut unlocks = HashSet::new();
         let record = UnlockRecord {
             owner_id: "owner".into(),
-            detail: UnlockDetail { edge_id: 7 },
+            detail: UnlockDetail {
+                edge_id: EdgeId::new(7),
+            },
             unlocked_on: naive_date(2023, 1, 1),
         };
         insert_unlock_or_error(&mut unlocks, &record).expect("first insert succeeds");
         let err = insert_unlock_or_error(&mut unlocks, &record).unwrap_err();
-        assert!(matches!(err, StoreError::DuplicateUnlock { edge, .. } if edge == 7));
+        assert!(matches!(
+            err,
+            StoreError::DuplicateUnlock {
+                edge,
+                ..
+            } if edge == EdgeId::new(7)
+        ));
     }
 }
