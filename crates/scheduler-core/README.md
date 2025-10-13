@@ -4,7 +4,7 @@
 flowchart TD
     scheduler_core["scheduler-core/"] --> config["config.rs\nSchedulerConfig"]
     scheduler_core --> domain_mod["domain/\ncard + state"]
-    scheduler_core --> store["store.rs\nCardStore + InMemoryStore"]
+    scheduler_core --> store["store.rs\nSchedulerStore + InMemoryStore"]
     scheduler_core --> sm2["sm2.rs"]
     scheduler_core --> queue["queue.rs"]
     scheduler_core --> scheduler["scheduler.rs"]

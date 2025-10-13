@@ -4,9 +4,7 @@
 
 use chrono::NaiveDate;
 use scheduler_core::domain::{SchedulerOpeningCard, SchedulerTacticCard};
-use scheduler_core::{
-    CardKind, CardStore, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig, new_card,
-};
+use scheduler_core::{CardKind, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig, new_card};
 use uuid::Uuid;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

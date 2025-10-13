@@ -272,7 +272,7 @@ _Source:_ `crates/scheduler-core/src/domain/mod.rs`
 
 ### `InMemoryStore`
 
-**Overview:** Reference implementation of the scheduler’s `CardStore` trait. Backs tests and the WASM facade with deterministic behavior without requiring external storage.
+**Overview:** Reference implementation of the scheduler’s `SchedulerStore` trait. Backs tests and the WASM facade with deterministic behavior without requiring external storage.
 
 **Definition:**
 ```rust
@@ -305,13 +305,13 @@ _Source:_ `crates/scheduler-core/src/queue.rs`
 - `crates/scheduler-core/src/queue.rs` seeds `ExistingUnlocks` from prior unlock logs, then updates it as new cards unlock within the same queue build.
 - Scheduler queue tests create prior unlock records to ensure `ExistingUnlocks` blocks cards sharing a prefix from unlocking twice in one day.
 
-### `Scheduler<S: CardStore>`
+### `Scheduler<S: SchedulerStore>`
 
-**Overview:** High-level orchestrator that coordinates SM-2 reviews and unlock queue generation against an abstract `CardStore`. Encapsulates the SM-2 algorithm so callers only provide storage and configuration.
+**Overview:** High-level orchestrator that coordinates SM-2 reviews and unlock queue generation against an abstract `SchedulerStore`. Encapsulates the SM-2 algorithm so callers only provide storage and configuration.
 
 **Definition:**
 ```rust
-pub struct Scheduler<S: CardStore> {
+pub struct Scheduler<S: SchedulerStore> {
     store: S,
     config: SchedulerConfig,
 }
@@ -326,12 +326,12 @@ _Source:_ `crates/scheduler-core/src/scheduler.rs`
 ```mermaid
 classDiagram
     class Scheduler {
-      -store: CardStore
+      -store: SchedulerStore
       -config: SchedulerConfig
       +review(card_id, grade, today) ReviewOutcome
       +build_queue(owner_id, today) Vec<Card>
     }
-    class CardStore {
+    class SchedulerStore {
       <<interface>>
       +get_card(id): Option<Card>
       +upsert_card(card)
@@ -347,8 +347,8 @@ classDiagram
       kind
       state: Sm2State
     }
-    Scheduler --> CardStore
-    InMemoryStore ..|> CardStore
+    Scheduler --> SchedulerStore
+    InMemoryStore ..|> SchedulerStore
     Scheduler --> Card
 ```
 
@@ -1015,7 +1015,7 @@ _Source:_ `crates/scheduler-core/tests/scheduler_sm2.rs`
 
 ### `TimedStore`
 
-**Overview:** Custom `CardStore` implementation used in opening scheduling tests. Adds availability windows and a controllable “current day” to simulate cards becoming unlockable on future dates.
+**Overview:** Custom `SchedulerStore` implementation used in opening scheduling tests. Adds availability windows and a controllable “current day” to simulate cards becoming unlockable on future dates.
 
 **Definition:**
 ```rust
@@ -1031,5 +1031,5 @@ _Source:_ `crates/scheduler-core/tests/opening_scheduling.rs`
 
 **Usage in this repository:**
 - Opening scheduling tests set availability dates via `insert_with_availability` and advance time with `set_day` to ensure unlock pacing respects day boundaries.
-- By implementing `CardStore`, `TimedStore` plugs directly into queue-building helpers, letting tests assert on queue contents without modifying production code.
+- By implementing `SchedulerStore`, `TimedStore` plugs directly into queue-building helpers, letting tests assert on queue contents without modifying production code.
 

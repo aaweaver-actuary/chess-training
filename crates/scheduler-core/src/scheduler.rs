@@ -8,16 +8,16 @@ use crate::domain::{Card, ReviewOutcome};
 use crate::errors::SchedulerError;
 use crate::queue::build_queue_for_day;
 use crate::sm2::apply_sm2;
-use crate::store::CardStore;
+use crate::store::SchedulerStore;
 use review_domain::ReviewGrade;
 
 /// High-level façade coordinating scheduling operations for a single store implementation.
-pub struct Scheduler<S: CardStore> {
+pub struct Scheduler<S: SchedulerStore> {
     store: S,
     config: SchedulerConfig,
 }
 
-impl<S: CardStore> Scheduler<S> {
+impl<S: SchedulerStore> Scheduler<S> {
     /// Construct a scheduler backed by the provided store and configuration.
     #[must_use]
     pub fn new(store: S, config: SchedulerConfig) -> Self {

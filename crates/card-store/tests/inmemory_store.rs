@@ -8,7 +8,7 @@ use card_store::model::{
     Card, CardKind, Edge, EdgeId, EdgeInput, ReviewRequest, StoredCardState, UnlockDetail,
     UnlockRecord,
 };
-use card_store::store::{CardStore, StoreError};
+use card_store::store::{ReviewCardStore, StoreError};
 use chrono::{Duration, NaiveDate};
 
 fn new_store() -> InMemoryCardStore {
