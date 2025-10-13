@@ -15,6 +15,8 @@ pub struct Card<Id, Owner, Kind, State> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::borrow_as_ptr, clippy::float_cmp)]
+
     use super::Card;
     use core::ptr;
 
