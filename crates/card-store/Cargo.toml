@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 review-domain = { path = "../review-domain" }
+scheduler-core = { path = "../scheduler-core" }
 thiserror = "1"

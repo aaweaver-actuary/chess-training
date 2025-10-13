@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::ValidGrade;
 
 pub mod invariants;
+pub mod bridge;
 
 /// Mutable scheduling state of a card stored by review services.
 #[derive(Clone, Debug, PartialEq)]
