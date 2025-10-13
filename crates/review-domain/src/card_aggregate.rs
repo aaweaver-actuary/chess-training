@@ -1,103 +1,50 @@
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+//! Aggregate representation of a review card with scheduling state.
 
-use crate::{CardKind, OpeningCard, StoredCardState, TacticCard, hash64};
+use chrono::NaiveDate;
 
-const OPENING_CARD_PREFIX: &[u8] = b"review-domain::card::opening";
-const TACTIC_CARD_PREFIX: &[u8] = b"review-domain::card::tactic";
+use crate::{CardKind, GradeError, ReviewRequest, StoredCardState, ValidGrade};
 
-/// Concrete card representation pairing deterministic identifiers with validated state.
+/// Concrete card aggregate tying together identifiers, payload, and state.
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct CardAggregate {
-    /// Stable identifier derived from the owner and underlying payload.
-    pub id: u64,
-    /// Identifier of the learner that owns the card.
-    pub owner_id: String,
-    /// Domain-specific payload describing the review target.
-    pub kind: CardKind<OpeningCard, TacticCard>,
-    /// Scheduling state tracked for the card.
+pub struct CardAggregate<Id, Owner, Opening, Tactic> {
+    /// Stable identifier of the card aggregate.
+    pub id: Id,
+    /// Identifier for the learner that owns the card.
+    pub owner_id: Owner,
+    /// Domain specific payload describing what the card reviews.
+    pub kind: CardKind<Opening, Tactic>,
+    /// Mutable scheduling state for the card.
     pub state: StoredCardState,
 }
 
-/// Errors surfaced when constructing a [`CardAggregate`].
-#[derive(Debug, thiserror::Error, PartialEq, Eq)]
-pub enum CardAggregateError {
-    /// Returned when the provided [`StoredCardState`] already records a review timestamp.
-    #[error("card state must not include a last_reviewed_on value when creating an aggregate")]
-    LastReviewedOnPresent,
-    /// Returned when the provided [`StoredCardState`] starts with a non-zero streak.
-    #[error("card state must start with zero consecutive correct reviews, found {0}")]
-    NonZeroConsecutiveCorrect(u32),
-}
-
-impl CardAggregate {
-    /// Builds an opening card aggregate for the provided owner and edge identifiers.
+impl<Id, Owner, Opening, Tactic> CardAggregate<Id, Owner, Opening, Tactic> {
+    /// Apply a review to the aggregate, mutating the stored state.
     ///
     /// # Errors
     ///
-    /// Returns [`CardAggregateError::LastReviewedOnPresent`] if the initial state already
-    /// records a previous review date, or
-    /// [`CardAggregateError::NonZeroConsecutiveCorrect`] if the streak is not zero.
-    pub fn new_opening(
-        owner_id: impl Into<String>,
-        edge_id: u64,
-        state: StoredCardState,
-    ) -> Result<Self, CardAggregateError> {
-        validate_initial_state(&state)?;
-        let owner_id = owner_id.into();
-        let id = aggregate_identifier(OPENING_CARD_PREFIX, &owner_id, edge_id);
-        Ok(Self {
-            id,
-            owner_id,
-            kind: CardKind::Opening(OpeningCard::new(edge_id)),
-            state,
-        })
+    /// Returns a [`GradeError`] when the grade falls outside the supported
+    /// spaced repetition scale.
+    pub fn apply_review(&mut self, grade: u8, reviewed_on: NaiveDate) -> Result<(), GradeError> {
+        let grade = ValidGrade::new(grade)?;
+        self.state.apply_review(grade, reviewed_on);
+        Ok(())
     }
 
-    /// Builds a tactic card aggregate for the provided owner and tactic identifiers.
+    /// Apply a [`ReviewRequest`] to the aggregate by delegating to [`Self::apply_review`].
     ///
     /// # Errors
     ///
-    /// Returns [`CardAggregateError::LastReviewedOnPresent`] if the initial state already
-    /// records a previous review date, or
-    /// [`CardAggregateError::NonZeroConsecutiveCorrect`] if the streak is not zero.
-    pub fn new_tactic(
-        owner_id: impl Into<String>,
-        tactic_id: u64,
-        state: StoredCardState,
-    ) -> Result<Self, CardAggregateError> {
-        validate_initial_state(&state)?;
-        let owner_id = owner_id.into();
-        let id = aggregate_identifier(TACTIC_CARD_PREFIX, &owner_id, tactic_id);
-        Ok(Self {
-            id,
-            owner_id,
-            kind: CardKind::Tactic(TacticCard::new(tactic_id)),
-            state,
-        })
+    /// Returns a [`GradeError`] when the grade embedded in the request falls
+    /// outside the supported spaced repetition scale.
+    pub fn apply_review_request(&mut self, review: &ReviewRequest) -> Result<(), GradeError> {
+        self.apply_review(review.grade, review.reviewed_on)
     }
-}
-
-fn aggregate_identifier(prefix: &[u8], owner_id: &str, payload_id: u64) -> u64 {
-    hash64(&[prefix, owner_id.as_bytes(), &payload_id.to_be_bytes()])
-}
-
-fn validate_initial_state(state: &StoredCardState) -> Result<(), CardAggregateError> {
-    if state.last_reviewed_on.is_some() {
-        return Err(CardAggregateError::LastReviewedOnPresent);
-    }
-    if state.consecutive_correct != 0 {
-        return Err(CardAggregateError::NonZeroConsecutiveCorrect(
-            state.consecutive_correct,
-        ));
-    }
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{OpeningCard, ReviewRequest, TacticCard};
     use chrono::NaiveDate;
     use std::num::NonZeroU8;
 
@@ -106,60 +53,62 @@ mod tests {
     }
 
     fn sample_state() -> StoredCardState {
-        let interval = NonZeroU8::new(1).expect("non-zero interval");
-        StoredCardState::new(naive_date(2024, 1, 1), interval, 2.5)
+        StoredCardState::new(naive_date(2023, 1, 1), NonZeroU8::new(2).unwrap(), 2.5)
+    }
+
+    fn sample_opening_card() -> CardAggregate<u64, String, OpeningCard, TacticCard> {
+        CardAggregate {
+            id: 1,
+            owner_id: String::from("owner"),
+            kind: CardKind::Opening(OpeningCard::new(7)),
+            state: sample_state(),
+        }
     }
 
     #[test]
-    fn new_opening_builds_expected_aggregate() {
-        let state = sample_state();
-        let aggregate = CardAggregate::new_opening("learner", 42, state.clone())
-            .expect("opening aggregate should be created");
-        let expected_id = aggregate_identifier(OPENING_CARD_PREFIX, "learner", 42);
-        assert_eq!(aggregate.id, expected_id);
-        assert_eq!(aggregate.owner_id, "learner");
-        assert_eq!(aggregate.kind, CardKind::Opening(OpeningCard::new(42)));
-        assert_eq!(aggregate.state, state);
+    fn apply_review_updates_underlying_state() {
+        let mut aggregate = sample_opening_card();
+        let reviewed_on = naive_date(2023, 1, 5);
+
+        aggregate
+            .apply_review(4, reviewed_on)
+            .expect("grade should be accepted");
+
+        assert_eq!(aggregate.state.last_reviewed_on, Some(reviewed_on));
+        assert_eq!(aggregate.state.due_on, naive_date(2023, 1, 9));
+        assert_eq!(aggregate.state.interval.get(), 4);
     }
 
     #[test]
-    fn new_tactic_builds_expected_aggregate() {
-        let state = sample_state();
-        let aggregate = CardAggregate::new_tactic("learner", 7, state.clone())
-            .expect("tactic aggregate should be created");
-        let expected_id = aggregate_identifier(TACTIC_CARD_PREFIX, "learner", 7);
-        assert_eq!(aggregate.id, expected_id);
-        assert_eq!(aggregate.owner_id, "learner");
-        assert_eq!(aggregate.kind, CardKind::Tactic(TacticCard::new(7)));
-        assert_eq!(aggregate.state, state);
+    fn apply_review_rejects_invalid_grade() {
+        let mut aggregate = sample_opening_card();
+        let original_state = aggregate.state.clone();
+        let reviewed_on = naive_date(2023, 1, 5);
+
+        let error = aggregate
+            .apply_review(9, reviewed_on)
+            .expect_err("grade should be rejected");
+
+        assert_eq!(error, GradeError::GradeOutsideRangeError { grade: 9 });
+        assert_eq!(aggregate.state, original_state);
     }
 
     #[test]
-    fn new_opening_rejects_state_with_last_reviewed_on() {
-        let mut state = sample_state();
-        state.last_reviewed_on = Some(naive_date(2023, 12, 31));
-        let error = CardAggregate::new_opening("owner", 99, state)
-            .expect_err("creation should fail when last_reviewed_on is set");
-        assert_eq!(error, CardAggregateError::LastReviewedOnPresent);
-    }
+    fn apply_review_request_delegates_to_helper() {
+        let mut aggregate = sample_opening_card();
+        let reviewed_on = naive_date(2023, 1, 5);
+        let review = ReviewRequest {
+            card_id: aggregate.id,
+            reviewed_on,
+            grade: 4,
+        };
 
-    #[test]
-    fn new_tactic_rejects_state_with_consecutive_correct() {
-        let mut state = sample_state();
-        state.consecutive_correct = 3;
-        let error = CardAggregate::new_tactic("owner", 11, state)
-            .expect_err("creation should fail when streak is non-zero");
-        assert_eq!(error, CardAggregateError::NonZeroConsecutiveCorrect(3));
-    }
+        aggregate
+            .apply_review_request(&review)
+            .expect("grade should be accepted");
 
-    #[cfg(feature = "serde")]
-    #[test]
-    fn card_aggregate_round_trips_through_serde() {
-        let state = sample_state();
-        let aggregate =
-            CardAggregate::new_opening("owner", 5, state).expect("aggregate should build");
-        let json = serde_json::to_string(&aggregate).expect("serialize");
-        let decoded: CardAggregate = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(decoded, aggregate);
+        assert_eq!(aggregate.state.last_reviewed_on, Some(reviewed_on));
+        assert_eq!(aggregate.state.due_on, naive_date(2023, 1, 9));
+        assert_eq!(aggregate.state.interval.get(), 4);
     }
 }
