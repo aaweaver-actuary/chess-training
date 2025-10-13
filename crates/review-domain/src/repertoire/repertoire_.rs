@@ -2,6 +2,7 @@
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 
+use crate::ids::EdgeId;
 use crate::{RepertoireError, RepertoireMove};
 
 /// Aggregated store for the opening moves a student has committed to memory.
@@ -58,7 +59,7 @@ impl Repertoire {
     ///
     /// Always returns [`RepertoireError::NotImplemented`] until the removal logic is
     /// implemented.
-    pub fn remove_move(&mut self, _edge_id: u64) -> Result<(), RepertoireError> {
+    pub fn remove_move(&mut self, _edge_id: EdgeId) -> Result<(), RepertoireError> {
         Err(RepertoireError::not_implemented("remove_move"))
     }
 
@@ -170,10 +171,12 @@ mod builder_and_iter_tests {
     use super::*;
 
     fn sample_move(n: u64) -> RepertoireMove {
+        use crate::ids::{EdgeId, PositionId};
+
         RepertoireMove {
-            parent_id: n,
-            child_id: n + 1,
-            edge_id: n * 10,
+            parent_id: PositionId::new(n),
+            child_id: PositionId::new(n + 1),
+            edge_id: EdgeId::new(n * 10),
             move_uci: format!("e2e{n}"),
             move_san: format!("e{n}"),
         }
@@ -186,7 +189,7 @@ mod builder_and_iter_tests {
             .build();
         assert_eq!(rep.name(), "BuilderTest");
         assert_eq!(rep.moves().len(), 1);
-        assert_eq!(rep.moves()[0].parent_id, 1);
+        assert_eq!(rep.moves()[0].parent_id.get(), 1);
     }
 
     #[test]
@@ -196,7 +199,7 @@ mod builder_and_iter_tests {
             .add_move(sample_move(2))
             .build();
         assert_eq!(rep.moves().len(), 2);
-        assert_eq!(rep.moves()[1].parent_id, 2);
+        assert_eq!(rep.moves()[1].parent_id.get(), 2);
     }
 
     #[test]
@@ -204,7 +207,7 @@ mod builder_and_iter_tests {
         let moves = (1..=3).map(sample_move);
         let rep = RepertoireBuilder::new("Extend").extend(moves).build();
         assert_eq!(rep.moves().len(), 3);
-        assert_eq!(rep.moves()[2].parent_id, 3);
+        assert_eq!(rep.moves()[2].parent_id.get(), 3);
     }
 
     #[test]
@@ -212,7 +215,7 @@ mod builder_and_iter_tests {
         let moves: Vec<_> = (10..13).map(sample_move).collect();
         let rep: Repertoire = moves.clone().into_iter().collect();
         assert_eq!(rep.moves().len(), 3);
-        assert_eq!(rep.moves()[0].parent_id, 10);
+        assert_eq!(rep.moves()[0].parent_id.get(), 10);
         assert_eq!(rep.name(), "");
     }
 }
@@ -244,9 +247,9 @@ mod avro_tests {
     fn test_to_avro_value_matches_schema() {
         let mut rep = Repertoire::new("AvroTest");
         rep.moves.push(crate::RepertoireMove {
-            parent_id: 1,
-            child_id: 2,
-            edge_id: 3,
+            parent_id: crate::ids::PositionId::new(1),
+            child_id: crate::ids::PositionId::new(2),
+            edge_id: crate::ids::EdgeId::new(3),
             move_uci: "e2e4".to_string(),
             move_san: "e4".to_string(),
         });
@@ -264,14 +267,13 @@ mod avro_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{RepertoireError, RepertoireMove};
+    use crate::{RepertoireError, RepertoireMove, ids::*};
 
     fn sample_move() -> RepertoireMove {
-        // Use dummy u64 values for IDs
         RepertoireMove {
-            parent_id: 100,
-            child_id: 101,
-            edge_id: 1,
+            parent_id: PositionId::new(100),
+            child_id: PositionId::new(101),
+            edge_id: EdgeId::new(1),
             move_uci: "e2e4".to_string(),
             move_san: "e4".to_string(),
         }
@@ -308,7 +310,7 @@ mod tests {
     #[test]
     fn test_remove_move_stub() {
         let mut rep = Repertoire::new("Test");
-        let err = rep.remove_move(42).unwrap_err();
+        let err = rep.remove_move(EdgeId::new(42)).unwrap_err();
         let RepertoireError::NotImplemented { operation } = err;
         assert_eq!(operation, "remove_move");
     }

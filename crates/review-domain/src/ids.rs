@@ -33,8 +33,18 @@ macro_rules! define_id {
         }
 
         impl From<$name> for u64 {
-            fn from(id: $name) -> Self {
-                id.0
+            fn from(value: $name) -> Self {
+                value.0
+            }
+        }
+
+        impl TryFrom<u128> for $name {
+            type Error = IdConversionError;
+
+            fn try_from(value: u128) -> Result<Self, Self::Error> {
+                u64::try_from(value)
+                    .map(Self::new)
+                    .map_err(|_| IdConversionError::Overflow { value })
             }
         }
 
