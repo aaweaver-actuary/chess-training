@@ -1,64 +1,33 @@
-//! Identifier newtypes that wrap raw `u64` values for stronger type safety.
+//! Strongly-typed identifier wrappers shared across the review domain crate.
 
-use std::fmt;
-use std::str::FromStr;
+use core::fmt;
 
-use thiserror::Error;
-
-/// Errors that can occur when constructing identifier newtypes from primitive values.
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
-pub enum IdentifierError {
-    /// The provided value cannot be represented within a `u64`.
-    #[error(
-        "{type_name} cannot be constructed from value {attempted_value} because it exceeds u64::MAX"
-    )]
-    Overflow {
-        /// Name of the identifier type that failed to construct.
-        type_name: &'static str,
-        /// The numeric value that overflowed the target identifier range.
-        attempted_value: u128,
-    },
-    /// Attempted to construct an identifier from a negative numeric value.
-    #[error("{type_name} cannot be constructed from a negative value")]
-    Negative {
-        /// Name of the identifier type that failed to construct.
-        type_name: &'static str,
-    },
-    /// Failed to parse an identifier from a string representation.
-    #[error("{type_name} failed to parse from '{input}'")]
-    Parse {
-        /// Name of the identifier type that failed to construct.
-        type_name: &'static str,
-        /// The provided input string.
-        input: String,
-    },
+/// Errors encountered when converting primitive numeric values into identifier wrappers.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum IdConversionError {
+    /// The provided value cannot be represented as an unsigned 64-bit integer.
+    #[error("identifier value {value} exceeds u64::MAX")]
+    Overflow { value: u128 },
 }
 
-macro_rules! define_identifier {
-    ($(#[$meta:meta])* $name:ident) => {
-        $(#[$meta])*
-        #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+macro_rules! define_id_type {
+    ($name:ident) => {
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[repr(transparent)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[cfg_attr(feature = "serde", serde(transparent))]
-        #[repr(transparent)]
         pub struct $name(u64);
 
         impl $name {
-            /// Creates a new identifier from the provided `u64`.
+            /// Creates a new identifier wrapper from a 64-bit unsigned integer.
             #[must_use]
             pub const fn new(value: u64) -> Self {
                 Self(value)
             }
 
-            /// Returns the inner `u64` representation of the identifier.
+            /// Returns the underlying raw identifier value.
             #[must_use]
-            pub const fn into_inner(self) -> u64 {
-                self.0
-            }
-
-            /// Returns the inner `u64` representation without moving the value.
-            #[must_use]
-            pub const fn as_u64(&self) -> u64 {
+            pub const fn get(self) -> u64 {
                 self.0
             }
         }
@@ -76,88 +45,43 @@ macro_rules! define_identifier {
         }
 
         impl TryFrom<u128> for $name {
-            type Error = IdentifierError;
+            type Error = IdConversionError;
 
             fn try_from(value: u128) -> Result<Self, Self::Error> {
                 u64::try_from(value)
                     .map(Self::new)
-                    .map_err(|_| IdentifierError::Overflow {
-                        type_name: stringify!($name),
-                        attempted_value: value,
-                    })
-            }
-        }
-
-        impl TryFrom<i128> for $name {
-            type Error = IdentifierError;
-
-            fn try_from(value: i128) -> Result<Self, Self::Error> {
-                match u64::try_from(value) {
-                    Ok(number) => Ok(Self::new(number)),
-                    Err(_) if value < 0 => Err(IdentifierError::Negative {
-                        type_name: stringify!($name),
-                    }),
-                    Err(_) => Err(IdentifierError::Overflow {
-                        type_name: stringify!($name),
-                        attempted_value: u128::try_from(value).unwrap_or(u128::MAX),
-                    }),
-                }
-            }
-        }
-
-        impl FromStr for $name {
-            type Err = IdentifierError;
-
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                if let Ok(signed) = s.parse::<i128>() {
-                    return Self::try_from(signed);
-                }
-
-                let value = s.parse::<u128>().map_err(|_| IdentifierError::Parse {
-                    type_name: stringify!($name),
-                    input: s.to_owned(),
-                })?;
-                Self::try_from(value)
+                    .map_err(|_| IdConversionError::Overflow { value })
             }
         }
 
         impl fmt::Display for $name {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "{}({})", stringify!($name), self.0)
+                write!(f, "{}", self.0)
             }
         }
     };
 }
 
-define_identifier!(/// Identifier for chess positions within repertoires.
-PositionId);
-define_identifier!(/// Identifier for edges connecting positions in repertoires.
-EdgeId);
-define_identifier!(/// Identifier for moves that belong to an edge transition.
-MoveId);
-define_identifier!(/// Identifier for review cards stored in persistence.
-CardId);
-
-define_identifier!(/// Identifier for learners/owners of review cards.
-LearnerId);
-
-define_identifier!(/// Identifier for unlock workflow records.
-UnlockId);
+define_id_type!(PositionId);
+define_id_type!(EdgeId);
+define_id_type!(MoveId);
+define_id_type!(CardId);
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn display_format_includes_type_name() {
-        let id = EdgeId::from(12_u64);
-        assert_eq!(id.to_string(), "EdgeId(12)");
+    fn new_returns_wrapper_with_expected_value() {
+        let id = CardId::new(42);
+        assert_eq!(id.get(), 42);
+        assert_eq!(u64::from(id), 42);
+        assert_eq!(CardId::from(42_u64), id);
     }
 
     #[test]
-    fn parsing_identifier_from_string_round_trips() {
-        let original = CardId::from(987_u64);
-        let parsed: CardId = "987".parse().expect("parse identifier");
-        assert_eq!(parsed, original);
+    fn display_renders_underlying_value() {
+        let id = PositionId::new(7);
+        assert_eq!(id.to_string(), "7");
     }
 }

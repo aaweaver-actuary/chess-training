@@ -16,6 +16,7 @@ pub struct Card<Id, Owner, Kind, State> {
 #[cfg(test)]
 mod tests {
     use super::Card;
+    use std::ptr;
 
     #[derive(Clone, Debug, PartialEq)]
     struct Owner(u64);
@@ -88,14 +89,12 @@ mod tests {
         let clone = original.clone();
 
         assert_eq!(original, clone);
-        assert!(std::ptr::eq(
-            std::ptr::from_ref(&original),
-            std::ptr::from_ref(&original)
-        ));
-        assert!(!std::ptr::eq(
-            std::ptr::from_ref(&original),
-            std::ptr::from_ref(&clone)
-        ));
+
+        let original_ptr = ptr::from_ref(&original);
+        let clone_ptr = ptr::from_ref(&clone);
+
+        assert!(ptr::eq(original_ptr, original_ptr));
+        assert!(!ptr::eq(original_ptr, clone_ptr));
     }
 
     #[test]
