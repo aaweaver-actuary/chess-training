@@ -3,7 +3,8 @@ use std::num::NonZeroU8;
 use chrono::NaiveDate;
 
 use review_domain::{
-    CardAggregate, CardKind, EdgeId, OpeningCard, StoredCardState, TacticCard, ValidGrade,
+    CardAggregate, CardKind, EdgeId, GradeError, OpeningCard, ReviewRequest, StoredCardState,
+    TacticCard, ValidGrade,
 };
 
 fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
