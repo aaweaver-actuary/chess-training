@@ -97,6 +97,48 @@ _Source:_ `crates/review-domain/src/unlock.rs`
 - Review storage writes `UnlockDetail` entries so historical logs remain compatible when the opening-edge payload grows.
 - Importer pipelines convert scheduler-oriented unlock data into `UnlockDetail`, ensuring unlock analytics consume the shared handle.
 
+### `IdKind`
+
+**Overview:** Enumerates the strongly typed identifiers used throughout the review domain. Provides readable labels that error messages and logs can rely on when conversions fail.
+
+**Definition:**
+```rust
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum IdKind {
+    Position,
+    Edge,
+    Move,
+    Card,
+    Learner,
+    Unlock,
+}
+```
+_Source:_ `crates/review-domain/src/ids.rs`
+
+**Usage in this repository:**
+- `crates/review-domain/src/ids.rs` emits `IdKind` values in conversion errors so callers can pinpoint which identifier wrapper overflowed or received an invalid value.
+- Integration tests under `crates/card-store/tests/identifier_wrappers.rs` assert that the kind labels render human-readable names like `"card"` when displayed.
+
+### `IdConversionError`
+
+**Overview:** Shared error type for converting raw integers into identifier wrappers. Tracks whether the issue was an overflow or a negative input and includes contextual metadata like the identifier kind and offending value.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum IdConversionError {
+    Overflow { kind: IdKind, value: u128, max: u64 },
+    Negative { kind: IdKind, value: i128 },
+}
+```
+_Source:_ `crates/review-domain/src/ids.rs`
+
+**Usage in this repository:**
+- The identifier macro in `crates/review-domain/src/ids.rs` returns `IdConversionError` from `TryFrom` implementations, ensuring overflow and negative values surface descriptive diagnostics.
+- Tests in `crates/review-domain/src/ids.rs` and `crates/card-store/tests/identifier_wrappers.rs` verify that the error conveys the expected bounds and identifier kind across success and failure paths.
+
 ### `ReviewRequest`
 
 **Overview:** Simple DTO representing the input a service sends when a learner grades a card. Storage implementations rely on it to update `StoredCardState` without exposing scheduler internals.
