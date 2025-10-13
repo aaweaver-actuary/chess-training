@@ -22,7 +22,8 @@ This file lists every `struct` and `enum` defined in the repository.
 | IngestConfig | struct | `crates/chess-training-pgn-import/src/config.rs#L41` |
 | IoError | struct | `crates/chess-training-pgn-import/src/errors.rs#L8` |
 | MoveContext | struct | `crates/chess-training-pgn-import/src/importer.rs#L234` |
-| OpeningCard | struct | `crates/review-domain/src/opening.rs#L38` |
+| OpeningCard | type alias | `crates/review-domain/src/opening/card.rs#L43` |
+| OpeningEdgeHandle | struct | `crates/review-domain/src/opening/card.rs#L11` |
 | OpeningEdge | struct | `crates/review-domain/src/opening.rs#L54` |
 | OpeningEdgeRecord | struct | `crates/chess-training-pgn-import/src/model.rs#L32` |
 | ParseError | struct | `crates/chess-training-pgn-import/src/errors.rs#L46` |
@@ -49,7 +50,7 @@ This file lists every `struct` and `enum` defined in the repository.
 | Tactic | struct | `crates/chess-training-pgn-import/src/model.rs#L73` |
 | TacticCard | struct | `crates/review-domain/src/tactic.rs#L5` |
 | TimedStore | struct | `crates/scheduler-core/tests/opening_scheduling.rs#L15` |
-| UnlockDetail | struct | `crates/review-domain/src/unlock.rs#L30` |
+| UnlockDetail | type alias | `crates/review-domain/src/unlock.rs#L30` |
 | UnlockRecord | struct | `crates/review-domain/src/unlock.rs#L7` |
 | UpsertOutcome | enum | `crates/chess-training-pgn-import/src/storage.rs#L26` |
 | ValidGrade | struct | `crates/card-store/src/memory/reviews.rs#L8` |

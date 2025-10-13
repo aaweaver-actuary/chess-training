@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use crate::{Card, CardKind, OpeningCard, StoredCardState, TacticCard, ValidGrade};
+use crate::{Card, CardKind, EdgeId, OpeningCard, StoredCardState, TacticCard, ValidGrade};
 
 type StoredReviewCard = Card<u64, String, CardKind<OpeningCard, TacticCard>, StoredCardState>;
 
@@ -16,7 +16,7 @@ impl CardAggregate {
     pub fn new_opening(
         card_id: u64,
         owner_id: impl Into<String>,
-        edge_id: u64,
+        edge_id: EdgeId,
         state: StoredCardState,
     ) -> Self {
         let kind = CardKind::Opening(OpeningCard::new(edge_id));
@@ -102,7 +102,8 @@ impl From<StoredReviewCard> for CardAggregate {
 impl From<CardAggregate> for StoredReviewCard {
     fn from(aggregate: CardAggregate) -> Self {
         aggregate.into_card()
-//! Aggregate representation of a review card with scheduling state.
+    }
+}
 
 use chrono::NaiveDate;
 
@@ -148,7 +149,7 @@ impl<Id, Owner, Opening, Tactic> CardAggregate<Id, Owner, Opening, Tactic> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{OpeningCard, ReviewRequest, TacticCard};
+    use crate::{EdgeId, OpeningCard, ReviewRequest, TacticCard};
     use chrono::NaiveDate;
     use std::num::NonZeroU8;
 
@@ -164,7 +165,7 @@ mod tests {
         CardAggregate {
             id: 1,
             owner_id: String::from("owner"),
-            kind: CardKind::Opening(OpeningCard::new(7)),
+            kind: CardKind::Opening(OpeningCard::new(EdgeId::new(7))),
             state: sample_state(),
         }
     }
