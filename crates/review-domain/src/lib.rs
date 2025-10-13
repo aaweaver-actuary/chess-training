@@ -19,7 +19,7 @@ pub mod unlock;
 
 /// Generic flashcard definition used across services.
 pub use card::Card;
-/// Aggregate card representation with scheduling helpers.
+/// Aggregate wrapper around the default card representation.
 pub use card_aggregate::CardAggregate;
 /// High-level classification of review cards.
 pub use card_kind::CardKind;

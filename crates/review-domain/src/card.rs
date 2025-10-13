@@ -88,9 +88,10 @@ mod tests {
 
         let clone = original.clone();
 
-        assert_eq!(original, clone);
         let original_ptr = std::ptr::from_ref(&original);
         let clone_ptr = std::ptr::from_ref(&clone);
+
+        assert_eq!(original, clone);
         assert!(std::ptr::eq(original_ptr, original_ptr));
         assert!(!std::ptr::eq(original_ptr, clone_ptr));
     }
@@ -108,7 +109,7 @@ mod tests {
         card.state.interval_days += 5;
         card.state.lapses += 1;
 
-        assert!((card.state.ease - 2.8).abs() <= f32::EPSILON);
+        crate::assert_is_close!(card.state.ease, 2.8, f32::EPSILON);
         assert_eq!(card.state.interval_days, 15);
         assert_eq!(card.state.lapses, 1);
     }
