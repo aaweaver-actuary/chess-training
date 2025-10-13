@@ -385,7 +385,7 @@ pub struct WasmScheduler {
 _Source:_ `crates/scheduler-wasm/src/bindings.rs`
 
 **Usage in this repository:**
-- The wasm bindings expose `WasmScheduler::build_queue_length` to JavaScript, allowing the web UI to request queue sizes without handling raw Rust types.
+- The wasm bindings expose `WasmScheduler::queue_length` to JavaScript, allowing the web UI to request queue sizes without handling raw Rust types.
 - `WasmScheduler::new` applies `SchedulerConfigPatch` values so JS callers can override defaults when initializing the module.
 
 ### `SchedulerConfigDto`

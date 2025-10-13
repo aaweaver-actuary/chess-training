@@ -41,8 +41,8 @@ impl WasmScheduler {
     }
 
     /// Builds the queue for the provided owner and reports the number of cards.
-    #[wasm_bindgen(js_name = "buildQueueLength")]
-    pub fn build_queue_length(&mut self, owner_id: &str, iso_date: &str) -> Result<u32, JsValue> {
+    #[wasm_bindgen(js_name = "queueLength")]
+    pub fn queue_length(&mut self, owner_id: &str, iso_date: &str) -> Result<u32, JsValue> {
         let owner_id = parse_owner_id(owner_id)?;
         let today = parse_iso_date(iso_date)?;
         let length = self.facade.queue_length(owner_id, today);
