@@ -29,7 +29,7 @@ Use verbs consistently to signal how an API behaves. When adding a new function,
 
 | Intent | Preferred Verb(s) | Avoid / Notes | Example |
 | ------ | ----------------- | ------------- | ------- |
-| Build a new value without side effects | `new_*`, `build_*`, `create_*` | Avoid `make_*` and `into_*` for constructors. `into_*` implies type conversion that consumes `self`. | `build_ingest_config` (preferred over `into_ingest_config`). |
+| Build a new value without side effects | `new_*`, `build_*`, `create_*` | Avoid `make_*` and `into_*` for constructors. `into_*` implies type conversion that consumes `self`. | `build_ingest_config`. |
 | Convert types while consuming the source | `into_*` | Only use when the method takes ownership and converts to another type. | `EdgeInput::into_edge`. |
 | Convert types without consuming | `as_*`, `to_*` | Follow Rust idioms: `to_*` returns owned data, `as_*` returns borrowed/cast views. | `Grade::to_u8`, `Grade::as_u8`. |
 | Persist or update storage | `upsert_*`, `record_*` | Avoid mixing `store_*`, `insert_*`, `save_*` for the same action. Pick the dominant verb in the module/crate and use it everywhere. | `upsert_canonical_position`, `record_unlock`. |

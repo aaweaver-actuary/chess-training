@@ -873,7 +873,7 @@ _Source:_ `crates/chess-training-pgn-import/src/config.rs`
 
 **Usage in this repository:**
 - `Importer::new` stores an `IngestConfig` copy to decide whether to record positions, tactics, or skip malformed FEN games.
-- `CliArgs::into_ingest_config` mutates `IngestConfig` based on CLI flags and configuration files, demonstrating how multiple configuration sources converge.
+- `CliArgs::build_ingest_config` mutates `IngestConfig` based on CLI flags and configuration files, demonstrating how multiple configuration sources converge.
 
 ### `FileConfig`
 
@@ -895,8 +895,8 @@ struct FileConfig {
 _Source:_ `crates/chess-training-pgn-import/src/config.rs`
 
 **Usage in this repository:**
-- `FileConfig::from_path` reads TOML files, turning them into optional overrides that `CliArgs::into_ingest_config` merges with CLI flags.
-- When inputs are provided via config file, `into_ingest_config` appends them to CLI-specified paths, ensuring both sources are respected.
+- `FileConfig::from_path` reads TOML files, turning them into optional overrides that `CliArgs::build_ingest_config` merges with CLI flags.
+- When inputs are provided via config file, `build_ingest_config` appends them to CLI-specified paths, ensuring both sources are respected.
 
 ### `CliArgs`
 
@@ -920,12 +920,12 @@ _Source:_ `crates/chess-training-pgn-import/src/config.rs`
 
 **Usage in this repository:**
 - `CliArgs::try_parse_from` builds the CLI using clap and parses arguments provided by integration tests or binaries.
-- `CliArgs::into_ingest_config` validates that at least one PGN input is provided (raising `ConfigError::NoInputs` otherwise) and merges CLI plus file-driven configuration.
+- `CliArgs::build_ingest_config` validates that at least one PGN input is provided (raising `ConfigError::NoInputs` otherwise) and merges CLI plus file-driven configuration.
 
 **Mermaid diagram:**
 ```mermaid
 flowchart LR
-    CLI[CliArgs] -->|into_ingest_config| CFG[IngestConfig]
+    CLI[CliArgs] -->|build_ingest_config| CFG[IngestConfig]
     FileConfig -->|overrides| CFG
     CFG -->|controls| Importer
     Importer -->|produces| Metrics[ImportMetrics]

@@ -17,7 +17,7 @@ fn cli_parses_inputs_with_default_config() {
     .expect("CLI parsing should succeed");
 
     let (config, inputs) = cli
-        .into_ingest_config()
+        .build_ingest_config()
         .expect("CLI conversion should succeed");
 
     assert_eq!(
@@ -36,7 +36,7 @@ fn cli_requires_at_least_one_input() {
         .expect("parsing should succeed to allow config-file usage");
 
     let err = cli
-        .into_ingest_config()
+        .build_ingest_config()
         .expect_err("conversion should fail when no inputs are provided");
 
     let is_no_inputs = |error: &ConfigError| matches!(error, ConfigError::NoInputs);
@@ -74,7 +74,7 @@ fn cli_applies_boolean_and_depth_overrides() {
     .expect("CLI parsing should succeed with overrides");
 
     let (config, inputs) = cli
-        .into_ingest_config()
+        .build_ingest_config()
         .expect("CLI conversion should succeed with overrides");
 
     assert_eq!(inputs, vec![PathBuf::from("games/foo.pgn")]);
@@ -142,7 +142,7 @@ tactic_from_fen = false
     .expect("CLI parsing should succeed with config file");
 
     let (config, inputs) = cli
-        .into_ingest_config()
+        .build_ingest_config()
         .expect("loader should merge file and CLI sources");
 
     assert_eq!(
@@ -183,7 +183,7 @@ fn config_loader_reports_io_errors_with_context() {
     .expect("CLI parsing should allow nonexistent config paths");
 
     let err = cli
-        .into_ingest_config()
+        .build_ingest_config()
         .expect_err("missing file should surface as an IO error");
 
     if let ConfigError::Io(io_error) = &err {
@@ -229,7 +229,7 @@ fn config_loader_reports_parse_errors_with_context() {
     .expect("CLI parsing should allow invalid config contents");
 
     let err = cli
-        .into_ingest_config()
+        .build_ingest_config()
         .expect_err("invalid TOML should surface as a parse error");
 
     if let ConfigError::Parse(parse_error) = &err {
@@ -280,7 +280,7 @@ max_rav_depth = 5
     .expect("CLI parsing should succeed when relying on config inputs");
 
     let (config, inputs) = cli
-        .into_ingest_config()
+        .build_ingest_config()
         .expect("config file should supply inputs and flags");
 
     assert_eq!(inputs, vec![PathBuf::from("config-only.pgn")]);
@@ -318,7 +318,7 @@ fn config_loader_handles_missing_optional_fields() {
     .expect("CLI parsing should succeed with config defaults");
 
     let (config, inputs) = cli
-        .into_ingest_config()
+        .build_ingest_config()
         .expect("loader should allow missing optional fields");
 
     assert_eq!(inputs, vec![PathBuf::from("cli-only.pgn")]);
