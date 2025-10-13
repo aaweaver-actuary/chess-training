@@ -26,8 +26,8 @@ pub use card_state::StoredCardState;
 pub use grade::{GradeError, ValidGrade};
 /// Deterministic hashing helper backed by BLAKE3.
 pub use hash::hash64;
-/// Strongly typed identifier wrappers for positions, edges, moves, and cards.
-pub use ids::{CardId, EdgeId, MoveId, PositionId};
+/// Identifier wrappers used throughout the review domain.
+pub use ids::{CardId, EdgeId, IdentifierError, LearnerId, MoveId, PositionId, UnlockId};
 /// Opening-focused request and payload types.
 pub use opening::{EdgeInput, OpeningCard, OpeningEdge};
 /// Normalized chess position representation and related errors.
