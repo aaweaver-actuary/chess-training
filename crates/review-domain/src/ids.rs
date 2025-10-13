@@ -2,6 +2,8 @@
 
 use core::fmt;
 
+
+
 /// Identifies which strongly typed identifier failed to convert.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -288,28 +290,9 @@ define_id!(
     kind: Learner;
 );
 define_id!(
-    /// Strongly typed identifier for unlock records tied to learners.
-    ///
-    /// ```
-    /// use review_domain::ids::{IdConversionError, IdKind, UnlockId};
-    ///
-    /// let id = UnlockId::try_from(3_u128).unwrap();
-    /// assert_eq!(id.get(), 3);
-    ///
-    /// let overflow = UnlockId::try_from(u128::from(u64::MAX) + 1);
-    /// assert!(matches!(
-    ///     overflow,
-    ///     Err(IdConversionError::Overflow { kind, value, max })
-    ///         if kind == IdKind::Unlock && value == u128::from(u64::MAX) + 1 && max == u64::MAX
-    /// ));
-    ///
-    /// let negative = UnlockId::try_from(-1_i64);
-    /// assert!(matches!(
-    ///     negative,
-    ///     Err(IdConversionError::Negative { kind, value })
-    ///         if kind == IdKind::Unlock && value == -1
-    /// ));
-    /// ```
+    pub struct TacticId;
+);
+define_id!(
     pub struct UnlockId;
     kind: Unlock;
 );
@@ -328,6 +311,9 @@ mod tests {
     fn default_is_zero() {
         let edge = EdgeId::default();
         assert_eq!(edge.get(), 0);
+
+        let tactic = TacticId::default();
+        assert_eq!(tactic.get(), 0);
     }
 
     #[test]

@@ -65,11 +65,11 @@ mod tests {
     }
 
     fn increment_tactic(card: TacticCard) -> TacticCard {
-        TacticCard::new(card.tactic_id + 1)
+        TacticCard::new(review_domain::TacticId::new(card.tactic_id.get() + 1))
     }
 
-    fn tactic_identifier(card: TacticCard) -> u64 {
-        card.tactic_id + 1
+    fn tactic_identifier(card: TacticCard) -> review_domain::TacticId {
+        review_domain::TacticId::new(card.tactic_id.get() + 1)
     }
 
     #[test]
@@ -95,19 +95,23 @@ mod tests {
             CardKind::Opening(card) if card.edge_id == EdgeId::new(8)
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(13))
+            GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(
+                review_domain::TacticId::new(13)
+            ))
                 .map_opening(increment_opening),
-            GenericCardKind::Tactic(tactic) if tactic.tactic_id == 13
+            GenericCardKind::Tactic(tactic) if tactic.tactic_id == review_domain::TacticId::new(13)
         ));
 
-        let tactic_kind = CardKind::Tactic(TacticCard::new(11));
+        let tactic_kind = CardKind::Tactic(TacticCard::new(review_domain::TacticId::new(11)));
         assert!(matches!(
             tactic_kind.clone().map_tactic(tactic_identifier),
-            GenericCardKind::Tactic(identifier) if identifier == 12
+            GenericCardKind::Tactic(identifier)
+                if identifier == review_domain::TacticId::new(12)
         ));
         assert!(matches!(
             tactic_kind.as_ref(),
-            GenericCardKind::Tactic(payload) if payload.tactic_id == 11
+            GenericCardKind::Tactic(payload)
+                if payload.tactic_id == review_domain::TacticId::new(11)
         ));
         assert!(matches!(
             GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(EdgeId::new(5)))
@@ -124,14 +128,20 @@ mod tests {
             GenericCardKind::Opening(reference) if reference.edge_id == EdgeId::new(9)
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(21))
+            GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(
+                review_domain::TacticId::new(21)
+            ))
                 .map_tactic(increment_tactic),
-            GenericCardKind::Tactic(card) if card.tactic_id == 22
+            GenericCardKind::Tactic(card)
+                if card.tactic_id == review_domain::TacticId::new(22)
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(17))
+            GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(
+                review_domain::TacticId::new(17)
+            ))
                 .map_tactic(tactic_identifier),
-            GenericCardKind::Tactic(identifier) if identifier == 18
+            GenericCardKind::Tactic(identifier)
+                if identifier == review_domain::TacticId::new(18)
         ));
 
         let edge = OpeningEdge::new(1, 2, 3, "e2e4", "e4");
