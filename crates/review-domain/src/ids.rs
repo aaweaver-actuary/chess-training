@@ -50,9 +50,15 @@ macro_rules! define_identifier {
                 Self(value)
             }
 
-            /// Returns the underlying numeric value.
+            /// Returns the inner `u64` representation of the identifier.
             #[must_use]
-            pub const fn get(self) -> u64 {
+            pub const fn into_inner(self) -> u64 {
+                self.0
+            }
+
+            /// Returns the inner `u64` representation without moving the value.
+            #[must_use]
+            pub const fn as_u64(&self) -> u64 {
                 self.0
             }
         }
