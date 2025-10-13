@@ -31,6 +31,43 @@ fn remove_move_stub_returns_expected_error() {
     assert_eq!(result, Err(RepertoireError::not_implemented("remove_move")));
 }
 
+#[test]
+fn builder_supports_composing_repertoire() {
+    let repertoire = RepertoireBuilder::new("builder test")
+        .add_move(RepertoireMove::new(10, 20, 21, "e2e4", "e4"))
+        .extend([RepertoireMove::new(11, 21, 22, "g1f3", "Nf3")])
+        .build();
+
+    assert_eq!(repertoire.name(), "builder test");
+    assert_eq!(repertoire.moves().len(), 2);
+    assert_eq!(repertoire.moves()[0].move_uci, "e2e4");
+    assert_eq!(repertoire.moves()[1].move_san, "Nf3");
+}
+
+#[test]
+fn repertoire_collect_from_iterator_preserves_moves() {
+    let moves = vec![
+        RepertoireMove::new(1, 1, 2, "e2e4", "e4"),
+        RepertoireMove::new(2, 2, 3, "d2d4", "d4"),
+    ];
+
+    let repertoire: Repertoire = moves.clone().into_iter().collect();
+
+    assert_eq!(repertoire.name(), "");
+    assert_eq!(repertoire.moves(), &moves[..]);
+}
+
+#[test]
+fn repertoire_move_constructor_accepts_string_inputs() {
+    let mv = RepertoireMove::new(7, 8, 9, String::from("e7e5"), String::from("...e5"));
+
+    assert_eq!(mv.edge_id, 7);
+    assert_eq!(mv.parent_id, 8);
+    assert_eq!(mv.child_id, 9);
+    assert_eq!(mv.move_uci, "e7e5");
+    assert_eq!(mv.move_san, "...e5");
+}
+
 #[cfg(feature = "serde")]
 #[test]
 fn repertoire_serializes_to_json() {
