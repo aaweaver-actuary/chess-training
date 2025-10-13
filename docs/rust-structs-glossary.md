@@ -639,7 +639,7 @@ _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 **Usage in this repository:**
 - `crates/chess-training-pgn-import/src/importer.rs` builds `OpeningEdgeRecord` when processing SAN moves, allowing analytics to trace which event produced a move.
-- `ImportInMemoryStore::upsert_edge` stores these records, letting tests assert that repeated imports replace rather than duplicate edges.
+- `InMemoryImportStore::upsert_edge` stores these records, letting tests assert that repeated imports replace rather than duplicate edges.
 
 ### `RepertoireEdge`
 
@@ -658,7 +658,7 @@ _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 **Usage in this repository:**
 - Importer inserts `RepertoireEdge` entries whenever it records an opening move, linking the move back to the learner (`owner`) and repertoire grouping.
-- `ImportInMemoryStore::repertoire_edges` reconstructs `RepertoireEdge` instances from its internal set so tests can verify contents easily.
+- `InMemoryImportStore::repertoire_edges` reconstructs `RepertoireEdge` instances from its internal set so tests can verify contents easily.
 
 ### `Tactic`
 
@@ -764,7 +764,7 @@ _Source:_ `crates/chess-training-pgn-import/src/importer.rs`
 
 ### `Importer<S: Storage>`
 
-**Overview:** Orchestrates PGN ingestion: parsing games, updating storage, and capturing metrics. Parameterized over a storage implementation so tests can plug in `ImportInMemoryStore` while production can use real databases.
+**Overview:** Orchestrates PGN ingestion: parsing games, updating storage, and capturing metrics. Parameterized over a storage implementation so tests can plug in `InMemoryImportStore` while production can use real databases.
 
 **Definition:**
 ```rust
@@ -777,7 +777,7 @@ pub struct Importer<S: Storage> {
 _Source:_ `crates/chess-training-pgn-import/src/importer.rs`
 
 **Usage in this repository:**
-- CLI workflows instantiate `Importer::new_in_memory` for smoke tests, then call `ingest_pgn_str` with PGN text.
+- CLI workflows instantiate `Importer::with_in_memory_store` for smoke tests, then call `ingest_pgn_str` with PGN text.
 - After ingestion, `Importer::finalize` returns the storage backend and metrics, letting callers inspect inserted data or persist the store.
 
 ### `GameContext`
@@ -839,14 +839,14 @@ _Source:_ `crates/chess-training-pgn-import/src/importer.rs`
 - `parse_games` produces `RawGame` instances from PGN text, which `Importer::ingest_pgn_str` iterates over.
 - Tests inspect `RawGame::tag` results to ensure PGN header parsing preserves case-insensitive keys.
 
-### `ImportInMemoryStore`
+### `InMemoryImportStore`
 
 **Overview:** In-memory storage backend for the PGN importer. Uses `BTreeMap`/`BTreeSet` collections to track positions, edges, repertoire associations, and tactics without requiring external databases.
 
 **Definition:**
 ```rust
 #[derive(Default)]
-pub struct ImportInMemoryStore {
+pub struct InMemoryImportStore {
     positions: BTreeMap<u64, Position>,
     edges: BTreeMap<u64, OpeningEdgeRecord>,
     repertoire_edges: BTreeSet<(String, String, u64)>,
@@ -856,7 +856,7 @@ pub struct ImportInMemoryStore {
 _Source:_ `crates/chess-training-pgn-import/src/storage.rs`
 
 **Usage in this repository:**
-- `Importer::new_in_memory` wires the importer to an `ImportInMemoryStore`, making integration tests deterministic and side-effect free.
+- `Importer::with_in_memory_store` wires the importer to an `InMemoryImportStore`, making integration tests deterministic and side-effect free.
 - Accessor methods (`positions`, `edges`, `tactics`, `repertoire_edges`) let tests validate the importer produced the expected records.
 
 ### `IoError`
@@ -972,7 +972,7 @@ flowchart LR
     CFG -->|controls| Importer
     Importer -->|produces| Metrics[ImportMetrics]
     Importer -->|uses| StorageTrait[Storage]
-    StorageTrait -.-> ImportInMemoryStore
+    StorageTrait -.-> InMemoryImportStore
 ```
 
 ## Testing and Tooling Helpers

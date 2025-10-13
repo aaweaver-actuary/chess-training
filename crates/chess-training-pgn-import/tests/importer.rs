@@ -1,6 +1,6 @@
 use chess_training_pgn_import::config::IngestConfig;
 use chess_training_pgn_import::importer::{ImportError, Importer};
-use chess_training_pgn_import::storage::ImportInMemoryStore;
+use chess_training_pgn_import::storage::InMemoryImportStore;
 
 fn sample_pgn() -> &'static str {
     r#"[Event "Opening"]
@@ -28,7 +28,7 @@ fn sample_pgn() -> &'static str {
 #[test]
 fn importer_builds_opening_trie_and_tactics() {
     let config = IngestConfig::default();
-    let store = ImportInMemoryStore::default();
+    let store = InMemoryImportStore::default();
     let mut importer = Importer::new(config, store);
 
     importer
@@ -80,7 +80,7 @@ fn importer_respects_require_setup_flag() {
         ..IngestConfig::default()
     };
 
-    let store = ImportInMemoryStore::default();
+    let store = InMemoryImportStore::default();
     let mut importer = Importer::new(config, store);
 
     let pgn = r#"[Event "Tactic"]
@@ -107,7 +107,7 @@ fn importer_skips_malformed_fens_when_configured() {
         ..IngestConfig::default()
     };
 
-    let mut importer = Importer::new_in_memory(config);
+    let mut importer = Importer::with_in_memory_store(config);
 
     let malformed = r#"[Event "Invalid"]
 [SetUp "1"]
@@ -139,7 +139,7 @@ fn importer_skips_malformed_fens_when_configured() {
 
 #[test]
 fn importer_reports_illegal_san_tokens() {
-    let mut importer = Importer::new_in_memory(IngestConfig::default());
+    let mut importer = Importer::with_in_memory_store(IngestConfig::default());
 
     let bad_san = r#"[Event "Corrupt"]
 
@@ -160,7 +160,7 @@ fn importer_reports_illegal_san_tokens() {
 
 #[test]
 fn importer_reports_contextual_illegal_san() {
-    let mut importer = Importer::new_in_memory(IngestConfig::default());
+    let mut importer = Importer::with_in_memory_store(IngestConfig::default());
 
     let impossible_move = r#"[Event "Illegal"]
 
@@ -186,7 +186,7 @@ fn importer_does_not_emit_tactics_when_disabled() {
         ..IngestConfig::default()
     };
 
-    let mut importer = Importer::new_in_memory(config);
+    let mut importer = Importer::with_in_memory_store(config);
 
     let fen_game = r#"[Event "Tactic"]
 [SetUp "1"]
@@ -211,7 +211,7 @@ fn importer_does_not_emit_tactics_when_disabled() {
 
 #[test]
 fn importer_ignores_empty_inputs() {
-    let mut importer = Importer::new_in_memory(IngestConfig::default());
+    let mut importer = Importer::with_in_memory_store(IngestConfig::default());
 
     importer
         .ingest_pgn_str("owner", "main", " \n\n")
@@ -225,7 +225,7 @@ fn importer_ignores_empty_inputs() {
 
 #[test]
 fn importer_errors_on_invalid_fen_without_skip() {
-    let mut importer = Importer::new_in_memory(IngestConfig::default());
+    let mut importer = Importer::with_in_memory_store(IngestConfig::default());
 
     let malformed = r#"[Event "Invalid"]
 [SetUp "1"]
