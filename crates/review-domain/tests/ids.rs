@@ -48,3 +48,13 @@ fn identifiers_serialize_as_plain_numbers() {
     let roundtrip: EdgeId = serde_json::from_str(&serialized).expect("deserialize id");
     assert_eq!(roundtrip, id);
 }
+
+#[test]
+fn parsing_negative_string_reports_negative_error() {
+    let result = "-5".parse::<MoveId>();
+
+    assert!(matches!(
+        result,
+        Err(IdentifierError::Negative { type_name }) if type_name == "MoveId"
+    ));
+}

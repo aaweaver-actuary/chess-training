@@ -40,6 +40,7 @@ macro_rules! define_identifier {
         #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[cfg_attr(feature = "serde", serde(transparent))]
+        #[repr(transparent)]
         pub struct $name(u64);
 
         impl $name {
@@ -102,6 +103,10 @@ macro_rules! define_identifier {
             type Err = IdentifierError;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
+                if let Ok(signed) = s.parse::<i128>() {
+                    return Self::try_from(signed);
+                }
+
                 let value = s.parse::<u128>().map_err(|_| IdentifierError::Parse {
                     type_name: stringify!($name),
                     input: s.to_owned(),
