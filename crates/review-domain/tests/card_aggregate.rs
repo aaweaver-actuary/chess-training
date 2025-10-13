@@ -3,8 +3,7 @@ use std::num::NonZeroU8;
 use chrono::NaiveDate;
 
 use review_domain::{
-    CardAggregate, CardKind, GradeError, OpeningCard, ReviewRequest, StoredCardState, TacticCard,
-    ValidGrade,
+    CardAggregate, CardKind, EdgeId, OpeningCard, StoredCardState, TacticCard, ValidGrade,
 };
 
 fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -19,12 +18,12 @@ fn sample_state() -> StoredCardState {
 #[test]
 fn new_opening_aggregate_wraps_underlying_card() {
     let state = sample_state();
-    let aggregate = CardAggregate::new_opening(11, "owner-29", 97, state.clone());
+    let aggregate = CardAggregate::new_opening(11, "owner-29", EdgeId::new(97), state.clone());
 
     assert_eq!(aggregate.id(), 11);
     assert_eq!(aggregate.owner_id(), "owner-29");
     match aggregate.kind() {
-        CardKind::Opening(payload) => assert_eq!(*payload, OpeningCard::new(97)),
+        CardKind::Opening(payload) => assert_eq!(*payload, OpeningCard::new(EdgeId::new(97))),
         CardKind::Tactic(_) => panic!("expected opening card"),
     }
     assert_eq!(aggregate.state(), &state);
@@ -32,7 +31,10 @@ fn new_opening_aggregate_wraps_underlying_card() {
     let card = aggregate.as_card();
     assert_eq!(card.id, 11);
     assert_eq!(card.owner_id, "owner-29");
-    assert_eq!(card.kind, CardKind::Opening(OpeningCard::new(97)));
+    assert_eq!(
+        card.kind,
+        CardKind::Opening(OpeningCard::new(EdgeId::new(97)))
+    );
 }
 
 #[test]
@@ -99,7 +101,7 @@ fn apply_review_request_delegates_to_helper() {
 #[test]
 fn into_card_recovers_generic_representation() {
     let state = sample_state();
-    let aggregate = CardAggregate::new_opening(1, "owner-2", 3, state.clone());
+    let aggregate = CardAggregate::new_opening(1, "owner-2", EdgeId::new(3), state.clone());
 
     let card = aggregate.into_card();
     assert_eq!(
@@ -107,7 +109,7 @@ fn into_card_recovers_generic_representation() {
         review_domain::Card {
             id: 1,
             owner_id: "owner-2".into(),
-            kind: CardKind::Opening(OpeningCard::new(3)),
+            kind: CardKind::Opening(OpeningCard::new(EdgeId::new(3))),
             state,
         }
     );

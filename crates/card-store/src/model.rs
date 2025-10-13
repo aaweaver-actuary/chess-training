@@ -3,7 +3,9 @@
 use std::collections::{HashMap, HashSet};
 
 /// Re-export shared review-domain types to simplify crate consumers.
-pub use review_domain::{EdgeInput, OpeningCard, ReviewRequest, StoredCardState, TacticCard};
+pub use review_domain::{
+    EdgeId, EdgeInput, OpeningCard, ReviewRequest, StoredCardState, TacticCard,
+};
 
 use review_domain::{
     Card as GenericCard, CardKind as GenericCardKind, ChessPosition, OpeningEdge,
@@ -55,10 +57,10 @@ pub fn card_id_for_tactic(owner_id: &str, tactic_id: u64) -> u64 {
 mod tests {
     use super::*;
     use review_domain::CardKind as GenericCardKind;
-    use review_domain::UnlockDetail;
+    use review_domain::{EdgeId, UnlockDetail};
 
     fn increment_opening(card: OpeningCard) -> OpeningCard {
-        OpeningCard::new(card.edge_id + 1)
+        OpeningCard::new(EdgeId::new(card.edge_id.get() + 1))
     }
 
     fn increment_tactic(card: TacticCard) -> TacticCard {
@@ -85,11 +87,11 @@ mod tests {
 
     #[test]
     fn card_kind_helpers_cover_review_domain_types() {
-        let opening = OpeningCard::new(7);
+        let opening = OpeningCard::new(EdgeId::new(7));
         let mapped_opening = CardKind::Opening(opening).map_opening(increment_opening);
         assert!(matches!(
             mapped_opening,
-            CardKind::Opening(card) if card.edge_id == 8
+            CardKind::Opening(card) if card.edge_id == EdgeId::new(8)
         ));
         assert!(matches!(
             GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(13))
@@ -107,18 +109,18 @@ mod tests {
             GenericCardKind::Tactic(payload) if payload.tactic_id == 11
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(5))
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(EdgeId::new(5)))
                 .map_opening(increment_opening),
-            GenericCardKind::Opening(card) if card.edge_id == 6
+            GenericCardKind::Opening(card) if card.edge_id == EdgeId::new(6)
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(5))
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(EdgeId::new(5)))
                 .map_tactic(increment_tactic),
-            GenericCardKind::Opening(card) if card.edge_id == 5
+            GenericCardKind::Opening(card) if card.edge_id == EdgeId::new(5)
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(9)).as_ref(),
-            GenericCardKind::Opening(reference) if reference.edge_id == 9
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(EdgeId::new(9))).as_ref(),
+            GenericCardKind::Opening(reference) if reference.edge_id == EdgeId::new(9)
         ));
         assert!(matches!(
             GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(21))
@@ -137,10 +139,10 @@ mod tests {
 
         let unlock = UnlockRecord {
             owner_id: String::from("owner"),
-            detail: UnlockDetail::new(9),
+            detail: UnlockDetail::new(EdgeId::new(9)),
             unlocked_on: chrono::NaiveDate::from_ymd_opt(2023, 1, 1).expect("valid date"),
         };
-        let mapped_unlock = unlock.map_detail(|detail| detail.edge_id + 1);
-        assert_eq!(mapped_unlock.detail, 10);
+        let mapped_unlock = unlock.map_detail(|detail| detail.edge_id);
+        assert_eq!(mapped_unlock.detail, EdgeId::new(9));
     }
 }

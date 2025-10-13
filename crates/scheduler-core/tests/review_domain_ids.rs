@@ -26,7 +26,7 @@ fn scheduler_core_uses_review_domain_identifier_wrappers() {
         negative,
         Err(IdentifierError::Negative { type_name }) if type_name == "MoveId"
     ));
-
+}
 
 #[test]
 fn review_domain_ids_are_available_in_scheduler_core() {

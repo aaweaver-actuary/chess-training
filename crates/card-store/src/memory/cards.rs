@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use chrono::NaiveDate;
 
-use crate::model::{Card, Edge, ReviewRequest, StoredCardState};
+use crate::model::{Card, Edge, EdgeId, ReviewRequest, StoredCardState};
 use crate::store::StoreError;
 use review_domain::{CardAggregate, CardKind as GenericCardKind};
 
@@ -57,7 +57,7 @@ fn validate_existing_opening_card(
     if card.owner_id == owner_id
         && matches!(
             card.kind.as_ref(),
-            GenericCardKind::Opening(opening) if opening.edge_id == edge.id
+            GenericCardKind::Opening(opening) if opening.edge_id == EdgeId::new(edge.id)
         )
     {
         Ok(())
@@ -67,13 +67,13 @@ fn validate_existing_opening_card(
 }
 
 fn build_opening_card(owner_id: &str, edge: &Edge, state: StoredCardState, card_id: u64) -> Card {
-    CardAggregate::new_opening(card_id, owner_id, edge.id, state).into()
+    CardAggregate::new_opening(card_id, owner_id, EdgeId::new(edge.id), state).into()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{CardKind, OpeningCard};
+    use crate::model::{CardKind, EdgeId, OpeningCard};
     use std::collections::HashMap;
     use std::num::NonZeroU8;
 
@@ -128,7 +128,9 @@ mod tests {
             sample_card_state(naive_date(2023, 1, 1)),
             10,
         );
-        different_owner.kind = CardKind::Opening(OpeningCard { edge_id: 99 });
+        different_owner.kind = CardKind::Opening(OpeningCard {
+            edge_id: EdgeId::new(99),
+        });
         cards.insert(10, different_owner);
 
         let err = store_opening_card(

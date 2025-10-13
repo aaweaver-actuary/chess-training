@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use crate::chess_position::ChessPosition;
 use crate::errors::PositionError;
-use crate::model::{Card, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
+use crate::model::{Card, Edge, EdgeId, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
 
 /// Unified error type returned by [`CardStore`] implementations.
 #[derive(Debug, Error, PartialEq)]
@@ -26,7 +26,7 @@ pub enum StoreError {
     InvalidGrade { grade: u8 },
     /// Unlock record already exists for the day.
     #[error("duplicate unlock for edge {edge} on {day}")]
-    DuplicateUnlock { edge: u64, day: NaiveDate },
+    DuplicateUnlock { edge: EdgeId, day: NaiveDate },
     /// Underlying in-memory synchronization primitive was poisoned.
     #[error("lock on {resource} store data has been poisoned")]
     PoisonedLock { resource: &'static str },
