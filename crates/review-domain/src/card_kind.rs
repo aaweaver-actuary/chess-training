@@ -1,7 +1,11 @@
 //! Generic flashcard classification helpers shared across services.
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// Describes the high-level type of a study card.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum CardKind<Opening, Tactic> {
     /// Card reviewing an opening concept.
     Opening(Opening),

@@ -4,12 +4,16 @@ use std::num::NonZeroU8;
 
 use chrono::{Duration, NaiveDate};
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 use crate::ValidGrade;
 
 pub mod invariants;
 
 /// Mutable scheduling state of a card stored by review services.
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct StoredCardState {
     /// Date on which the card becomes due.
     pub due_on: NaiveDate,
