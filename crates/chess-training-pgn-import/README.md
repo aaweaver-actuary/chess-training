@@ -19,7 +19,7 @@ flowchart TD
 
 * `IngestConfig` defaults that capture toggleable behaviours (include FEN games in the opening trie, require `[SetUp]`, limit recursive annotation depth, etc.).
 * `CliArgs` parsing built on `clap` that merges TOML configuration files with repeated `--input` flags.
-* `Importer<S>` generic over a `Storage` backend. The provided `ImportInMemoryStore` records normalized positions, edges, repertoire memberships, and tactics while tracking metrics about inserted records.
+* `Importer<S>` generic over a `Storage` backend. The provided `InMemoryImportStore` records normalized positions, edges, repertoire memberships, and tactics while tracking metrics about inserted records.
 * Precise error types for configuration failures, PGN parsing issues, malformed FEN tags, and illegal SAN moves.
 
 ## Module overview
@@ -38,9 +38,9 @@ flowchart TD
 Embed the importer into another binary or test harness:
 
 ```rust
-use chess_training_pgn_import::{ImportInMemoryStore, Importer, IngestConfig};
+use chess_training_pgn_import::{Importer, InMemoryImportStore, IngestConfig};
 
-let mut importer = Importer::new_in_memory(IngestConfig::default());
+let mut importer = Importer::with_in_memory_store(IngestConfig::default());
 let sicilian = r#"[Event "Training"]
 1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 *"#;
 importer

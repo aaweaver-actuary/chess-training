@@ -80,7 +80,7 @@ Everything here orchestrates saving/retrieving positions, edges, cards, and unlo
 
 - **`InMemoryCardStore`** and helper lock guards (`crates/card-store/src/memory/in_memory_card_store.rs`)
   - Provide a thread-safe demo backend using RwLocks; wrap lock acquisition in `*_read`/`*_write` helpers to centralize poison handling.
-  - *Related items:* `ImportInMemoryStore` (PGN importer) and scheduler-core’s `InMemoryStore`. Naming varies between `InMemoryCardStore` (noun) and `ImportInMemoryStore` (verb + noun). Aligning on `InMemory*Store` would increase predictability (e.g., `PgnInMemoryStore`).
+  - *Related items:* `InMemoryImportStore` (PGN importer) and scheduler-core’s `InMemoryStore`. Naming now aligns on the `InMemory*Store` prefix across fixtures.
 
 - **`store_opening_card`, `collect_due_cards_for_owner`, `borrow_card_for_review`, `validate_existing_opening_card`, `build_opening_card`** (`crates/card-store/src/memory/cards.rs`)
   - Manage the card map by inserting or reusing deterministic cards, retrieving due cards, and validating collisions.
@@ -102,9 +102,9 @@ Everything here orchestrates saving/retrieving positions, edges, cards, and unlo
   - Insert unlock records unless a duplicate date/edge combination already exists.
   - *Related items:* Scheduler-core’s `record_unlock` uses the `record_*` prefix; aligning on `record_unlock` vs. `insert_unlock` would help cross-crate comprehension.
 
-- **`Storage` trait, `UpsertOutcome`, `ImportInMemoryStore`** (`crates/chess-training-pgn-import/src/storage.rs`)
+- **`Storage` trait, `UpsertOutcome`, `InMemoryImportStore`** (`crates/chess-training-pgn-import/src/storage.rs`)
   - Wrap card-store persistence behind a simpler interface tailored for importer needs, tracking whether upserts inserted or replaced.
-  - *Related items:* `CardStore` trait shares method names (`upsert_*`). `ImportInMemoryStore` parallels other in-memory stores but adds `*_records` getters; consider `into_*` naming for getters returning owned data to distinguish from clones.
+  - *Related items:* `CardStore` trait shares method names (`upsert_*`). `InMemoryImportStore` parallels other in-memory stores but adds `*_records` getters; consider `into_*` naming for getters returning owned data to distinguish from clones.
 
 - **Scheduler-core `CardStore` trait & `InMemoryStore`** (`crates/scheduler-core/src/store.rs`)
   - Handle SM-2 card persistence, due card queries, unlock candidate retrieval, and unlock logging.
@@ -119,7 +119,7 @@ Everything here orchestrates saving/retrieving positions, edges, cards, and unlo
 
 These items transform PGN text into stored openings and tactics.
 
-- **`Importer` struct & methods (`new`, `new_in_memory`, `ingest_pgn_str`, `process_game`, `ensure_setup_requirement_for_fen_games`, `initialize_game_context`, `load_initial_board_from_optional_fen`, `store_opening_data_if_requested`, `finalize_tactic_if_requested`)** (`crates/chess-training-pgn-import/src/importer.rs`)
+- **`Importer` struct & methods (`new`, `with_in_memory_store`, `ingest_pgn_str`, `process_game`, `ensure_setup_requirement_for_fen_games`, `initialize_game_context`, `load_initial_board_from_optional_fen`, `store_opening_data_if_requested`, `finalize_tactic_if_requested`)** (`crates/chess-training-pgn-import/src/importer.rs`)
   - Drive the ingest pipeline, enforcing configuration (e.g., `[SetUp]` tags), tracking per-game state, and writing to storage.
   - *Related items:* `GameContext` and `MoveContext` methods handle per-move state. Method prefixes vary between `ensure_`, `initialize_`, `load_`, `store_`, `finalize_`; overall consistent with their responsibilities.
 
@@ -136,7 +136,7 @@ These items transform PGN text into stored openings and tactics.
   - *Related items:* `parse_games`, `parse_tag`, `sanitize_tokens`, `sanitize_token`, `load_fen`, `move_to_uci`, `board_to_ply`, `position_from_board`. Parsers use `parse_*` or `sanitize_*`, consistently reflecting their action.
 
 **Naming observations for this group:**
-- `new_in_memory` mirrors naming from other modules, though it mixes `new` with a suffix. Alternative: `Importer::with_in_memory_store` to mirror `Scheduler::new` + `into_store` combos.
+- `with_in_memory_store` mirrors naming from other modules and aligns the importer helper with other `InMemory*Store` fixtures.
 - `ensure_setup_requirement_for_fen_games` is long but descriptive; similar functions use `ensure_*`. All good.
 
 ---
@@ -237,7 +237,7 @@ These items orchestrate SM-2 reviews, queue construction, and unlock tracking.
    - Use `queue_length` everywhere instead of mixing `build_queue` (verb) with `build_queue_length`. Perhaps expose `fn queue(owner, date)` returning the full vector and separate `fn queue_len`. Consistency helps API consumers.
 
 5. **Harmonize importer store naming.**
-   - `ImportInMemoryStore` could become `InMemoryImportStore` to match `InMemoryCardStore` and `InMemoryStore`. Likewise, consider `Importer::with_in_memory_store` rather than `new_in_memory` for clarity.
+   - ✅ Completed: `ImportInMemoryStore` is now `InMemoryImportStore`, and the importer helper was renamed to `with_in_memory_store` to align with other fixtures.
 
 6. **Constructor verb consistency.**
    - Within domain models, prefer `::new_*` for specialized constructors (`CardAggregate::new_opening`, `SchedulerOpeningCard::new`). Avoid mixing `into_*` for builders unless performing conversions.
