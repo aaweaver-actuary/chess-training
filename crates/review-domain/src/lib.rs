@@ -25,6 +25,7 @@ pub use card_aggregate::CardAggregate;
 pub use card_kind::CardKind;
 /// Scheduling metadata tracked for each stored card.
 pub use card_state::StoredCardState;
+pub use card_state::bridge::{BridgeError as CardStateBridgeError, Sm2Runtime, StoredSnapshot};
 /// Validated review grades and related errors.
 pub use grade::{GradeError, ValidGrade};
 /// Deterministic hashing helper backed by BLAKE3.

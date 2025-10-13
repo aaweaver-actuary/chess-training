@@ -45,6 +45,7 @@ _Source:_ `crates/review-domain/src/card_state.rs`
 **Usage in this repository:**
 - `crates/card-store/src/memory/in_memory_card_store.rs` stores `StoredCardState` alongside each card when persisting reviews, ensuring unlock and review operations can load due dates quickly.
 - `crates/review-domain/src/card_state.rs` provides `apply_review`, which the card-store invokes to update persisted state when a learner submits a grade.
+- `crates/scheduler-core/src/domain/state_bridge.rs` hydrates and persists scheduler-facing `Sm2State` instances via `hydrate_sm2_state`/`persist_sm2_state`, using the shared `Sm2Runtime` and `StoredSnapshot` helpers so due dates, intervals, ease factors, and streak counters survive conversions between crates.【F:crates/scheduler-core/src/domain/state_bridge.rs†L1-L118】
 
 ### `CardStateInvariants`
 

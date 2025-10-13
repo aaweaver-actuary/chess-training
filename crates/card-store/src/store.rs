@@ -36,6 +36,9 @@ pub enum StoreError {
     /// Invalid position provided during an upsert operation.
     #[error(transparent)]
     InvalidPosition(#[from] PositionError),
+    /// Scheduler state could not be persisted because the interval was invalid.
+    #[error("scheduler state cannot be persisted: {reason}")]
+    InvalidSchedulerState { reason: String },
 }
 
 /// Persistence abstraction used across services.
