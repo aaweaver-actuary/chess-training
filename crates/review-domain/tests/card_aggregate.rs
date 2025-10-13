@@ -3,7 +3,8 @@ use std::num::NonZeroU8;
 use chrono::NaiveDate;
 
 use review_domain::{
-    CardAggregate, CardKind, OpeningCard, StoredCardState, TacticCard, ValidGrade,
+    CardAggregate, CardKind, GradeError, OpeningCard, ReviewRequest, StoredCardState, TacticCard,
+    ValidGrade,
 };
 
 fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -50,12 +51,49 @@ fn apply_review_updates_internal_state() {
     let mut aggregate = CardAggregate::new_tactic(99, "owner-42", 88, state);
     let review_day = naive_date(2024, 2, 10);
 
-    aggregate.apply_review(ValidGrade::Four, review_day);
+    aggregate.apply_valid_grade(ValidGrade::Four, review_day);
     let updated = aggregate.state();
     assert_eq!(updated.interval.get(), 6);
     assert_eq!(updated.due_on, naive_date(2024, 2, 16));
     assert_eq!(updated.last_reviewed_on, Some(review_day));
     assert_eq!(updated.consecutive_correct, 1);
+}
+
+#[test]
+fn apply_review_validates_raw_grade() {
+    let mut aggregate = CardAggregate::new_tactic(33, "owner-28", 14, sample_state());
+    let reviewed_on = naive_date(2024, 3, 1);
+
+    aggregate
+        .apply_review(4, reviewed_on)
+        .expect("grade should be accepted");
+    assert_eq!(aggregate.state().last_reviewed_on, Some(reviewed_on));
+
+    let mut aggregate = CardAggregate::new_tactic(34, "owner-28", 15, sample_state());
+    let original_state = aggregate.state().clone();
+    let error = aggregate
+        .apply_review(9, reviewed_on)
+        .expect_err("grade should be rejected");
+    assert_eq!(error, GradeError::GradeOutsideRangeError { grade: 9 });
+    assert_eq!(aggregate.state(), &original_state);
+}
+
+#[test]
+fn apply_review_request_delegates_to_helper() {
+    let mut aggregate = CardAggregate::new_opening(55, "owner-12", 77, sample_state());
+    let reviewed_on = naive_date(2024, 4, 2);
+    let review = ReviewRequest {
+        card_id: 55,
+        reviewed_on,
+        grade: 4,
+    };
+
+    aggregate
+        .apply_review_request(&review)
+        .expect("grade should be accepted");
+
+    assert_eq!(aggregate.state().last_reviewed_on, Some(reviewed_on));
+    assert_eq!(aggregate.state().due_on, naive_date(2024, 4, 6));
 }
 
 #[test]
