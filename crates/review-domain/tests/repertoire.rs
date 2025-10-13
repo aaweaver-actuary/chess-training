@@ -1,4 +1,7 @@
-use review_domain::repertoire::{Repertoire, RepertoireError, RepertoireMove};
+use review_domain::{
+    ids::{EdgeId, PositionId},
+    repertoire::{Repertoire, RepertoireError, RepertoireMove},
+};
 
 #[test]
 fn repertoire_collects_moves() {
@@ -6,7 +9,13 @@ fn repertoire_collects_moves() {
     assert_eq!(repertoire.name(), "e4 starts");
     assert!(repertoire.moves().is_empty());
 
-    let move_entry = RepertoireMove::new(1, 2, 3, "e2e4", "e4");
+    let move_entry = RepertoireMove::new(
+        EdgeId::new(1),
+        PositionId::new(2),
+        PositionId::new(3),
+        "e2e4",
+        "e4",
+    );
     let result = repertoire.add_move(move_entry.clone());
     assert_eq!(result, Err(RepertoireError::not_implemented("add_move")));
     assert!(
@@ -18,7 +27,7 @@ fn repertoire_collects_moves() {
 #[test]
 fn remove_move_stub_returns_expected_error() {
     let mut repertoire = Repertoire::new("queen's gambit");
-    let result = repertoire.remove_move(42);
+    let result = repertoire.remove_move(EdgeId::new(42));
     assert_eq!(result, Err(RepertoireError::not_implemented("remove_move")));
 }
 
