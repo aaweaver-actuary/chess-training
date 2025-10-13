@@ -1,7 +1,11 @@
 //! Payload carried by opening review cards.
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// Payload carried by opening review cards.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct OpeningCard {
     /// Identifier of the reviewed opening edge.
     pub edge_id: u64,

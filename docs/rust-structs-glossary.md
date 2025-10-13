@@ -1,0 +1,981 @@
+# Rust Struct Glossary
+
+This glossary documents the major Rust structs that appear across the chess-training repository. Each section highlights where the struct lives, the role it plays, its complete definition, and concrete examples that show how real subsystems rely on it. The goal is to make code review and onboarding faster by showing how the pieces fit together across crates.
+
+## Review and Scheduling Core
+
+### `Card<Id, Owner, Kind, State>`
+
+**Overview:** Generic envelope that every review card flows through. The review-domain crate defines this shape so scheduling, storage, and WASM bindings can pass cards around without re-shaping data. The scheduler uses a concrete alias with UUIDs, while the storage layer wraps persistent IDs.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq)]
+pub struct Card<Id, Owner, Kind, State> {
+    pub id: Id,
+    pub owner_id: Owner,
+    pub kind: Kind,
+    pub state: State,
+}
+```
+_Source:_ `crates/review-domain/src/card.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/scheduler.rs` reads a card from storage, mutates its SM-2 state, and writes it back during `Scheduler::review`, demonstrating how the generic `Card` wraps scheduler-specific state while remaining storage agnostic.
+- `crates/scheduler-core/src/store.rs` keeps a `BTreeMap<Uuid, Card>` inside `InMemoryStore`, proving that the struct is the lingua franca between queue-building and persistence adapters.
+
+### `StoredCardState`
+
+**Overview:** Persistence-facing snapshot of the scheduler’s state. Storage implementations keep this version to know when a card becomes due without storing transient counters the runtime scheduler needs.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct StoredCardState {
+    pub due_on: NaiveDate,
+    pub interval: NonZeroU8,
+    pub ease_factor: f32,
+    pub consecutive_correct: u32,
+    pub last_reviewed_on: Option<NaiveDate>,
+}
+```
+_Source:_ `crates/review-domain/src/card_state.rs`
+
+**Usage in this repository:**
+- `crates/card-store/src/memory/in_memory_card_store.rs` stores `StoredCardState` alongside each card when persisting reviews, ensuring unlock and review operations can load due dates quickly.
+- `crates/review-domain/src/card_state.rs` provides `apply_review`, which the card-store invokes to update persisted state when a learner submits a grade.
+
+### `CardStateInvariants`
+
+**Overview:** Declarative rule set describing which `StoredCardState` values are valid. Centralizes bounds like minimum intervals and acceptable ease factors so storage and validation routines remain consistent.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq)]
+pub struct CardStateInvariants {
+    min_interval_days: NonZeroU8,
+    ease_factor_range: RangeInclusive<f32>,
+}
+```
+_Source:_ `crates/review-domain/src/card_state/invariants.rs`
+
+**Usage in this repository:**
+- `crates/review-domain/src/card_state/invariants.rs` uses `CardStateInvariants::validate` before persisting states, preventing impossible values from entering storage.
+- Tests in the same module construct invariants to verify that violating a bound (such as a due date preceding the last review) yields a descriptive `CardStateInvariantError`.
+
+### `UnlockRecord<Owner, Detail>`
+
+**Overview:** Generic log entry representing newly available study material. Review storage and the scheduler both emit unlock records, but with domain-specific payloads plugged in via the `Detail` parameter.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct UnlockRecord<Owner, Detail> {
+    pub owner_id: Owner,
+    pub detail: Detail,
+    pub unlocked_on: NaiveDate,
+}
+```
+_Source:_ `crates/review-domain/src/unlock.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/queue.rs` records unlocks when the scheduler reveals a new card, relying on the shared struct to capture owner, payload, and date.
+- `crates/chess-training-pgn-import/src/storage.rs` mirrors the shape to store importer unlocks, enabling analytics to compare unlock histories across systems.
+
+### `UnlockDetail`
+
+**Overview:** Minimal opening-specific payload embedded in unlock logs persisted by review-domain services. Keeps storage records small while the scheduler adds richer metadata via its own detail struct.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct UnlockDetail {
+    pub edge_id: u64,
+}
+```
+_Source:_ `crates/review-domain/src/unlock.rs`
+
+**Usage in this repository:**
+- `crates/review-domain/src/unlock.rs` exposes `UnlockDetail::new`, which review storage uses when writing unlock history to durable stores.
+- Importer pipelines convert scheduler-oriented unlock data into `UnlockDetail` before persisting, ensuring long-term logs only retain the opening edge identifier.
+
+### `ReviewRequest`
+
+**Overview:** Simple DTO representing the input a service sends when a learner grades a card. Storage implementations rely on it to update `StoredCardState` without exposing scheduler internals.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReviewRequest {
+    pub card_id: u64,
+    pub reviewed_on: NaiveDate,
+    pub grade: u8,
+}
+```
+_Source:_ `crates/review-domain/src/review.rs`
+
+**Usage in this repository:**
+- `crates/card-store/src/memory/in_memory_card_store.rs` accepts a `ReviewRequest` in `record_review`, applies SM-2 math, and persists the resulting state.
+- Integration tests under `crates/card-store` construct `ReviewRequest` instances to prove review workflows update due dates correctly.
+
+### `SchedulerConfig`
+
+**Overview:** Tunable knobs controlling SM-2 behavior—initial ease factor, clamps, and intra-day learning steps. Both the native scheduler and WASM facade clone this config to ensure consistent queue building.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq)]
+pub struct SchedulerConfig {
+    pub initial_ease_factor: f32,
+    pub ease_minimum: f32,
+    pub ease_maximum: f32,
+    pub learning_steps_minutes: Vec<u32>,
+}
+```
+_Source:_ `crates/scheduler-core/src/config.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/scheduler.rs` captures a copy inside `Scheduler` so every review and queue build uses the same parameters.
+- `crates/scheduler-wasm/src/config.rs` converts between `SchedulerConfig` and `SchedulerConfigDto` so JavaScript callers can inspect and patch settings.
+
+### `Sm2State`
+
+**Overview:** Runtime scheduling metadata maintained by the scheduler. Holds the current stage, ease factor, interval, due date, lapse count, and total reviews so SM-2 calculations can adjust progress accurately.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sm2State {
+    pub stage: CardState,
+    pub ease_factor: f32,
+    pub interval_days: u32,
+    pub due: NaiveDate,
+    pub lapses: u32,
+    pub reviews: u32,
+}
+```
+_Source:_ `crates/scheduler-core/src/domain/sm2_state.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/sm2.rs` mutates `Sm2State` during review grading, adjusting ease and intervals based on `ReviewGrade`.
+- `crates/scheduler-core/src/queue.rs` inspects `Sm2State.stage` to determine whether a card is eligible for unlocking or already due.
+
+### `SchedulerOpeningCard`
+
+**Overview:** Scheduler-side payload for opening cards. The scheduler tracks parent prefixes so it can enforce “one opening per prefix per day” while unlocking new material.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SchedulerOpeningCard {
+    pub parent_prefix: String,
+}
+```
+_Source:_ `crates/scheduler-core/src/domain/card_kind.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/queue.rs` extracts `parent_prefix` when filtering unlock candidates, ensuring duplicate branches aren’t unlocked on the same day.
+- `crates/scheduler-core/tests/opening_scheduling.rs` constructs opening cards with specific prefixes to verify unlock throttling logic.
+
+### `SchedulerTacticCard`
+
+**Overview:** Marker struct for tactic cards inside the scheduler. Currently empty but allows future metadata without changing type signatures.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct SchedulerTacticCard;
+```
+_Source:_ `crates/scheduler-core/src/domain/card_kind.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/domain/mod.rs` aliases `CardKind::Tactic(SchedulerTacticCard)` when constructing new cards, ensuring type-safe distinction between openings and tactics.
+- Scheduler tests instantiate `SchedulerTacticCard::new()` to simulate tactic review flows without embedding extra metadata.
+
+### `SchedulerUnlockDetail`
+
+**Overview:** Scheduler-specific metadata attached to unlock records. Extends `UnlockDetail` with the unlocked card UUID and optional parent prefix so unlock throttling can recognize duplicates.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SchedulerUnlockDetail {
+    pub card_id: Uuid,
+    pub parent_prefix: Option<String>,
+}
+```
+_Source:_ `crates/scheduler-core/src/domain/mod.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/queue.rs` records `SchedulerUnlockDetail` whenever a new card is unlocked, feeding the `ExistingUnlocks` tracker.
+- `crates/scheduler-core/src/store.rs` stores unlock logs containing this detail so queue building can skip cards already unlocked earlier in the day.
+
+### `ReviewOutcome`
+
+**Overview:** Output bundle from the scheduler after applying SM-2 to a card. Carries the updated card, its prior due date, and the grade applied so callers can update UI or analytics.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReviewOutcome {
+    pub card: Card,
+    pub previous_due: NaiveDate,
+    pub grade: ReviewGrade,
+}
+```
+_Source:_ `crates/scheduler-core/src/domain/mod.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/scheduler.rs` returns `ReviewOutcome` from `Scheduler::review`, making downstream services aware of both the new and previous scheduling state.
+- Tests under `crates/scheduler-core/tests/scheduler_sm2.rs` assert on `ReviewOutcome` fields to confirm SM-2 transitions (e.g., stage changes) behave as expected.
+
+### `InMemoryStore`
+
+**Overview:** Reference implementation of the scheduler’s `CardStore` trait. Backs tests and the WASM facade with deterministic behavior without requiring external storage.
+
+**Definition:**
+```rust
+#[derive(Debug, Default)]
+pub struct InMemoryStore {
+    cards: BTreeMap<Uuid, Card>,
+    unlock_log: Vec<UnlockRecord>,
+}
+```
+_Source:_ `crates/scheduler-core/src/store.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/scheduler.rs` consumes an `InMemoryStore` when constructing `Scheduler` instances used in tests and the WASM facade.
+- `crates/scheduler-core/tests/opening_scheduling.rs` relies on `InMemoryStore::unlock_candidates` ordering to verify unlock prioritization rules.
+
+### `ExistingUnlocks`
+
+**Overview:** Helper inside the queue builder that tracks which prefixes and card IDs have already been unlocked today. Prevents duplicate unlocks during queue construction.
+
+**Definition:**
+```rust
+struct ExistingUnlocks {
+    prefixes: BTreeSet<String>,
+    ids: BTreeSet<Uuid>,
+}
+```
+_Source:_ `crates/scheduler-core/src/queue.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/queue.rs` seeds `ExistingUnlocks` from prior unlock logs, then updates it as new cards unlock within the same queue build.
+- Scheduler queue tests create prior unlock records to ensure `ExistingUnlocks` blocks cards sharing a prefix from unlocking twice in one day.
+
+### `Scheduler<S: CardStore>`
+
+**Overview:** High-level orchestrator that coordinates SM-2 reviews and unlock queue generation against an abstract `CardStore`. Encapsulates the SM-2 algorithm so callers only provide storage and configuration.
+
+**Definition:**
+```rust
+pub struct Scheduler<S: CardStore> {
+    store: S,
+    config: SchedulerConfig,
+}
+```
+_Source:_ `crates/scheduler-core/src/scheduler.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/scheduler.rs` implements `review` and `build_queue`, showcasing how `Scheduler` mediates between SM-2 logic and persistence.
+- `crates/scheduler-core/tests/scheduler_sm2.rs` spins up `Scheduler<InMemoryStore>` fixtures to exercise relearning, again, and good review transitions end-to-end.
+
+**Mermaid diagram:**
+```mermaid
+classDiagram
+    class Scheduler {
+      -store: CardStore
+      -config: SchedulerConfig
+      +review(card_id, grade, today) ReviewOutcome
+      +build_queue(owner_id, today) Vec<Card>
+    }
+    class CardStore {
+      <<interface>>
+      +get_card(id): Option<Card>
+      +upsert_card(card)
+      +due_cards(owner, today): Vec<Card>
+      +unlock_candidates(owner): Vec<Card>
+      +record_unlock(record)
+      +unlocked_on(owner, day): Vec<UnlockRecord>
+    }
+    class InMemoryStore
+    class Card {
+      id
+      owner_id
+      kind
+      state: Sm2State
+    }
+    Scheduler --> CardStore
+    InMemoryStore ..|> CardStore
+    Scheduler --> Card
+```
+
+## Integrations and Facades
+
+### `SchedulerFacade`
+
+**Overview:** Thin wrapper around the native scheduler used by WASM bindings and unit tests. Keeps a copy of the configuration to expose through JavaScript-friendly DTOs.
+
+**Definition:**
+```rust
+pub struct SchedulerFacade {
+    inner: Scheduler<InMemoryStore>,
+    config: SchedulerConfig,
+}
+```
+_Source:_ `crates/scheduler-wasm/src/scheduler.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-wasm/src/bindings.rs` holds a `SchedulerFacade` instance inside `WasmScheduler`, delegating queue requests from JavaScript callers.
+- WASM tests instantiate `SchedulerFacade::new` to verify queue length queries without spinning up browser infrastructure.
+
+### `WasmScheduler`
+
+**Overview:** wasm-bindgen-exposed struct that JavaScript interacts with. Owns a `SchedulerFacade`, translates JSON configuration patches, and exposes queue operations.
+
+**Definition:**
+```rust
+#[wasm_bindgen]
+pub struct WasmScheduler {
+    facade: SchedulerFacade,
+}
+```
+_Source:_ `crates/scheduler-wasm/src/bindings.rs`
+
+**Usage in this repository:**
+- The wasm bindings expose `WasmScheduler::build_queue_length` to JavaScript, allowing the web UI to request queue sizes without handling raw Rust types.
+- `WasmScheduler::new` applies `SchedulerConfigPatch` values so JS callers can override defaults when initializing the module.
+
+### `SchedulerConfigDto`
+
+**Overview:** Serializable mirror of `SchedulerConfig` for JavaScript consumers. Carries only owned values so it can safely cross the wasm boundary.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct SchedulerConfigDto {
+    pub initial_ease_factor: f32,
+    pub ease_minimum: f32,
+    pub ease_maximum: f32,
+    pub learning_steps_minutes: Vec<u32>,
+}
+```
+_Source:_ `crates/scheduler-wasm/src/config.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-wasm/src/bindings.rs` calls `SchedulerConfigDto::from` when returning configuration snapshots to JavaScript through `current_config` and `default_config`.
+- Front-end code consuming the WASM module reads the DTO fields to populate configuration forms without touching Rust internals.
+
+### `SchedulerConfigPatch`
+
+**Overview:** Serde-deserializable structure that represents partial configuration overrides coming from JavaScript. Allows optional fields so callers only send values they wish to change.
+
+**Definition:**
+```rust
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+pub struct SchedulerConfigPatch {
+    pub initial_ease_factor: Option<f32>,
+    pub ease_minimum: Option<f32>,
+    pub ease_maximum: Option<f32>,
+    pub learning_steps_minutes: Option<Vec<u32>>,
+}
+```
+_Source:_ `crates/scheduler-wasm/src/config.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-wasm/src/bindings.rs` deserializes a `SchedulerConfigPatch` from `JsValue`, applies it to `SchedulerConfig::default`, and boots the scheduler with the resulting configuration.
+- Unit tests confirm that calling `apply` updates only requested fields, preserving defaults for the rest.
+
+## Opening and Tactic Content Models
+
+### `ChessPosition`
+
+**Overview:** Review-domain representation of a chess position derived from a FEN string. Provides deterministic IDs, side-to-move, and ply count for scheduling and storage.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ChessPosition {
+    pub id: u64,
+    pub fen: String,
+    pub side_to_move: char,
+    pub ply: u32,
+}
+```
+_Source:_ `crates/review-domain/src/position.rs`
+
+**Usage in this repository:**
+- `crates/card-store/src/memory/in_memory_card_store.rs` ensures positions exist before storing edges or cards, relying on `ChessPosition` IDs to tie review content together.
+- Review services hash FENs via `ChessPosition::new` so identical positions collapse to the same identifier across unlocks and reviews.
+
+### `Repertoire`
+
+**Overview:** Aggregates opening moves under a named repertoire. Used when learners or importers want a friendly bundle of moves to study or manage.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Repertoire {
+    name: String,
+    moves: Vec<RepertoireMove>,
+}
+```
+_Source:_ `crates/review-domain/src/repertoire/repertoire_.rs`
+
+**Usage in this repository:**
+- Builder APIs in the same module (`RepertoireBuilder`) assemble `Repertoire` instances for tests and future importer integrations.
+- Planned review features will serialize `Repertoire` when exporting or syncing data, benefitting from the derived serde support.
+
+### `RepertoireBuilder`
+
+**Overview:** Fluent constructor for `Repertoire` objects, letting callers add moves incrementally and then build the final collection with a chosen name.
+
+**Definition:**
+```rust
+#[derive(Default)]
+pub struct RepertoireBuilder {
+    name: String,
+    moves: Vec<RepertoireMove>,
+}
+```
+_Source:_ `crates/review-domain/src/repertoire/repertoire_.rs`
+
+**Usage in this repository:**
+- Tests in `repertoire_.rs` demonstrate using the builder to create repertoires with multiple moves, simplifying fixture creation.
+- Future CLI tooling can accept streaming inputs and append moves via the builder before producing the final `Repertoire`.
+
+### `RepertoireMove`
+
+**Overview:** Represents a single move inside a repertoire, tracking parent and child positions plus both UCI and SAN notation. Acts as the bridge between deterministic IDs and human-friendly moves.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct RepertoireMove {
+    pub parent_id: PositionId,
+    pub child_id: PositionId,
+    pub edge_id: EdgeId,
+    pub move_uci: String,
+    pub move_san: String,
+}
+```
+_Source:_ `crates/review-domain/src/repertoire/move_.rs`
+
+**Usage in this repository:**
+- `RepertoireBuilder` stores `RepertoireMove` entries internally, highlighting how the move struct underpins the builder’s API.
+- Import pipelines convert `OpeningEdgeRecord` entries into `RepertoireMove` instances when constructing learner repertoires from PGN data.
+
+### `OpeningEdge`
+
+**Overview:** Canonical representation of a move from one position to another in the opening tree. Encodes IDs and notation for durable storage and reuse.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct OpeningEdge {
+    pub id: u64,
+    pub parent_id: u64,
+    pub child_id: u64,
+    pub move_uci: String,
+    pub move_san: String,
+}
+```
+_Source:_ `crates/review-domain/src/opening/edge.rs`
+
+**Usage in this repository:**
+- `EdgeInput::into_edge` normalizes client submissions into `OpeningEdge`, ensuring consistent IDs before storing edges.
+- PGN importer records embed `OpeningEdge` within `OpeningEdgeRecord`, sharing the same struct across crates.
+
+### `EdgeInput`
+
+**Overview:** Client-facing payload for creating or updating an opening edge. Accepts raw parent/child IDs and move notation, then produces a deterministic `OpeningEdge`.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EdgeInput {
+    pub parent_id: u64,
+    pub move_uci: String,
+    pub move_san: String,
+    pub child_id: u64,
+}
+```
+_Source:_ `crates/review-domain/src/opening/edge_input.rs`
+
+**Usage in this repository:**
+- `crates/card-store/src/memory/in_memory_card_store.rs` accepts `EdgeInput` in `upsert_edge`, converting it into an `OpeningEdge` after validating referenced positions.
+- Tests verify repeated `EdgeInput` submissions generate identical edge IDs, ensuring idempotent storage operations.
+
+### `OpeningCard`
+
+**Overview:** Lightweight payload used by review cards to reference a specific opening edge. Keeps scheduler and storage layers aligned around deterministic edge IDs.
+
+**Definition:**
+```rust
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct OpeningCard {
+    pub edge_id: u64,
+}
+```
+_Source:_ `crates/review-domain/src/opening/card.rs`
+
+**Usage in this repository:**
+- Storage backends attach `OpeningCard` to review cards so unlock history can point back to the exact move a learner studies.
+- Scheduler code maps `OpeningCard` to `SchedulerOpeningCard` to add parent prefix context when enforcing unlock policies.
+
+### `TacticCard`
+
+**Overview:** Minimal payload for tactic review cards. Stores the tactic identifier so scheduling and storage can differentiate puzzles from openings.
+
+**Definition:**
+```rust
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct TacticCard {
+    pub tactic_id: u64,
+}
+```
+_Source:_ `crates/review-domain/src/tactic.rs`
+
+**Usage in this repository:**
+- `crates/scheduler-core/src/domain/card_kind.rs` converts `TacticCard` payloads into scheduler-facing marker structs when constructing `CardKind`.
+- Review storage attaches `TacticCard` to cards representing tactics so due card queries can filter by content type if needed.
+
+### `Position`
+
+**Overview:** Importer-side representation of a chess position with deterministic hashing. Mirrors `ChessPosition` but tailored for ingestion workflows and serde-friendly serialization.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Position {
+    pub id: u64,
+    pub fen: String,
+    pub side_to_move: char,
+    pub ply: u32,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/model.rs`
+
+**Usage in this repository:**
+- `crates/chess-training-pgn-import/src/importer.rs` records positions via `Storage::upsert_position`, ensuring each unique board state is tracked during PGN ingestion.
+- Import metrics increment `opening_positions` when `UpsertOutcome::Inserted` is returned for a new `Position`.
+
+### `OpeningEdgeRecord`
+
+**Overview:** Importer structure that wraps a canonical `OpeningEdge` along with optional source metadata, such as PGN event names.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpeningEdgeRecord {
+    #[serde(flatten)]
+    pub edge: OpeningEdge,
+    pub source_hint: Option<String>,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/model.rs`
+
+**Usage in this repository:**
+- `crates/chess-training-pgn-import/src/importer.rs` builds `OpeningEdgeRecord` when processing SAN moves, allowing analytics to trace which event produced a move.
+- `ImportInMemoryStore::upsert_edge` stores these records, letting tests assert that repeated imports replace rather than duplicate edges.
+
+### `RepertoireEdge`
+
+**Overview:** Links an owner and repertoire key to a canonical opening edge ID. Lets import runs track which moves belong to a learner’s repertoire without duplicating edge data.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepertoireEdge {
+    pub owner: String,
+    pub repertoire_key: String,
+    pub edge_id: u64,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/model.rs`
+
+**Usage in this repository:**
+- Importer inserts `RepertoireEdge` entries whenever it records an opening move, linking the move back to the learner (`owner`) and repertoire grouping.
+- `ImportInMemoryStore::repertoire_edges` reconstructs `RepertoireEdge` instances from its internal set so tests can verify contents easily.
+
+### `Tactic`
+
+**Overview:** Represents a tactic opportunity discovered during PGN import. Stores hashed ID, FEN, principal variation, tags, and optional source hints.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tactic {
+    pub id: u64,
+    pub fen: String,
+    pub pv_uci: Vec<String>,
+    pub tags: Vec<String>,
+    pub source_hint: Option<String>,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/model.rs`
+
+**Usage in this repository:**
+- `crates/chess-training-pgn-import/src/importer.rs` calls `Tactic::new` when tactic extraction is enabled, then passes the result to `Storage::upsert_tactic`.
+- Import metrics increment `tactics` each time a `Tactic` insertion returns `UpsertOutcome::Inserted`, providing visibility into tactic harvesting.
+
+### Identifier Wrappers (`PositionId`, `EdgeId`, `MoveId`, `CardId`, `LearnerId`, `UnlockId`)
+
+**Overview:** Type-safe wrappers around `u64` identifiers within the review domain. Prevent mixing IDs between concepts while remaining copyable and serde-friendly.
+
+**Definition:**
+```rust
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default)]
+#[repr(transparent)]
+pub struct PositionId(u64);
+// ... macro expands similarly for EdgeId, MoveId, CardId, LearnerId, UnlockId
+```
+_Source:_ `crates/review-domain/src/ids.rs`
+
+**Usage in this repository:**
+- `RepertoireMove` stores `PositionId` and `EdgeId`, guaranteeing that parent/child identifiers aren’t accidentally swapped with unrelated IDs.
+- Unlock workflows use `UnlockId` and `CardId` to make function signatures self-documenting and to reduce accidental misuse during refactors.
+
+## Import and Storage Infrastructure
+
+### `InMemoryCardStore`
+
+**Overview:** Thread-safe, lock-based in-memory implementation of the review card storage trait. Supports local development and tests without external databases.
+
+**Definition:**
+```rust
+#[derive(Debug)]
+pub struct InMemoryCardStore {
+    _config: StorageConfig,
+    positions: RwLock<PositionMap>,
+    edges: RwLock<EdgeMap>,
+    cards: RwLock<CardMap>,
+    unlocks: RwLock<UnlockSet>,
+}
+```
+_Source:_ `crates/card-store/src/memory/in_memory_card_store.rs`
+
+**Usage in this repository:**
+- The importer integration tests rely on `InMemoryCardStore` to persist cards, positions, and unlocks while validating storage logic.
+- The store’s helper methods (`position_count`, `ensure_edge_exists`) support assertions within tests to confirm data was inserted correctly.
+
+### `StorageConfig`
+
+**Overview:** Configuration object for card-store implementations. Holds DSN strings, pooling limits, batch sizes, and retry counts so deployments can tune behavior.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StorageConfig {
+    pub dsn: Option<String>,
+    pub max_connections: u32,
+    pub batch_size: usize,
+    pub retry_attempts: u8,
+}
+```
+_Source:_ `crates/card-store/src/config.rs`
+
+**Usage in this repository:**
+- `InMemoryCardStore::new` stores a copy so configuration-driven tests can confirm that toggles are honored even when no external database exists.
+- Future persistent store implementations (e.g., Postgres adapters) will accept `StorageConfig` to configure connection pools and retry strategies.
+
+### `ImportMetrics`
+
+**Overview:** Running counters describing what the PGN importer accomplished: games processed, positions inserted, edges added, repertoire links created, and tactics harvested.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ImportMetrics {
+    pub games_total: usize,
+    pub opening_positions: usize,
+    pub opening_edges: usize,
+    pub repertoire_edges: usize,
+    pub tactics: usize,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/importer.rs`
+
+**Usage in this repository:**
+- `Importer::ingest_pgn_str` updates `ImportMetrics` as each game is processed, making it easy to surface progress or summarize import runs.
+- Tests assert on metric counts after ingesting sample PGNs to guarantee that the importer tracks work performed.
+
+### `Importer<S: Storage>`
+
+**Overview:** Orchestrates PGN ingestion: parsing games, updating storage, and capturing metrics. Parameterized over a storage implementation so tests can plug in `ImportInMemoryStore` while production can use real databases.
+
+**Definition:**
+```rust
+pub struct Importer<S: Storage> {
+    config: IngestConfig,
+    store: S,
+    metrics: ImportMetrics,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/importer.rs`
+
+**Usage in this repository:**
+- CLI workflows instantiate `Importer::new_in_memory` for smoke tests, then call `ingest_pgn_str` with PGN text.
+- After ingestion, `Importer::finalize` returns the storage backend and metrics, letting callers inspect inserted data or persist the store.
+
+### `GameContext`
+
+**Overview:** Internal state machine tracking a single PGN game during import. Captures the current board, ply, whether to record positions in the trie, tactic extraction flags, and metadata such as source hints and FEN tags.
+
+**Definition:**
+```rust
+#[derive(Clone)]
+struct GameContext {
+    board: Chess,
+    ply: u32,
+    include_in_trie: bool,
+    record_tactic_moves: bool,
+    pv_moves: Vec<String>,
+    source_hint: Option<String>,
+    fen_tag: Option<String>,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/importer.rs`
+
+**Usage in this repository:**
+- `initialize_game_context` builds a `GameContext` and records the starting position when the importer encounters a `[FEN]` header or uses the default initial board.
+- `process_single_san_move` advances the context via `GameContext::advance`, ensuring tactic recording and board state stay consistent.
+
+### `MoveContext`
+
+**Overview:** Internal helper capturing information about a single SAN move conversion: the UCI string, resulting board, and next ply. Keeps `GameContext` updates tidy.
+
+**Definition:**
+```rust
+struct MoveContext {
+    uci: String,
+    next_board: Chess,
+    child_ply: u32,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/importer.rs`
+
+**Usage in this repository:**
+- `process_single_san_move` constructs `MoveContext::new`, then feeds it to `GameContext::advance` and `store_opening_data_if_requested` to insert positions and edges.
+- By storing `uci` and `child_ply`, the importer can both persist deterministic edge IDs and keep tactic PV sequences accurate.
+
+### `RawGame`
+
+**Overview:** Lightweight representation of a parsed PGN game before validation. Holds headers and SAN token list so the importer can re-run parsing logic without reparsing text.
+
+**Definition:**
+```rust
+#[derive(Default)]
+struct RawGame {
+    tags: Vec<(String, String)>,
+    moves: Vec<String>,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/importer.rs`
+
+**Usage in this repository:**
+- `parse_games` produces `RawGame` instances from PGN text, which `Importer::ingest_pgn_str` iterates over.
+- Tests inspect `RawGame::tag` results to ensure PGN header parsing preserves case-insensitive keys.
+
+### `ImportInMemoryStore`
+
+**Overview:** In-memory storage backend for the PGN importer. Uses `BTreeMap`/`BTreeSet` collections to track positions, edges, repertoire associations, and tactics without requiring external databases.
+
+**Definition:**
+```rust
+#[derive(Default)]
+pub struct ImportInMemoryStore {
+    positions: BTreeMap<u64, Position>,
+    edges: BTreeMap<u64, OpeningEdgeRecord>,
+    repertoire_edges: BTreeSet<(String, String, u64)>,
+    tactics: BTreeMap<u64, Tactic>,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/storage.rs`
+
+**Usage in this repository:**
+- `Importer::new_in_memory` wires the importer to an `ImportInMemoryStore`, making integration tests deterministic and side-effect free.
+- Accessor methods (`positions`, `edges`, `tactics`, `repertoire_edges`) let tests validate the importer produced the expected records.
+
+### `IoError`
+
+**Overview:** Wraps file-system failures encountered while loading importer configuration. Captures the path and underlying `io::Error` for richer diagnostics.
+
+**Definition:**
+```rust
+#[derive(Debug)]
+pub struct IoError {
+    pub path: PathBuf,
+    pub source: io::Error,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/errors.rs`
+
+**Usage in this repository:**
+- `FileConfig::from_path` maps `fs::read_to_string` failures into `ConfigError::Io(IoError)`, surfacing precise failure locations.
+- Tests assert that `IoError::path()` and `Display` formatting include the problematic filename and system error message.
+
+### `ParseError`
+
+**Overview:** Represents TOML parsing errors when loading importer configuration. Stores the offending path and the serde TOML error to aid debugging.
+
+**Definition:**
+```rust
+#[derive(Debug)]
+pub struct ParseError {
+    pub path: PathBuf,
+    pub source: toml::de::Error,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/errors.rs`
+
+**Usage in this repository:**
+- `FileConfig::from_path` wraps TOML parse failures into `ConfigError::Parse(ParseError)`, distinguishing them from IO issues.
+- Tests verify `ParseError::toml_error` exposes the inner message so CLIs can show detailed parse diagnostics.
+
+### `IngestConfig`
+
+**Overview:** Runtime configuration for the PGN importer. Controls tactic extraction, whether FEN-rooted games populate the trie, setup enforcement, error handling, and maximum RAV depth.
+
+**Definition:**
+```rust
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IngestConfig {
+    pub tactic_from_fen: bool,
+    pub include_fen_in_trie: bool,
+    pub require_setup_for_fen: bool,
+    pub skip_malformed_fen: bool,
+    pub max_rav_depth: u32,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/config.rs`
+
+**Usage in this repository:**
+- `Importer::new` stores an `IngestConfig` copy to decide whether to record positions, tactics, or skip malformed FEN games.
+- `CliArgs::into_ingest_config` mutates `IngestConfig` based on CLI flags and configuration files, demonstrating how multiple configuration sources converge.
+
+### `FileConfig`
+
+**Overview:** Internal serde-deserializable structure for TOML configuration files. Stores optional overrides so CLI and file inputs can be merged cleanly.
+
+**Definition:**
+```rust
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+struct FileConfig {
+    inputs: Option<Vec<PathBuf>>,
+    tactic_from_fen: Option<bool>,
+    include_fen_in_trie: Option<bool>,
+    require_setup_for_fen: Option<bool>,
+    skip_malformed_fen: Option<bool>,
+    max_rav_depth: Option<u32>,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/config.rs`
+
+**Usage in this repository:**
+- `FileConfig::from_path` reads TOML files, turning them into optional overrides that `CliArgs::into_ingest_config` merges with CLI flags.
+- When inputs are provided via config file, `into_ingest_config` appends them to CLI-specified paths, ensuring both sources are respected.
+
+### `CliArgs`
+
+**Overview:** Parsed command-line arguments for the importer binary. Tracks input files, optional config path, and toggle flags before converting into an `IngestConfig`.
+
+**Definition:**
+```rust
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CliArgs {
+    pub inputs: Vec<PathBuf>,
+    config_file: Option<PathBuf>,
+    include_fen_in_trie: bool,
+    require_setup_for_fen: bool,
+    skip_malformed_fen: bool,
+    disable_tactic_from_fen: bool,
+    max_rav_depth: Option<u32>,
+}
+```
+_Source:_ `crates/chess-training-pgn-import/src/config.rs`
+
+**Usage in this repository:**
+- `CliArgs::try_parse_from` builds the CLI using clap and parses arguments provided by integration tests or binaries.
+- `CliArgs::into_ingest_config` validates that at least one PGN input is provided (raising `ConfigError::NoInputs` otherwise) and merges CLI plus file-driven configuration.
+
+**Mermaid diagram:**
+```mermaid
+flowchart LR
+    CLI[CliArgs] -->|into_ingest_config| CFG[IngestConfig]
+    FileConfig -->|overrides| CFG
+    CFG -->|controls| Importer
+    Importer -->|produces| Metrics[ImportMetrics]
+    Importer -->|uses| StorageTrait[Storage]
+    StorageTrait -.-> ImportInMemoryStore
+```
+
+## Testing and Tooling Helpers
+
+### `IssuePayload`
+
+**Overview:** Test-only struct mirroring the JSON payload sent to GitHub when CI failures are reported. Lets integration tests deserialize and inspect the error-report body.
+
+**Definition:**
+```rust
+#[derive(Debug, Deserialize)]
+struct IssuePayload {
+    title: String,
+    body: String,
+}
+```
+_Source:_ `tests/run_with_error_logging.rs`
+
+**Usage in this repository:**
+- `tests/run_with_error_logging.rs` reads the payload captured by a curl stub, deserializes it into `IssuePayload`, and asserts on the generated GitHub issue content.
+- By matching the production payload shape, the test ensures CI automation scripts populate both the title and body fields correctly.
+
+### `RelearningFixture`
+
+**Overview:** Scheduler test fixture bundling a scheduler instance, prepared card, and reference date. Helps tests focus on SM-2 behavior without repeating setup code.
+
+**Definition:**
+```rust
+struct RelearningFixture {
+    scheduler: Scheduler<InMemoryStore>,
+    card_id: Uuid,
+    today: NaiveDate,
+}
+```
+_Source:_ `crates/scheduler-core/tests/scheduler_sm2.rs`
+
+**Usage in this repository:**
+- Tests such as `relearning_card_graduates_on_good_review` call `relearning_fixture()` to obtain a scheduler configured with a relearning card, validating stage transitions in isolation.
+- The fixture preloads the store with a relearning card so tests can assert on SM-2 progression after applying different grades.
+
+### `TimedStore`
+
+**Overview:** Custom `CardStore` implementation used in opening scheduling tests. Adds availability windows and a controllable “current day” to simulate cards becoming unlockable on future dates.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone)]
+struct TimedStore {
+    cards: BTreeMap<Uuid, Card>,
+    unlock_log: Vec<UnlockRecord>,
+    availability: BTreeMap<Uuid, NaiveDate>,
+    current_day: NaiveDate,
+}
+```
+_Source:_ `crates/scheduler-core/tests/opening_scheduling.rs`
+
+**Usage in this repository:**
+- Opening scheduling tests set availability dates via `insert_with_availability` and advance time with `set_day` to ensure unlock pacing respects day boundaries.
+- By implementing `CardStore`, `TimedStore` plugs directly into queue-building helpers, letting tests assert on queue contents without modifying production code.
+
