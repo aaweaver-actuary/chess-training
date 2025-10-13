@@ -1,25 +1,40 @@
 # Chess Training Workspace
 
+```mermaid
+flowchart TD
+    root["chess-training/"]
+    root --> crates["crates/" ]
+    crates --> card_store["card-store/" ]
+    crates --> pgn_import["chess-training-pgn-import/" ]
+    crates --> review_domain["review-domain/" ]
+    crates --> scheduler_core["scheduler-core/" ]
+    root --> apps["apps/"]
+    apps --> session_gateway["session-gateway/"]
+    root --> web_ui["web-ui/"]
+    web_ui --> src_ui["src/"]
+    root --> docs_dir["docs/"]
+    root --> documentation_dir["documentation/"]
+    root --> src_dir["src/"]
+    root --> tests_dir["tests/"]
+
+    style root fill:#0b3d91,stroke:#06245c,stroke-width:2px,color:#fff
+    classDef leaf fill:#f5f5f5,stroke:#888
+    class card_store,pgn_import,review_domain,scheduler_core,session_gateway,src_ui,docs_dir,documentation_dir,src_dir,tests_dir leaf;
+```
+
 This repository hosts a collection of Rust crates and TypeScript applications that power a spaced-repetition training workflow for chess openings and tactics. The code is organised as a Cargo workspace with supporting Node.js and Vite projects for service orchestration and the browser UI.
 
 ## Repository Layout
 
-```
-chess-training/
-├── Cargo.toml                 # Workspace manifest for Rust crates
-├── crates/                    # Core domain and service crates
-│   ├── card-store/            # Persistence abstractions and in-memory store
-│   ├── chess-training-pgn-import/ # PGN ingestion pipeline
-│   ├── review-domain/         # Shared domain types (cards, positions, grades)
-│   └── scheduler-core/        # SM-2 scheduling logic and queue construction
-├── apps/
-│   └── session-gateway/       # Node.js API that mediates review sessions
-├── web-ui/                    # React front-end for daily reviews
-├── docs/                      # Developer documentation and scripts
-└── src/                       # Binary entry point for ad-hoc experiments
-```
+* `crates/` – Core Rust libraries that model the chess training domain, storage traits, and PGN ingestion utilities.
+* `apps/` – TypeScript runtime services (currently the session gateway).
+* `web-ui/` – React front-end for running reviews in the browser.
+* `docs/` – Living developer documentation, ADRs, and generated references.
+* `documentation/` – Historical planning notes and roadmap sketches kept for context.
+* `src/` – Single binary target used for smoke-testing workspace wiring.
+* `tests/` – Cross-crate integration tests (populated as scenarios are added).
 
-Each directory listed above includes its own README with implementation specifics and setup instructions.
+Each directory includes its own README with implementation specifics and setup instructions.
 
 ## Components
 
