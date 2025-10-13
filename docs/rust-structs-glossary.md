@@ -6,18 +6,21 @@ This glossary summarizes the Rust structs defined across the chess-training repo
 
 - **Card<Id, Owner, Kind, State>** (`crates/review-domain/src/card.rs`): Shared template for a study card that carries an identifier, the learner who owns it, what type of content it represents, and the mutable scheduling state. *Reason for including:* gives every subsystem a common shape for cards so data can flow between services without translation.  
   - Similar: **Sm2State** stores the scheduler-specific state inside this template, while **StoredCardState** plays the same role for the persistence layer.
-- **StoredCardState** (`crates/review-domain/src/card_state.rs`): Tracks when a stored card is due, how difficult it is, and streak information used to schedule future reviews. *Reason for including:* lets storage backends remember when to next show a card without recalculating from scratch.  
+- **StoredCardState** (`crates/review-domain/src/card_state.rs`): Tracks when a stored card is due, how difficult it is, and streak information used to schedule future reviews. *Reason for including:* lets storage backends remember when to next show a card without recalculating from scratch.
   - Similar: **Sm2State** mirrors these scheduling fields inside the scheduler runtime.
+    - *Separation rationale:* `StoredCardState` persists a compact snapshot optimized for durable storage (for example the `NonZeroU8` interval and the optional `last_reviewed_on` marker), whereas `Sm2State` carries richer runtime context such as the learning stage, lifetime review counters, and lapse tallies that only the scheduler needs while applying SM-2 math. Folding them together would either leak scheduler-only concerns into persistence or drop fidelity the runtime requires.
 - **CardStateInvariants** (`crates/review-domain/src/card_state/invariants.rs`): Describes the rules that a `StoredCardState` must obey, such as minimum intervals and valid ease ranges. *Reason for including:* provides a single place to validate card state before it is persisted or acted upon.  
   - Similar: **SchedulerConfig** sets comparable bounds used by the scheduler when updating `Sm2State`.
 - **UnlockRecord<Owner, Detail>** (`crates/review-domain/src/unlock.rs`): Records the learner, payload, and date for newly unlocked material. *Reason for including:* allows systems to audit unlock history and avoid unlocking the same content twice.  
   - Similar: **SchedulerUnlockDetail** supplies the scheduler-specific payload carried inside these records.
-- **UnlockDetail** (`crates/review-domain/src/unlock.rs`): Minimal payload describing which opening edge was unlocked. *Reason for including:* captures the chess-specific context that accompanies an unlock event.  
+- **UnlockDetail** (`crates/review-domain/src/unlock.rs`): Minimal payload describing which opening edge was unlocked. *Reason for including:* captures the chess-specific context that accompanies an unlock event.
   - Similar: **SchedulerUnlockDetail** adds richer metadata for the scheduler, and **OpeningCard** refers to the same edge identifier during reviews.
+    - *Separation rationale:* Persisted unlock logs only need the opening edge identifier, while the scheduler’s unlock detail includes card UUIDs and optional parent prefixes so it can throttle unlock frequency. Keeping the storage payload small prevents leaking scheduler-specific bookkeeping into long-lived records.
 - **ReviewRequest** (`crates/review-domain/src/review.rs`): Simple request body for recording that a learner reviewed a card on a given day with a grade. *Reason for including:* standardizes how services submit review outcomes to storage.  
   - Similar: **ReviewOutcome** reflects the same information after the scheduler processes a review.
-- **SchedulerConfig** (`crates/scheduler-core/src/config.rs`): Tunable parameters for the SM-2 scheduler such as ease factor limits and learning steps. *Reason for including:* centralizes the knobs that control scheduling behavior.  
+- **SchedulerConfig** (`crates/scheduler-core/src/config.rs`): Tunable parameters for the SM-2 scheduler such as ease factor limits and learning steps. *Reason for including:* centralizes the knobs that control scheduling behavior.
   - Similar: **IngestConfig** holds import-time toggles, and **SchedulerConfigPatch** updates these values for the WebAssembly facade.
+    - *Separation rationale:* Runtime Rust callers rely on `SchedulerConfig` for validation and strongly typed defaults, whereas the wasm bindings expose `SchedulerConfigDto`/`Patch` with serde-friendly optional fields. Merging them would either weaken the type guarantees for Rust consumers or break backward compatibility for JavaScript clients expecting partial updates.
 - **Sm2State** (`crates/scheduler-core/src/domain/sm2_state.rs`): Runtime scheduling data for a card, including due dates, ease, interval, lapse count, and total reviews. *Reason for including:* stores the SM-2 state that the scheduler adjusts after each review.  
   - Similar: **StoredCardState** persists comparable fields in the card-store layer.
 - **SchedulerOpeningCard** (`crates/scheduler-core/src/domain/card_kind.rs`): Payload tagging a card as part of an opening line and recording its parent prefix. *Reason for including:* lets the scheduler group opening cards so it can control unlock pacing.  
@@ -28,8 +31,9 @@ This glossary summarizes the Rust structs defined across the chess-training repo
   - Similar: **ExistingUnlocks** keeps the same information in-memory while building a queue.
 - **ReviewOutcome** (`crates/scheduler-core/src/domain/mod.rs`): Returned after the scheduler processes a review, containing the updated card, previous due date, and the grade used. *Reason for including:* packages the essential facts a caller needs to react to a review result.  
   - Similar: **ReviewRequest** captures the input side of the same workflow.
-- **InMemoryStore** (`crates/scheduler-core/src/store.rs`): Reference implementation of the `CardStore` trait using in-memory collections. *Reason for including:* offers a lightweight storage option for tests and examples.  
+- **InMemoryStore** (`crates/scheduler-core/src/store.rs`): Reference implementation of the `CardStore` trait using in-memory collections. *Reason for including:* offers a lightweight storage option for tests and examples.
   - Similar: **ImportInMemoryStore** provides an analogous in-memory backend for the PGN importer.
+    - *Separation rationale:* Each store targets a different trait (`CardStore` versus importer `Storage`) and record schema, so a unified implementation would require cross-crate generics or feature toggles that add needless complexity to simple test doubles.
 - **ExistingUnlocks** (`crates/scheduler-core/src/queue.rs`): Helper that tracks which cards and opening prefixes were already unlocked for the day to prevent duplicates. *Reason for including:* enforces the scheduler’s “one opening per prefix per day” rule while building queues.  
   - Similar: **SchedulerUnlockDetail** stores the same identifiers inside persisted unlock logs.
 - **Scheduler<S: CardStore>** (`crates/scheduler-core/src/scheduler.rs`): High-level coordinator that applies SM-2 reviews and builds daily queues against a storage backend. *Reason for including:* encapsulates scheduling behavior so consumers only provide storage and configuration.  
@@ -48,8 +52,9 @@ This glossary summarizes the Rust structs defined across the chess-training repo
 
 ## Opening and Tactic Content Models
 
-- **ChessPosition** (`crates/review-domain/src/position.rs`): Canonical representation of a chess position derived from a FEN string, including the side to move and ply count. *Reason for including:* supplies a stable ID and metadata whenever the system references a board position.  
+- **ChessPosition** (`crates/review-domain/src/position.rs`): Canonical representation of a chess position derived from a FEN string, including the side to move and ply count. *Reason for including:* supplies a stable ID and metadata whenever the system references a board position.
   - Similar: **Position** in the PGN importer mirrors this idea when hashing imported positions.
+    - *Separation rationale:* The review domain validates FEN strings and hashes them with its own salt to guarantee stable IDs across persistence layers, whereas the importer prioritizes serde-friendly structs and hashes within a namespace tied to PGN ingestion. Sharing an implementation would either loosen validation for reviews or undermine the importer’s deterministic hashing contract.
 - **Repertoire** (`crates/review-domain/src/repertoire/repertoire_.rs`): Collection of repertoire moves under a human-friendly name. *Reason for including:* gives learners and services a packaged view of the opening lines they are studying.  
   - Similar: **RepertoireBuilder** streamlines constructing the same data, and **RepertoireEdge** links the repertoire to stored edges.
 - **RepertoireBuilder** (`crates/review-domain/src/repertoire/repertoire_.rs`): Fluent helper for assembling a `Repertoire` with a chosen name and move list. *Reason for including:* makes it easier for callers to build repertoires without managing vectors manually.  
@@ -60,10 +65,12 @@ This glossary summarizes the Rust structs defined across the chess-training repo
   - Similar: **OpeningEdgeRecord** adds source metadata during PGN import, and **EdgeInput** is the user-facing request to create one.
 - **EdgeInput** (`crates/review-domain/src/opening/edge_input.rs`): Input payload for creating or updating an opening edge before normalization. *Reason for including:* lets clients submit moves without knowing the deterministic edge ID.  
   - Similar: **OpeningEdge** is the normalized output produced from this payload.
-- **OpeningCard** (`crates/review-domain/src/opening/card.rs`): Minimal payload identifying which opening edge a review card covers. *Reason for including:* ties scheduled reviews back to the specific opening move.  
+- **OpeningCard** (`crates/review-domain/src/opening/card.rs`): Minimal payload identifying which opening edge a review card covers. *Reason for including:* ties scheduled reviews back to the specific opening move.
   - Similar: **SchedulerOpeningCard** tracks the same concept while cards live in the scheduler.
-- **TacticCard** (`crates/review-domain/src/tactic.rs`): Minimal payload naming the tactic a review card is about. *Reason for including:* distinguishes tactic reviews from opening reviews in storage.  
+    - *Separation rationale:* Persistent review cards only need the deterministic `edge_id`, while the scheduler bundles parent prefixes alongside cards to moderate unlock pacing. Sharing a single struct would either burden storage with scheduler-only prefixes or deprive the scheduler of the grouping hint it relies upon.
+- **TacticCard** (`crates/review-domain/src/tactic.rs`): Minimal payload naming the tactic a review card is about. *Reason for including:* distinguishes tactic reviews from opening reviews in storage.
   - Similar: **SchedulerTacticCard** handles the scheduler-side representation.
+    - *Separation rationale:* Review cards must hold the tactic’s stable identifier so storage can load the right puzzle, while the scheduler only needs a marker to tag cards that follow tactic pacing rules. Collapsing them would either expose tactic IDs inside scheduler internals or make storage lookups harder.
 - **Position** (`crates/chess-training-pgn-import/src/model.rs`): Imported position record with deterministic hashing, stored during PGN ingest. *Reason for including:* ensures each unique board state receives a stable ID in the import database.  
   - Similar: **ChessPosition** fills the same role within the review domain proper.
 - **OpeningEdgeRecord** (`crates/chess-training-pgn-import/src/model.rs`): Combines a canonical `OpeningEdge` with optional source metadata from the PGN. *Reason for including:* keeps analytics-friendly context when storing opening moves discovered during import.  
@@ -77,8 +84,9 @@ This glossary summarizes the Rust structs defined across the chess-training repo
 
 ## Import and Storage Infrastructure
 
-- **InMemoryCardStore** (`crates/card-store/src/memory/in_memory_card_store.rs`): Thread-safe in-memory implementation of the review card storage trait, using locks around hash maps and sets. *Reason for including:* enables local development and testing without provisioning a database.  
+- **InMemoryCardStore** (`crates/card-store/src/memory/in_memory_card_store.rs`): Thread-safe in-memory implementation of the review card storage trait, using locks around hash maps and sets. *Reason for including:* enables local development and testing without provisioning a database.
   - Similar: **ImportInMemoryStore** offers an in-memory store for the PGN importer.
+    - *Separation rationale:* The review store must coordinate concurrent readers via mutexes and track review-domain types, while the importer’s store favors B-tree collections and ingestion metrics. A shared implementation would need feature-heavy abstractions that obscure the differing operational goals.
 - **StorageConfig** (`crates/card-store/src/config.rs`): Configuration options for card-store backends such as connection limits and batch sizes. *Reason for including:* captures operational knobs needed when deploying a persistent store.  
   - Similar: **IngestConfig** supplies analogous toggles for the importer.
 - **ImportMetrics** (`crates/chess-training-pgn-import/src/importer.rs`): Counters for how many positions, edges, repertoire entries, and tactics were inserted during an import run. *Reason for including:* provides visibility into what the importer accomplished.  
