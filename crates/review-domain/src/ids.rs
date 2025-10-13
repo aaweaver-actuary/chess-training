@@ -2,6 +2,13 @@
 
 use core::fmt;
 
+/// Errors that can occur when converting raw values into identifier wrappers.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum IdConversionError {
+    /// Provided value exceeded the range representable by the identifier type.
+    Overflow { value: u128 },
+}
+
 macro_rules! define_id {
     (
         $(#[$meta:meta])* $vis:vis struct $name:ident;
@@ -72,6 +79,9 @@ define_id!(
     pub struct LearnerId;
 );
 define_id!(
+    pub struct TacticId;
+);
+define_id!(
     pub struct UnlockId;
 );
 
@@ -89,5 +99,8 @@ mod tests {
     fn default_is_zero() {
         let edge = EdgeId::default();
         assert_eq!(edge.get(), 0);
+
+        let tactic = TacticId::default();
+        assert_eq!(tactic.get(), 0);
     }
 }

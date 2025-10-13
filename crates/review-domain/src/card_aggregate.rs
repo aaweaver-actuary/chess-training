@@ -1,8 +1,11 @@
 use chrono::NaiveDate;
 
-use crate::{Card, CardKind, EdgeId, OpeningCard, StoredCardState, TacticCard, ValidGrade};
+use crate::{
+    Card, CardId, CardKind, EdgeId, GradeError, LearnerId, OpeningCard, ReviewRequest,
+    StoredCardState, TacticCard, TacticId, ValidGrade,
+};
 
-type StoredReviewCard = Card<u64, String, CardKind<OpeningCard, TacticCard>, StoredCardState>;
+type StoredReviewCard = Card<CardId, LearnerId, CardKind<OpeningCard, TacticCard>, StoredCardState>;
 
 /// Concrete aggregate representing a learner's review card.
 #[derive(Clone, Debug, PartialEq)]
@@ -14,30 +17,30 @@ impl CardAggregate {
     /// Creates a new opening card aggregate.
     #[must_use]
     pub fn new_opening(
-        card_id: u64,
-        owner_id: impl Into<String>,
+        card_id: CardId,
+        owner_id: LearnerId,
         edge_id: EdgeId,
         state: StoredCardState,
     ) -> Self {
         let kind = CardKind::Opening(OpeningCard::new(edge_id));
-        Self::from_parts(card_id, owner_id.into(), kind, state)
+        Self::from_parts(card_id, owner_id, kind, state)
     }
 
     /// Creates a new tactic card aggregate.
     #[must_use]
     pub fn new_tactic(
-        card_id: u64,
-        owner_id: impl Into<String>,
-        tactic_id: u64,
+        card_id: CardId,
+        owner_id: LearnerId,
+        tactic_id: TacticId,
         state: StoredCardState,
     ) -> Self {
         let kind = CardKind::Tactic(TacticCard::new(tactic_id));
-        Self::from_parts(card_id, owner_id.into(), kind, state)
+        Self::from_parts(card_id, owner_id, kind, state)
     }
 
     fn from_parts(
-        card_id: u64,
-        owner_id: String,
+        card_id: CardId,
+        owner_id: LearnerId,
         kind: CardKind<OpeningCard, TacticCard>,
         state: StoredCardState,
     ) -> Self {
@@ -53,14 +56,14 @@ impl CardAggregate {
 
     /// Returns the identifier of the card.
     #[must_use]
-    pub fn id(&self) -> u64 {
+    pub fn id(&self) -> CardId {
         self.inner.id
     }
 
     /// Returns the owner identifier of the card.
     #[must_use]
-    pub fn owner_id(&self) -> &str {
-        &self.inner.owner_id
+    pub fn owner_id(&self) -> LearnerId {
+        self.inner.owner_id
     }
 
     /// Returns the card kind payload.
@@ -87,10 +90,33 @@ impl CardAggregate {
         self.inner
     }
 
+    /// Apply a review to the aggregate, mutating the stored state.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`GradeError`] when the provided grade falls outside the
+    /// supported spaced repetition scale.
+    pub fn apply_review(&mut self, grade: u8, reviewed_on: NaiveDate) -> Result<(), GradeError> {
+        let grade = ValidGrade::new(grade)?;
+        self.apply_valid_grade(grade, reviewed_on);
+        Ok(())
+    }
+
+    /// Applies the supplied [`ReviewRequest`] to the aggregate.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`GradeError`] when the embedded grade falls outside the
+    /// supported spaced repetition scale.
+    pub fn apply_review_request(&mut self, review: &ReviewRequest) -> Result<(), GradeError> {
+        self.apply_review(review.grade, review.reviewed_on)
+    }
+
     /// Applies a validated grade to the aggregate, updating the scheduling state.
     pub fn apply_valid_grade(&mut self, grade: ValidGrade, reviewed_on: NaiveDate) {
         self.inner.state.apply_review(grade, reviewed_on);
     }
+}
 
 impl From<CardAggregate> for StoredReviewCard {
     fn from(aggregate: CardAggregate) -> Self {
@@ -98,13 +124,9 @@ impl From<CardAggregate> for StoredReviewCard {
     }
 }
 
-use chrono::NaiveDate;
-
-use crate::{CardKind, GradeError, ReviewRequest, StoredCardState, ValidGrade};
-
 /// Concrete card aggregate tying together identifiers, payload, and state.
 #[derive(Clone, Debug, PartialEq)]
-pub struct CardAggregate<Id, Owner, Opening, Tactic> {
+pub struct GenericCardAggregate<Id, Owner, Opening, Tactic> {
     /// Stable identifier of the card aggregate.
     pub id: Id,
     /// Identifier for the learner that owns the card.
@@ -115,7 +137,12 @@ pub struct CardAggregate<Id, Owner, Opening, Tactic> {
     pub state: StoredCardState,
 }
 
-impl<Id, Owner, Opening, Tactic> CardAggregate<Id, Owner, Opening, Tactic> {
+impl<Id, Owner, Opening, Tactic> GenericCardAggregate<Id, Owner, Opening, Tactic> {
+    /// Applies a validated grade to the aggregate.
+    pub fn apply_valid_grade(&mut self, grade: ValidGrade, reviewed_on: NaiveDate) {
+        self.state.apply_review(grade, reviewed_on);
+    }
+
     /// Apply a review to the aggregate, mutating the stored state.
     ///
     /// # Errors
@@ -142,7 +169,7 @@ impl<Id, Owner, Opening, Tactic> CardAggregate<Id, Owner, Opening, Tactic> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{EdgeId, OpeningCard, ReviewRequest, TacticCard};
+    use crate::{EdgeId, OpeningCard, TacticCard};
     use chrono::NaiveDate;
     use std::num::NonZeroU8;
 
@@ -154,8 +181,8 @@ mod tests {
         StoredCardState::new(naive_date(2023, 1, 1), NonZeroU8::new(2).unwrap(), 2.5)
     }
 
-    fn sample_opening_card() -> CardAggregate<u64, String, OpeningCard, TacticCard> {
-        CardAggregate {
+    fn sample_opening_card() -> GenericCardAggregate<u64, String, OpeningCard, TacticCard> {
+        GenericCardAggregate {
             id: 1,
             owner_id: String::from("owner"),
             kind: CardKind::Opening(OpeningCard::new(EdgeId::new(7))),
@@ -189,11 +216,5 @@ mod tests {
 
         assert_eq!(error, GradeError::GradeOutsideRangeError { grade: 9 });
         assert_eq!(aggregate.state, original_state);
-    }
-}
-
-impl From<CardAggregate> for StoredReviewCard {
-    fn from(aggregate: CardAggregate) -> Self {
-        aggregate.into_card()
     }
 }
