@@ -1,11 +1,10 @@
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-use crate::model::Edge;
+use crate::model::{Edge, EdgeMap};
 use crate::store::StoreError;
 
 pub(super) fn store_canonical_edge(
-    edges: &mut HashMap<u64, Edge>,
+    edges: &mut EdgeMap,
     canonical: Edge,
 ) -> Result<Edge, StoreError> {
     match edges.entry(canonical.id) {
@@ -36,7 +35,6 @@ mod tests {
     use super::*;
     use crate::chess_position::ChessPosition;
     use crate::model::EdgeInput;
-    use std::collections::HashMap;
 
     #[test]
     fn store_canonical_edge_returns_existing_when_identical() {
@@ -57,7 +55,7 @@ mod tests {
             child_id: child.id,
         }
         .into_edge();
-        let mut edges = HashMap::new();
+        let mut edges = EdgeMap::default();
         edges.insert(edge.id, edge.clone());
 
         let stored = store_canonical_edge(&mut edges, edge.clone()).unwrap();
@@ -83,7 +81,7 @@ mod tests {
             child_id: child.id,
         }
         .into_edge();
-        let mut edges = HashMap::new();
+        let mut edges = EdgeMap::default();
         edges.insert(first.id, first);
 
         let alternate_child = ChessPosition::new(

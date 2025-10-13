@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 pub use review_domain::{EdgeInput, OpeningCard, ReviewRequest, StoredCardState, TacticCard};
 
 use review_domain::{
-    Card as GenericCard, CardKind as GenericCardKind, ChessPosition, OpeningEdge,
-    UnlockDetail as GenericUnlockDetail, UnlockRecord as GenericUnlockRecord,
+    Card as GenericCard, CardKind as GenericCardKind, ChessPosition, EdgeId, OpeningEdge,
+    PositionId, UnlockDetail as GenericUnlockDetail, UnlockRecord as GenericUnlockRecord,
 };
 
 use crate::hash64;
@@ -15,8 +15,8 @@ use crate::hash64;
 /// Opening edge describing a transition between two positions.
 pub type Edge = OpeningEdge;
 
-/// Hash Map from an integer ID to an [`Edge`].
-pub type EdgeMap = HashMap<u64, Edge>;
+/// Hash Map from an opening edge ID to an [`Edge`].
+pub type EdgeMap = HashMap<EdgeId, Edge>;
 
 /// Classification of a card target.
 pub type CardKind = GenericCardKind<OpeningCard, TacticCard>;
@@ -25,7 +25,7 @@ pub type CardKind = GenericCardKind<OpeningCard, TacticCard>;
 pub type CardMap = HashMap<u64, GenericCard<u64, String, CardKind, StoredCardState>>;
 
 /// Hash Map from a position ID to a [`ChessPosition`]
-pub type PositionMap = HashMap<u64, ChessPosition>;
+pub type PositionMap = HashMap<PositionId, ChessPosition>;
 
 /// Set of unlock records.
 pub type UnlockSet = HashSet<UnlockRecord>;
@@ -41,8 +41,9 @@ pub type UnlockRecord = GenericUnlockRecord<String, UnlockDetail>;
 
 /// Deterministically compute a card identifier for an opening edge.
 #[must_use]
-pub fn card_id_for_opening(owner_id: &str, edge_id: u64) -> u64 {
-    hash64(&[owner_id.as_bytes(), &edge_id.to_be_bytes()])
+pub fn card_id_for_opening(owner_id: &str, edge_id: EdgeId) -> u64 {
+    let edge_bytes = edge_id.get().to_be_bytes();
+    hash64(&[owner_id.as_bytes(), &edge_bytes])
 }
 
 /// Deterministically compute a card identifier for a tactic.
@@ -58,7 +59,7 @@ mod tests {
     use review_domain::UnlockDetail;
 
     fn increment_opening(card: OpeningCard) -> OpeningCard {
-        OpeningCard::new(card.edge_id + 1)
+        OpeningCard::new(EdgeId::new(card.edge_id.get() + 1))
     }
 
     fn increment_tactic(card: TacticCard) -> TacticCard {
@@ -78,18 +79,18 @@ mod tests {
 
     #[test]
     fn card_id_for_opening_depends_on_inputs() {
-        let base = card_id_for_opening("owner", 7);
-        assert_ne!(base, card_id_for_opening("owner", 8));
-        assert_ne!(base, card_id_for_opening("other", 7));
+        let base = card_id_for_opening("owner", EdgeId::new(7));
+        assert_ne!(base, card_id_for_opening("owner", EdgeId::new(8)));
+        assert_ne!(base, card_id_for_opening("other", EdgeId::new(7)));
     }
 
     #[test]
     fn card_kind_helpers_cover_review_domain_types() {
-        let opening = OpeningCard::new(7);
+        let opening = OpeningCard::new(EdgeId::new(7));
         let mapped_opening = CardKind::Opening(opening).map_opening(increment_opening);
         assert!(matches!(
             mapped_opening,
-            CardKind::Opening(card) if card.edge_id == 8
+            CardKind::Opening(card) if card.edge_id == EdgeId::new(8)
         ));
         assert!(matches!(
             GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(13))
@@ -107,18 +108,19 @@ mod tests {
             GenericCardKind::Tactic(payload) if payload.tactic_id == 11
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(5))
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(EdgeId::new(5)))
                 .map_opening(increment_opening),
-            GenericCardKind::Opening(card) if card.edge_id == 6
+            GenericCardKind::Opening(card) if card.edge_id == EdgeId::new(6)
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(5))
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(EdgeId::new(5)))
                 .map_tactic(increment_tactic),
-            GenericCardKind::Opening(card) if card.edge_id == 5
+            GenericCardKind::Opening(card) if card.edge_id == EdgeId::new(5)
         ));
         assert!(matches!(
-            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(9)).as_ref(),
-            GenericCardKind::Opening(reference) if reference.edge_id == 9
+            GenericCardKind::<OpeningCard, TacticCard>::Opening(OpeningCard::new(EdgeId::new(9)))
+                .as_ref(),
+            GenericCardKind::Opening(reference) if reference.edge_id == EdgeId::new(9)
         ));
         assert!(matches!(
             GenericCardKind::<OpeningCard, TacticCard>::Tactic(TacticCard::new(21))
@@ -131,16 +133,22 @@ mod tests {
             GenericCardKind::Tactic(identifier) if identifier == 18
         ));
 
-        let edge = OpeningEdge::new(1, 2, 3, "e2e4", "e4");
+        let edge = OpeningEdge::new(
+            EdgeId::new(1),
+            PositionId::new(2),
+            PositionId::new(3),
+            "e2e4",
+            "e4",
+        );
         assert_eq!(edge.move_uci, "e2e4");
         assert_eq!(edge.move_san, "e4");
 
         let unlock = UnlockRecord {
             owner_id: String::from("owner"),
-            detail: UnlockDetail::new(9),
+            detail: UnlockDetail::new(EdgeId::new(9)),
             unlocked_on: chrono::NaiveDate::from_ymd_opt(2023, 1, 1).expect("valid date"),
         };
-        let mapped_unlock = unlock.map_detail(|detail| detail.edge_id + 1);
+        let mapped_unlock = unlock.map_detail(|detail| detail.edge_id.get() + 1);
         assert_eq!(mapped_unlock.detail, 10);
     }
 }

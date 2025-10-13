@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use crate::{Card, CardKind, OpeningCard, StoredCardState, TacticCard, ValidGrade};
+use crate::{Card, CardKind, EdgeId, OpeningCard, StoredCardState, TacticCard, ValidGrade};
 
 type StoredReviewCard = Card<u64, String, CardKind<OpeningCard, TacticCard>, StoredCardState>;
 
@@ -16,7 +16,7 @@ impl CardAggregate {
     pub fn new_opening(
         card_id: u64,
         owner_id: impl Into<String>,
-        edge_id: u64,
+        edge_id: EdgeId,
         state: StoredCardState,
     ) -> Self {
         let kind = CardKind::Opening(OpeningCard::new(edge_id));
@@ -102,15 +102,16 @@ impl From<StoredReviewCard> for CardAggregate {
 impl From<CardAggregate> for StoredReviewCard {
     fn from(aggregate: CardAggregate) -> Self {
         aggregate.into_card()
-//! Aggregate representation of a review card with scheduling state.
+    }
+}
 
-use chrono::NaiveDate;
+// Aggregate representation of a review card with scheduling state.
 
-use crate::{CardKind, GradeError, ReviewRequest, StoredCardState, ValidGrade};
+use crate::{GradeError, ReviewRequest};
 
 /// Concrete card aggregate tying together identifiers, payload, and state.
 #[derive(Clone, Debug, PartialEq)]
-pub struct CardAggregate<Id, Owner, Opening, Tactic> {
+pub struct GenericCardAggregate<Id, Owner, Opening, Tactic> {
     /// Stable identifier of the card aggregate.
     pub id: Id,
     /// Identifier for the learner that owns the card.
@@ -121,7 +122,7 @@ pub struct CardAggregate<Id, Owner, Opening, Tactic> {
     pub state: StoredCardState,
 }
 
-impl<Id, Owner, Opening, Tactic> CardAggregate<Id, Owner, Opening, Tactic> {
+impl<Id, Owner, Opening, Tactic> GenericCardAggregate<Id, Owner, Opening, Tactic> {
     /// Apply a review to the aggregate, mutating the stored state.
     ///
     /// # Errors
@@ -148,7 +149,7 @@ impl<Id, Owner, Opening, Tactic> CardAggregate<Id, Owner, Opening, Tactic> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{OpeningCard, ReviewRequest, TacticCard};
+    use crate::{EdgeId, OpeningCard, ReviewRequest, TacticCard};
     use chrono::NaiveDate;
     use std::num::NonZeroU8;
 
@@ -160,11 +161,11 @@ mod tests {
         StoredCardState::new(naive_date(2023, 1, 1), NonZeroU8::new(2).unwrap(), 2.5)
     }
 
-    fn sample_opening_card() -> CardAggregate<u64, String, OpeningCard, TacticCard> {
-        CardAggregate {
+    fn sample_opening_card() -> GenericCardAggregate<u64, String, OpeningCard, TacticCard> {
+        GenericCardAggregate {
             id: 1,
             owner_id: String::from("owner"),
-            kind: CardKind::Opening(OpeningCard::new(7)),
+            kind: CardKind::Opening(OpeningCard::new(EdgeId::new(7))),
             state: sample_state(),
         }
     }

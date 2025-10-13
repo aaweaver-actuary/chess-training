@@ -1,4 +1,4 @@
-use review_domain::ids::{CardId, EdgeId, IdentifierError, MoveId, PositionId};
+use review_domain::ids::{CardId, EdgeId, IdConversionError, IdKind, MoveId, PositionId};
 use std::convert::TryFrom;
 
 #[test]
@@ -18,15 +18,15 @@ fn scheduler_core_uses_review_domain_identifier_wrappers() {
     let overflow = CardId::try_from(u128::from(u64::MAX) + 4096);
     assert!(matches!(
         overflow,
-        Err(IdentifierError::Overflow { type_name, .. }) if type_name == "CardId"
+        Err(IdConversionError::Overflow { kind, .. }) if kind == IdKind::Card
     ));
 
     let negative = MoveId::try_from(-4096_i128);
     assert!(matches!(
         negative,
-        Err(IdentifierError::Negative { type_name }) if type_name == "MoveId"
+        Err(IdConversionError::Negative { kind, .. }) if kind == IdKind::Move
     ));
-
+}
 
 #[test]
 fn review_domain_ids_are_available_in_scheduler_core() {
@@ -47,7 +47,7 @@ fn review_domain_ids_are_available_in_scheduler_core() {
     assert_eq!(EdgeId::try_from(67_u128).unwrap(), edge);
 
     let mv = MoveId::from(71_u64);
-    assert_eq!(format!("{mv}"), "71");
+    assert_eq!(format!("{mv}"), "MoveId(71)");
     assert_eq!(format!("{mv:?}"), "MoveId(71)");
     assert_eq!(MoveId::try_from(71_i64).unwrap(), mv);
     assert!(MoveId::try_from(-1_i64).is_err());
@@ -55,7 +55,7 @@ fn review_domain_ids_are_available_in_scheduler_core() {
     assert_eq!(MoveId::try_from(71_u128).unwrap(), mv);
 
     let card = CardId::new(73_u64);
-    assert_eq!(card.to_string(), "73");
+    assert_eq!(card.to_string(), "CardId(73)");
     assert_eq!(u64::from(card), 73);
     assert_eq!(CardId::try_from(73_i64).unwrap(), card);
     assert!(CardId::try_from(-1_i64).is_err());

@@ -52,7 +52,7 @@ fn id_newtypes_round_trip_for_card_store() {
     assert_eq!(EdgeId::try_from(17_u128).unwrap(), edge);
 
     let mv = MoveId::from(23_u64);
-    assert_eq!(format!("{mv}"), "23");
+    assert_eq!(format!("{mv}"), "MoveId(23)");
     assert_eq!(format!("{mv:?}"), "MoveId(23)");
     assert_eq!(MoveId::try_from(23_i64).unwrap(), mv);
     assert!(MoveId::try_from(-1_i64).is_err());
@@ -60,7 +60,7 @@ fn id_newtypes_round_trip_for_card_store() {
     assert_eq!(MoveId::try_from(23_u128).unwrap(), mv);
 
     let card = CardId::new(29_u64);
-    assert_eq!(card.to_string(), "29");
+    assert_eq!(card.to_string(), "CardId(29)");
     assert_eq!(u64::from(card), 29);
     assert_eq!(CardId::try_from(29_i64).unwrap(), card);
     assert!(CardId::try_from(-1_i64).is_err());

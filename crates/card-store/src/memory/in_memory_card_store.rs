@@ -19,6 +19,7 @@ use crate::{
         UnlockRecord, UnlockSet, card_id_for_opening,
     },
 };
+use review_domain::{EdgeId, PositionId};
 
 /// Thread-safe in-memory reference implementation of the storage trait.
 #[derive(Debug)]
@@ -97,16 +98,16 @@ impl InMemoryCardStore {
         })
     }
 
-    fn ensure_position_exists(&self, id: u64) -> Result<(), StoreError> {
+    fn ensure_position_exists(&self, id: PositionId) -> Result<(), StoreError> {
         if !self.positions_read()?.contains_key(&id) {
-            return Err(StoreError::MissingPosition { id });
+            return Err(StoreError::MissingPosition { id: id.get() });
         }
         Ok(())
     }
 
-    fn ensure_edge_exists(&self, id: u64) -> Result<(), StoreError> {
+    fn ensure_edge_exists(&self, id: EdgeId) -> Result<(), StoreError> {
         if !self.edges_read()?.contains_key(&id) {
-            return Err(StoreError::MissingEdge { id });
+            return Err(StoreError::MissingEdge { id: id.get() });
         }
         Ok(())
     }
@@ -120,8 +121,8 @@ impl CardStore for InMemoryCardStore {
     }
 
     fn upsert_edge(&self, edge: EdgeInput) -> Result<Edge, StoreError> {
-        self.ensure_position_exists(edge.parent_id)?;
-        self.ensure_position_exists(edge.child_id)?;
+        self.ensure_position_exists(PositionId::new(edge.parent_id))?;
+        self.ensure_position_exists(PositionId::new(edge.child_id))?;
         let canonical = edge.into_edge();
         let mut edges = self.edges_write()?;
         store_canonical_edge(&mut edges, canonical)
@@ -175,11 +176,11 @@ impl InMemoryCardStore {
         &self.unlocks
     }
 
-    pub(crate) fn ensure_position_exists_for_test(&self, id: u64) -> Result<(), StoreError> {
+    pub(crate) fn ensure_position_exists_for_test(&self, id: PositionId) -> Result<(), StoreError> {
         self.ensure_position_exists(id)
     }
 
-    pub(crate) fn ensure_edge_exists_for_test(&self, id: u64) -> Result<(), StoreError> {
+    pub(crate) fn ensure_edge_exists_for_test(&self, id: EdgeId) -> Result<(), StoreError> {
         self.ensure_edge_exists(id)
     }
 }

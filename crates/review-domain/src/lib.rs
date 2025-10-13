@@ -30,7 +30,7 @@ pub use grade::{GradeError, ValidGrade};
 /// Deterministic hashing helper backed by BLAKE3.
 pub use hash::hash64;
 /// Strongly typed identifier wrappers used across the crate.
-pub use ids::{CardId, EdgeId, IdConversionError, MoveId, PositionId};
+pub use ids::{CardId, EdgeId, IdConversionError, IdKind, MoveId, PositionId};
 /// Opening-focused request and payload types.
 pub use opening::{EdgeInput, OpeningCard, OpeningEdge};
 /// Normalized chess position representation and related errors.

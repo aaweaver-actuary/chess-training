@@ -14,7 +14,9 @@ fn id_conversion_errors_surface_kind_labels() {
             assert_eq!(max, u64::MAX);
             assert_eq!(kind.to_string(), "card");
         }
-        IdConversionError::Negative { .. } => panic!("expected overflow"),
+        IdConversionError::Negative { .. } | IdConversionError::InvalidFormat { .. } => {
+            panic!("expected overflow")
+        }
     }
 
     match negative {
@@ -23,7 +25,9 @@ fn id_conversion_errors_surface_kind_labels() {
             assert_eq!(value, -1);
             assert_eq!(kind.to_string(), "edge");
         }
-        IdConversionError::Overflow { .. } => panic!("expected negative"),
+        IdConversionError::Overflow { .. } | IdConversionError::InvalidFormat { .. } => {
+            panic!("expected negative")
+        }
     }
 }
 
@@ -36,7 +40,15 @@ fn ids_integrate_with_card_store_helpers() {
     let mov = MoveId::from(99_u64);
     let card = CardId::from(7_u64);
 
-    write!(&mut buffer, "{position}:{edge}:{mov}:{card}").unwrap();
+    write!(
+        &mut buffer,
+        "{}:{}:{}:{}",
+        position.get(),
+        edge.get(),
+        mov.get(),
+        card.get()
+    )
+    .unwrap();
 
     assert_eq!(buffer, "42:72:99:7");
     assert_eq!(u64::from(position), 42);

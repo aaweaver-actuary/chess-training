@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{OpeningEdgeRecord, Position, RepertoireEdge, Tactic};
+use review_domain::{EdgeId, PositionId};
 
 /// Trait for abstracting storage of chess training data, such as positions, edges, repertoire edges, and tactics.
 ///
@@ -53,9 +54,9 @@ impl UpsertOutcome {
 #[derive(Default)]
 /// An in-memory implementation of the `Storage` trait, primarily used for testing purposes.
 pub struct ImportInMemoryStore {
-    positions: BTreeMap<u64, Position>,
-    edges: BTreeMap<u64, OpeningEdgeRecord>,
-    repertoire_edges: BTreeSet<(String, String, u64)>,
+    positions: BTreeMap<PositionId, Position>,
+    edges: BTreeMap<EdgeId, OpeningEdgeRecord>,
+    repertoire_edges: BTreeSet<(String, String, EdgeId)>,
     tactics: BTreeMap<u64, Tactic>,
 }
 

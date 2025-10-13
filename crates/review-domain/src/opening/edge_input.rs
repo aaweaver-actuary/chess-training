@@ -1,6 +1,10 @@
 //! Input payload for inserting or updating an opening edge.
 
-use crate::{hash::hash64, opening::OpeningEdge};
+use crate::{
+    hash::hash64,
+    ids::{EdgeId, PositionId},
+    opening::OpeningEdge,
+};
 
 /// Input payload for inserting or updating an edge.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -22,11 +26,14 @@ impl EdgeInput {
     /// and returns an [`OpeningEdge`] with normalized fields.
     #[must_use]
     pub fn into_edge(self) -> OpeningEdge {
-        let id = hash64(&[&self.parent_id.to_be_bytes(), self.move_uci.as_bytes()]);
+        let id = EdgeId::new(hash64(&[
+            &self.parent_id.to_be_bytes(),
+            self.move_uci.as_bytes(),
+        ]));
         OpeningEdge {
             id,
-            parent_id: self.parent_id,
-            child_id: self.child_id,
+            parent_id: PositionId::new(self.parent_id),
+            child_id: PositionId::new(self.child_id),
             move_uci: self.move_uci,
             move_san: self.move_san,
         }
@@ -37,6 +44,7 @@ impl EdgeInput {
 mod tests {
     use super::EdgeInput;
     use crate::hash::hash64;
+    use crate::ids::{EdgeId, PositionId};
 
     #[test]
     fn converts_to_edge() {
@@ -50,9 +58,9 @@ mod tests {
         let expected_id = hash64(&[&1u64.to_be_bytes(), b"e2e4"]);
         let edge = input.into_edge();
 
-        assert_eq!(edge.id, expected_id);
-        assert_eq!(edge.parent_id, 1);
-        assert_eq!(edge.child_id, 2);
+        assert_eq!(edge.id, EdgeId::new(expected_id));
+        assert_eq!(edge.parent_id, PositionId::new(1));
+        assert_eq!(edge.child_id, PositionId::new(2));
         assert_eq!(edge.move_uci, "e2e4");
         assert_eq!(edge.move_san, "e4");
     }

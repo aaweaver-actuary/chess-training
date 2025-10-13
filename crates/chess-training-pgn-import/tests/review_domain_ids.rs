@@ -1,4 +1,4 @@
-use review_domain::ids::{CardId, EdgeId, IdentifierError, MoveId, PositionId};
+use review_domain::ids::{CardId, EdgeId, IdConversionError, IdKind, MoveId, PositionId};
 
 #[test]
 fn review_domain_ids_are_available_to_importer_consumers() {
@@ -20,12 +20,12 @@ fn review_domain_ids_are_available_to_importer_consumers() {
     let overflow = PositionId::try_from(u128::from(u64::MAX) + 5);
     assert!(matches!(
         overflow,
-        Err(IdentifierError::Overflow { type_name, .. }) if type_name == "PositionId"
+        Err(IdConversionError::Overflow { kind, .. }) if kind == IdKind::Position
     ));
 
     let negative = MoveId::try_from(-32_i128);
     assert!(matches!(
         negative,
-        Err(IdentifierError::Negative { type_name }) if type_name == "MoveId"
+        Err(IdConversionError::Negative { kind, .. }) if kind == IdKind::Move
     ));
 }

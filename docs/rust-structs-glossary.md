@@ -85,13 +85,13 @@ _Source:_ `crates/review-domain/src/unlock.rs`
 
 ### `UnlockDetail`
 
-**Overview:** Minimal opening-specific payload embedded in unlock logs persisted by review-domain services. Keeps storage records small while the scheduler adds richer metadata via its own detail struct.
+**Overview:** Minimal opening-specific payload embedded in unlock logs persisted by review-domain services. Uses the shared `EdgeId` newtype to ensure unlock history never mixes opening identifiers with other ID domains while keeping records compact.
 
 **Definition:**
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct UnlockDetail {
-    pub edge_id: u64,
+    pub edge_id: EdgeId,
 }
 ```
 _Source:_ `crates/review-domain/src/unlock.rs`
@@ -514,14 +514,14 @@ _Source:_ `crates/review-domain/src/opening/edge_input.rs`
 
 ### `OpeningCard`
 
-**Overview:** Lightweight payload used by review cards to reference a specific opening edge. Keeps scheduler and storage layers aligned around deterministic edge IDs.
+**Overview:** Lightweight payload used by review cards to reference a specific opening edge. Stores the `EdgeId` newtype directly so both scheduler and storage layers remain aligned around deterministic, type-safe edge identifiers.
 
 **Definition:**
 ```rust
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct OpeningCard {
-    pub edge_id: u64,
+    pub edge_id: EdgeId,
 }
 ```
 _Source:_ `crates/review-domain/src/opening/card.rs`

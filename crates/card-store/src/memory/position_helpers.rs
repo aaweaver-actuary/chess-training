@@ -1,8 +1,9 @@
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
 use crate::chess_position::ChessPosition;
+use crate::model::PositionMap;
 use crate::store::StoreError;
+use review_domain::PositionId;
 
 pub(super) fn canonicalize_position_for_storage(
     position: ChessPosition,
@@ -11,10 +12,11 @@ pub(super) fn canonicalize_position_for_storage(
 }
 
 pub(super) fn store_canonical_position(
-    positions: &mut HashMap<u64, ChessPosition>,
+    positions: &mut PositionMap,
     canonical: ChessPosition,
 ) -> Result<ChessPosition, StoreError> {
-    match positions.entry(canonical.id) {
+    let key = PositionId::new(canonical.id);
+    match positions.entry(key) {
         Entry::Occupied(entry) => {
             validate_position_collision(entry.get(), &canonical)?;
             Ok(entry.get().clone())
@@ -72,7 +74,7 @@ mod tests {
 
     #[test]
     fn store_canonical_position_inserts_when_missing() {
-        let mut positions = HashMap::new();
+        let mut positions = PositionMap::default();
         let position = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
@@ -85,7 +87,7 @@ mod tests {
 
     #[test]
     fn store_canonical_position_returns_existing_on_collision() {
-        let mut positions = HashMap::new();
+        let mut positions = PositionMap::default();
         let first = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
@@ -96,7 +98,7 @@ mod tests {
             10,
         )
         .unwrap();
-        positions.insert(first.id, first.clone());
+        positions.insert(PositionId::new(first.id), first.clone());
 
         let stored = store_canonical_position(&mut positions, second.clone()).unwrap();
         assert_eq!(stored, first);
@@ -104,13 +106,13 @@ mod tests {
 
     #[test]
     fn validate_position_collision_errors_on_conflicting_fen() {
-        let mut positions = HashMap::new();
+        let mut positions = PositionMap::default();
         let first = ChessPosition::new(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             0,
         )
         .unwrap();
-        positions.insert(first.id, first.clone());
+        positions.insert(PositionId::new(first.id), first.clone());
         let mut conflicting = first.clone();
         conflicting.fen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2".into();
 

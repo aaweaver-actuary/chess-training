@@ -9,6 +9,7 @@ use card_store::model::{
 };
 use card_store::store::{CardStore, StoreError};
 use chrono::{Duration, NaiveDate};
+use review_domain::EdgeId;
 
 fn new_store() -> InMemoryCardStore {
     InMemoryCardStore::new(StorageConfig::default())
@@ -142,7 +143,7 @@ fn build_baseline(
     start_day: NaiveDate,
     initial_interval: NonZeroU8,
     initial_ease: f32,
-) -> HashMap<u64, Card> {
+) -> HashMap<EdgeId, Card> {
     let mut baseline = HashMap::new();
     for edge in edges {
         let mut card = store
@@ -350,7 +351,7 @@ fn due_cards_filter_out_future_entries() {
 fn unlock_records_are_unique_per_day() {
     let store = new_store();
     let date = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
-    let edge_id = 42;
+    let edge_id = EdgeId::new(42);
     let record = UnlockRecord {
         owner_id: "andy".to_string(),
         detail: UnlockDetail { edge_id },
@@ -359,15 +360,17 @@ fn unlock_records_are_unique_per_day() {
 
     store.record_unlock(record.clone()).unwrap();
     let second = store.record_unlock(record);
-    assert!(
-        matches!(second, Err(StoreError::DuplicateUnlock { edge, day }) if edge == edge_id && day == date)
-    );
+    assert!(matches!(
+        second,
+        Err(StoreError::DuplicateUnlock { edge, day })
+            if edge == edge_id.get() && day == date
+    ));
 }
 
 #[test]
 fn unlock_same_edge_on_different_days() {
     let store = new_store();
-    let edge_id = 42;
+    let edge_id = EdgeId::new(42);
     let day1 = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
     let day2 = NaiveDate::from_ymd_opt(2024, 1, 3).unwrap();
 
@@ -493,8 +496,8 @@ fn importing_longer_line_preserves_existing_progress() {
 fn unlock_different_edges_on_same_day() {
     let store = new_store();
     let date = NaiveDate::from_ymd_opt(2024, 1, 2).unwrap();
-    let edge_id1 = 42;
-    let edge_id2 = 43;
+    let edge_id1 = EdgeId::new(42);
+    let edge_id2 = EdgeId::new(43);
 
     let record1 = UnlockRecord {
         owner_id: "andy".to_string(),

@@ -3,30 +3,34 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use crate::ids::EdgeId;
+
 /// Payload carried by opening review cards.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct OpeningCard {
     /// Identifier of the reviewed opening edge.
-    pub edge_id: u64,
+    pub edge_id: EdgeId,
 }
 
 impl OpeningCard {
     /// Creates a new `OpeningCard` payload.
     #[must_use]
-    pub fn new(edge_id: u64) -> Self {
+    pub fn new(edge_id: EdgeId) -> Self {
         Self { edge_id }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::ids::EdgeId;
+
     use super::OpeningCard;
 
     #[test]
     fn constructor_sets_fields() {
-        let card = OpeningCard::new(42);
-        assert_eq!(card.edge_id, 42);
+        let card = OpeningCard::new(EdgeId::new(42));
+        assert_eq!(card.edge_id, EdgeId::new(42));
     }
 
     #[test]

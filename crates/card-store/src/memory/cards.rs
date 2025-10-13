@@ -74,6 +74,7 @@ fn build_opening_card(owner_id: &str, edge: &Edge, state: StoredCardState, card_
 mod tests {
     use super::*;
     use crate::model::{CardKind, OpeningCard};
+    use review_domain::{EdgeId, PositionId};
     use std::collections::HashMap;
     use std::num::NonZeroU8;
 
@@ -87,9 +88,9 @@ mod tests {
 
     fn sample_edge(id: u64) -> Edge {
         Edge {
-            id,
-            parent_id: 1,
-            child_id: 2,
+            id: EdgeId::new(id),
+            parent_id: PositionId::new(1),
+            child_id: PositionId::new(2),
             move_uci: "e2e4".into(),
             move_san: "e4".into(),
         }
@@ -128,7 +129,9 @@ mod tests {
             sample_card_state(naive_date(2023, 1, 1)),
             10,
         );
-        different_owner.kind = CardKind::Opening(OpeningCard { edge_id: 99 });
+        different_owner.kind = CardKind::Opening(OpeningCard {
+            edge_id: EdgeId::new(99),
+        });
         cards.insert(10, different_owner);
 
         let err = store_opening_card(

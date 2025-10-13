@@ -1,15 +1,17 @@
 //! Directed edge in an opening tree.
 
+use crate::ids::{EdgeId, PositionId};
+
 /// Directed edge in an opening tree.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OpeningEdge {
     /// Deterministic identifier for the edge.
-    pub id: u64,
+    pub id: EdgeId,
     /// Identifier of the parent position.
-    pub parent_id: u64,
+    pub parent_id: PositionId,
     /// Identifier of the child position.
-    pub child_id: u64,
+    pub child_id: PositionId,
     /// Move in UCI notation.
     pub move_uci: String,
     /// Move in SAN notation.
@@ -20,9 +22,9 @@ impl OpeningEdge {
     /// Builds a new opening edge.
     #[must_use]
     pub fn new(
-        id: u64,
-        parent_id: u64,
-        child_id: u64,
+        id: EdgeId,
+        parent_id: PositionId,
+        child_id: PositionId,
         move_uci: impl Into<String>,
         move_san: impl Into<String>,
     ) -> Self {
@@ -38,14 +40,22 @@ impl OpeningEdge {
 
 #[cfg(test)]
 mod tests {
+    use crate::ids::{EdgeId, PositionId};
+
     use super::OpeningEdge;
 
     #[test]
     fn constructor_copies_inputs() {
-        let edge = OpeningEdge::new(1, 2, 3, "e2e4", String::from("e4"));
-        assert_eq!(edge.id, 1);
-        assert_eq!(edge.parent_id, 2);
-        assert_eq!(edge.child_id, 3);
+        let edge = OpeningEdge::new(
+            EdgeId::new(1),
+            PositionId::new(2),
+            PositionId::new(3),
+            "e2e4",
+            String::from("e4"),
+        );
+        assert_eq!(edge.id, EdgeId::new(1));
+        assert_eq!(edge.parent_id, PositionId::new(2));
+        assert_eq!(edge.child_id, PositionId::new(3));
         assert_eq!(edge.move_uci, "e2e4");
         assert_eq!(edge.move_san, "e4");
     }

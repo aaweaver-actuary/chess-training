@@ -1,6 +1,7 @@
 use fnv::FnvHasher;
 /// Re-export of the shared opening edge structure from the review-domain crate.
 pub use review_domain::OpeningEdge;
+use review_domain::{EdgeId, PositionId};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -13,7 +14,7 @@ pub const HASH_NAMESPACE: &str = "chess-training:pgn-import";
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Position {
     /// Stable identifier derived from hashing the FEN.
-    pub id: u64,
+    pub id: PositionId,
     /// Full FEN string describing the position.
     pub fen: String,
     /// Side to move encoded as `'w'` or `'b'`.
@@ -26,7 +27,7 @@ impl Position {
     /// Construct a position with a deterministic identifier derived from the FEN.
     #[must_use]
     pub fn new(fen: &str, side_to_move: char, ply: u32) -> Self {
-        let id = hash_with_seed(HASH_NAMESPACE, SCHEMA_VERSION, &fen);
+        let id = PositionId::new(hash_with_seed(HASH_NAMESPACE, SCHEMA_VERSION, &fen));
         Self {
             id,
             fen: fen.to_string(),
@@ -50,13 +51,17 @@ impl OpeningEdgeRecord {
     /// Construct a canonical opening edge record from PGN move data.
     #[must_use]
     pub fn new(
-        parent_id: u64,
+        parent_id: PositionId,
         move_uci: &str,
         move_san: &str,
-        child_id: u64,
+        child_id: PositionId,
         source_hint: Option<String>,
     ) -> Self {
-        let id = hash_with_seed(HASH_NAMESPACE, SCHEMA_VERSION, &(parent_id, move_uci));
+        let id = EdgeId::new(hash_with_seed(
+            HASH_NAMESPACE,
+            SCHEMA_VERSION,
+            &(parent_id, move_uci),
+        ));
         let edge = OpeningEdge::new(id, parent_id, child_id, move_uci, move_san);
         Self { edge, source_hint }
     }
@@ -69,13 +74,13 @@ pub struct RepertoireEdge {
     /// Logical grouping key for the repertoire.
     pub repertoire_key: String,
     /// Identifier of the edge stored in the repertoire.
-    pub edge_id: u64,
+    pub edge_id: EdgeId,
 }
 
 impl RepertoireEdge {
     /// Construct a repertoire edge linking an owner, repertoire key, and opening edge.
     #[must_use]
-    pub fn new(owner: &str, repertoire_key: &str, edge_id: u64) -> Self {
+    pub fn new(owner: &str, repertoire_key: &str, edge_id: EdgeId) -> Self {
         Self {
             owner: owner.to_string(),
             repertoire_key: repertoire_key.to_string(),
@@ -161,7 +166,7 @@ mod tests {
 
     #[test]
     fn repertoire_edge_preserves_owner_and_key() {
-        let record = RepertoireEdge::new("user", "rep", 42);
+        let record = RepertoireEdge::new("user", "rep", EdgeId::new(42));
         assert_eq!(record.owner, "user");
         assert_eq!(record.repertoire_key, "rep");
     }
@@ -178,6 +183,6 @@ mod tests {
         let position = Position::new("fen serial", 'w', 0);
         let payload: Value = serde_json::to_value(&position).unwrap();
         assert_eq!(payload["fen"], "fen serial");
-        assert_eq!(payload["id"].as_u64(), Some(position.id));
+        assert_eq!(payload["id"].as_u64(), Some(position.id.get()));
     }
 }

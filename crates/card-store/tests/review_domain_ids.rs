@@ -1,5 +1,5 @@
 use review_domain::ids::{
-    CardId, EdgeId, IdentifierError, LearnerId, MoveId, PositionId, UnlockId,
+    CardId, EdgeId, IdConversionError, IdKind, LearnerId, MoveId, PositionId, UnlockId,
 };
 
 #[test]
@@ -27,15 +27,16 @@ fn review_domain_identifiers_round_trip_from_card_store() {
     let overflow = CardId::try_from(u128::from(u64::MAX) + 1);
     assert!(matches!(
         overflow,
-        Err(IdentifierError::Overflow {
-            type_name,
-            attempted_value
-        }) if type_name == "CardId" && attempted_value == u128::from(u64::MAX) + 1
+        Err(IdConversionError::Overflow { kind, value, max })
+            if kind == IdKind::Card
+                && value == u128::from(u64::MAX) + 1
+                && max == u64::MAX
     ));
 
     let negative = MoveId::try_from(-7_i128);
     assert!(matches!(
         negative,
-        Err(IdentifierError::Negative { type_name }) if type_name == "MoveId"
+        Err(IdConversionError::Negative { kind, value })
+            if kind == IdKind::Move && value == -7
     ));
 }
