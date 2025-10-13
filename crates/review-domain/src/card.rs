@@ -16,7 +16,7 @@ pub struct Card<Id, Owner, Kind, State> {
 #[cfg(test)]
 mod tests {
     use super::Card;
-    use std::ptr;
+    use core::ptr;
 
     #[derive(Clone, Debug, PartialEq)]
     struct Owner(u64);
@@ -89,12 +89,8 @@ mod tests {
         let clone = original.clone();
 
         assert_eq!(original, clone);
-
-        let original_ptr = ptr::from_ref(&original);
-        let clone_ptr = ptr::from_ref(&clone);
-
-        assert!(ptr::eq(original_ptr, original_ptr));
-        assert!(!ptr::eq(original_ptr, clone_ptr));
+        assert!(ptr::eq(ptr::from_ref(&original), ptr::from_ref(&original)));
+        assert!(!ptr::eq(ptr::from_ref(&original), ptr::from_ref(&clone)));
     }
 
     #[test]
@@ -110,7 +106,7 @@ mod tests {
         card.state.interval_days += 5;
         card.state.lapses += 1;
 
-        assert!((card.state.ease - 2.8).abs() < f32::EPSILON);
+        assert!((card.state.ease - 2.8).abs() <= f32::EPSILON);
         assert_eq!(card.state.interval_days, 15);
         assert_eq!(card.state.lapses, 1);
     }
