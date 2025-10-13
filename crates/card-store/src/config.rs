@@ -1,6 +1,6 @@
 //! Configuration for card-store implementations.
 
-/// Runtime configuration for a [`CardStore`](crate::store::CardStore) implementation.
+/// Runtime configuration for a [`ReviewCardStore`](crate::store::ReviewCardStore) implementation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StorageConfig {
     /// Database connection string when using a SQL-backed store.

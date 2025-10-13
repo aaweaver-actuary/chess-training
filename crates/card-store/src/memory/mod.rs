@@ -1,4 +1,4 @@
-//! In-memory implementation of the [`CardStore`](crate::store::CardStore) trait organized by
+//! In-memory implementation of the [`ReviewCardStore`](crate::store::ReviewCardStore) trait organized by
 //! storage concern for readability.
 
 #[cfg(test)]
@@ -31,7 +31,7 @@ mod tests {
     use super::in_memory_card_store::InMemoryCardStore;
     use super::*;
     use crate::model::UnlockDetail;
-    use crate::store::CardStore;
+    use crate::store::ReviewCardStore;
     use crate::tests::util::assert_invalid_position;
     use chrono::NaiveDate;
     use std::sync::RwLock;

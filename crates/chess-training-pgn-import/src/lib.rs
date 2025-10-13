@@ -16,4 +16,4 @@ pub use crate::config::IngestConfig;
 /// Importer façade and error type exposed to binary crates.
 pub use crate::importer::{ImportError, Importer};
 /// In-memory storage implementation useful for tests and tooling.
-pub use crate::storage::ImportInMemoryStore;
+pub use crate::storage::InMemoryImportStore;

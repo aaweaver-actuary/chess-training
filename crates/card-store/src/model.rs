@@ -3,8 +3,9 @@
 use std::collections::{HashMap, HashSet};
 
 /// Re-export shared review-domain types to simplify crate consumers.
-pub use review_domain::{
-    EdgeId, EdgeInput, OpeningCard, ReviewRequest, StoredCardState, TacticCard,
+pub use review_domain::{EdgeInput, OpeningCard, ReviewRequest, StoredCardState, TacticCard};
+pub use scheduler_core::domain::{
+    hydrate_sm2_state, persist_sm2_state, CardStateBridgeError, Sm2Runtime, StoredSnapshot,
 };
 
 use review_domain::{
@@ -43,13 +44,13 @@ pub type UnlockRecord = GenericUnlockRecord<String, UnlockDetail>;
 
 /// Deterministically compute a card identifier for an opening edge.
 #[must_use]
-pub fn card_id_for_opening(owner_id: &str, edge_id: u64) -> u64 {
+pub fn build_opening_card_id(owner_id: &str, edge_id: u64) -> u64 {
     hash64(&[owner_id.as_bytes(), &edge_id.to_be_bytes()])
 }
 
 /// Deterministically compute a card identifier for a tactic.
 #[must_use]
-pub fn card_id_for_tactic(owner_id: &str, tactic_id: u64) -> u64 {
+pub fn build_tactic_card_id(owner_id: &str, tactic_id: u64) -> u64 {
     hash64(&[owner_id.as_bytes(), &tactic_id.to_be_bytes()])
 }
 
@@ -72,17 +73,17 @@ mod tests {
     }
 
     #[test]
-    fn card_id_for_tactic_depends_on_inputs() {
-        let base = card_id_for_tactic("owner", 42);
-        assert_ne!(base, card_id_for_tactic("owner", 43));
-        assert_ne!(base, card_id_for_tactic("other", 42));
+    fn build_tactic_card_id_depends_on_inputs() {
+        let base = build_tactic_card_id("owner", 42);
+        assert_ne!(base, build_tactic_card_id("owner", 43));
+        assert_ne!(base, build_tactic_card_id("other", 42));
     }
 
     #[test]
-    fn card_id_for_opening_depends_on_inputs() {
-        let base = card_id_for_opening("owner", 7);
-        assert_ne!(base, card_id_for_opening("owner", 8));
-        assert_ne!(base, card_id_for_opening("other", 7));
+    fn build_opening_card_id_depends_on_inputs() {
+        let base = build_opening_card_id("owner", 7);
+        assert_ne!(base, build_opening_card_id("owner", 8));
+        assert_ne!(base, build_opening_card_id("other", 7));
     }
 
     #[test]

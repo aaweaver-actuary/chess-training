@@ -31,4 +31,4 @@ pub use review_domain::ReviewGrade;
 /// Scheduler façade orchestrating queue building and review processing.
 pub use scheduler::Scheduler;
 /// Storage trait and in-memory implementation used by the scheduler.
-pub use store::{CardStore, InMemoryStore};
+pub use store::{InMemoryStore, SchedulerStore};

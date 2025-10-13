@@ -13,7 +13,7 @@ flowchart TD
     class in_memory,positions,edges,cards,reviews,unlocks leaf;
 ```
 
-The in-memory implementation of the `CardStore` trait is organized into small helper modules so that each responsibility remains focused:
+The in-memory implementation of the `ReviewCardStore` trait is organized into small helper modules so that each responsibility remains focused:
 
 * `mod.rs` wires the thread-safe store together, re-exports `InMemoryCardStore`, and houses smoke tests that exercise the helpers as a unit.
 * `in_memory_card_store.rs` defines the struct itself, exposing accessors for locks that the tests use to simulate poisoned states.
