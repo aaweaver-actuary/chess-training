@@ -17,7 +17,7 @@ pub mod store;
 /// Error returned when chess positions fail validation.
 pub use crate::errors::PositionError;
 /// Core store trait and error surface for persistence implementations.
-pub use crate::store::{CardStore, StoreError};
+pub use crate::store::{ReviewCardStore, StoreError};
 
 /// Deterministic hashing helper shared with review-domain.
 pub use review_domain::hash64;

@@ -100,9 +100,9 @@ fn repertoire_move_constructor_accepts_string_inputs() {
         String::from("...e5"),
     );
 
-    assert_eq!(mv.edge_id, 7);
-    assert_eq!(mv.parent_id, 8);
-    assert_eq!(mv.child_id, 9);
+    assert_eq!(mv.edge_id, EdgeId::new(7));
+    assert_eq!(mv.parent_id, PositionId::new(8));
+    assert_eq!(mv.child_id, PositionId::new(9));
     assert_eq!(mv.move_uci, "e7e5");
     assert_eq!(mv.move_san, "...e5");
 }

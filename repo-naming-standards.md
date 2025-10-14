@@ -19,7 +19,7 @@
 
 - **Be descriptive and domain-focused.** Favor names that capture what a type or function *does in the chess-training domain*, not how it is implemented. (Example: `SchedulerConfig` rather than `ConfigOptions`).
 - **Prefer nouns for data, verbs for actions.** This maintains clarity between data containers (e.g., `UnlockDetail`) and operations (e.g., `record_unlock`).
-- **Avoid duplication.** When introducing new items, search for existing equivalents to prevent multiple names for the same concept (e.g., avoid introducing a third variant of `CardStore`).
+- **Avoid duplication.** When introducing new items, search for existing equivalents to prevent multiple names for the same concept (e.g., avoid introducing a third variant of `ReviewCardStore`/`SchedulerStore`).
 - **Converge on established prefixes/suffixes.** Align new work with the most common existing patterns cataloged in the audit (`Config`, `Record`, `Id`, `Store`, etc.).
 
 ## Verb Guidelines
@@ -29,12 +29,12 @@ Use verbs consistently to signal how an API behaves. When adding a new function,
 
 | Intent | Preferred Verb(s) | Avoid / Notes | Example |
 | ------ | ----------------- | ------------- | ------- |
-| Build a new value without side effects | `new_*`, `build_*`, `create_*` | Avoid `make_*` and `into_*` for constructors. `into_*` implies type conversion that consumes `self`. | `build_ingest_config` (preferred over `into_ingest_config`). |
+| Build a new value without side effects | `new_*`, `build_*`, `create_*` | Avoid `make_*` and `into_*` for constructors. `into_*` implies type conversion that consumes `self`. | `build_ingest_config`. |
 | Convert types while consuming the source | `into_*` | Only use when the method takes ownership and converts to another type. | `EdgeInput::into_edge`. |
 | Convert types without consuming | `as_*`, `to_*` | Follow Rust idioms: `to_*` returns owned data, `as_*` returns borrowed/cast views. | `Grade::to_u8`, `Grade::as_u8`. |
 | Persist or update storage | `upsert_*`, `record_*` | Avoid mixing `store_*`, `insert_*`, `save_*` for the same action. Pick the dominant verb in the module/crate and use it everywhere. | `upsert_canonical_position`, `record_unlock`. |
 | Read-only queries | `get_*`, `load_*`, `fetch_*` | Prefer a single verb per module (`get` vs `fetch`). Avoid `collect_*` unless building a derived collection. | `get_due_cards_for_owner`. |
-| Queue or workflow building | `build_*`, `prepare_*` | Avoid mixing `build_queue` with `build_queue_length`; expose `queue_len` for size checks. | `build_queue_for_day`, `queue_len`. |
+| Queue or workflow building | `build_*`, `prepare_*` | Avoid mixing `build_queue` with queue-length names; expose `queue_length` for size checks. | `build_queue_for_day`, `queue_length`. |
 
 ## Structs, Enums, and Type Aliases
 [Back to Top](#repository-naming-standards)
@@ -47,7 +47,7 @@ Use verbs consistently to signal how an API behaves. When adding a new function,
 ## Traits and Implementations
 [Back to Top](#repository-naming-standards)
 
-- **Trait names describe capability in noun form.** (`CardStore`, `SchedulerStore`, `Storage`). When two traits could collide in scope, rename to clarify ownership (`ReviewCardStore` vs. `SchedulerStore`).
+- **Trait names describe capability in noun form.** (`ReviewCardStore`, `SchedulerStore`, `Storage`). When two traits could collide in scope, rename to clarify ownership (`ReviewCardStore` vs. `SchedulerStore`).
 - **Method verbs on traits follow module rules.** If the trait expresses persistence, ensure all implementations use `upsert_*`/`record_*` consistently.
 - **Suffix `Error`, `Result`, or `Handle` for helpers** that encapsulate state machines or result types (`StoreError`, `UnlockHandle`).
 - **Builders and facades.** Use `Facade`, `Builder`, or `Factory` only for types that orchestrate multiple subsystems, and ensure methods reinforce their role (`SchedulerFacade::new`).
@@ -62,7 +62,7 @@ Use verbs consistently to signal how an API behaves. When adding a new function,
 ## Cross-Crate Consistency
 [Back to Top](#repository-naming-standards)
 
-- **Align shared concepts.** If a name appears in multiple crates, use the same spelling and suffix (`CardStore` vs. `SchedulerCardStore`). Consider renaming conflicting traits per the audit recommendations to avoid double imports.
+- **Align shared concepts.** If a name appears in multiple crates, use the same spelling and suffix (`ReviewCardStore` vs. `SchedulerStore`). Renaming conflicting traits removes the need for awkward import gymnastics.
 - **Queue terminology.** Export `queue`-related functions with matching verbs across crates (`queue_len`, `build_queue`). Avoid introducing `build_queue_length` variations.
 - **In-memory stores.** Standardize on `InMemory*Store` (`InMemoryCardStore`, `InMemoryImportStore`, `InMemorySchedulerStore`).
 - **Unlock flow.** Harmonize verbs between crates so card-store and scheduler both use `record_unlock` or `upsert_unlock`, not a mix of `insert`/`record`.
@@ -79,7 +79,7 @@ Use verbs consistently to signal how an API behaves. When adding a new function,
 
 Use this checklist when touching names:
 
-1. **Audit existing usage.** Search the repo (e.g., `rg "build_queue_length"`) to understand current patterns before changing anything.
+1. **Audit existing usage.** Search the repo (e.g., `rg "queue_length"`) to understand current patterns before changing anything.
 2. **Select verbs/nouns per this guide.** Ensure new names align with the tables and conventions above.
 3. **Update related items together.** When renaming a trait, adjust implementations, docs, and re-exports in the same change.
 4. **Refresh documentation.** Update this standard and the glossary when the repo’s naming expectations evolve.

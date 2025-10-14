@@ -60,7 +60,7 @@ pub struct ImportInMemoryStore {
     tactics: BTreeMap<u64, Tactic>,
 }
 
-impl Storage for ImportInMemoryStore {
+impl Storage for InMemoryImportStore {
     fn upsert_position(&mut self, position: Position) -> UpsertOutcome {
         UpsertOutcome::from_bool(self.positions.insert(position.id, position).is_none())
     }
@@ -82,7 +82,7 @@ impl Storage for ImportInMemoryStore {
     }
 }
 
-impl ImportInMemoryStore {
+impl InMemoryImportStore {
     /// Construct a new empty in-memory store.
     #[must_use]
     pub fn new() -> Self {
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn upsert_methods_report_insert_status() {
-        let mut store = ImportInMemoryStore::default();
+        let mut store = InMemoryImportStore::default();
         let parent = sample_position(0);
         let child = sample_position(1);
         let edge = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn repertoire_edges_accessor_round_trips_entries() {
-        let mut store = ImportInMemoryStore::default();
+        let mut store = InMemoryImportStore::default();
         let parent = sample_position(0);
         let child = sample_position(1);
         let edge = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
@@ -167,8 +167,8 @@ mod tests {
 
     #[test]
     fn in_memory_store_default_is_the_same_as_new() {
-        let default_store = ImportInMemoryStore::default();
-        let new_store = ImportInMemoryStore::new();
+        let default_store = InMemoryImportStore::default();
+        let new_store = InMemoryImportStore::new();
         assert_eq!(default_store.positions.len(), new_store.positions.len());
         assert_eq!(default_store.edges.len(), new_store.edges.len());
         assert_eq!(

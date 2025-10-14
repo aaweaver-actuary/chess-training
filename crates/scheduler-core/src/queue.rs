@@ -7,11 +7,11 @@ use uuid::Uuid;
 
 use crate::config::SchedulerConfig;
 use crate::domain::{Card, CardKind, CardState, SchedulerUnlockDetail, UnlockRecord};
-use crate::store::CardStore;
+use crate::store::SchedulerStore;
 
 /// Build the study queue for the given owner on the provided day.
 #[must_use]
-pub fn build_queue_for_day<S: CardStore>(
+pub fn build_queue_for_day<S: SchedulerStore>(
     store: &mut S,
     config: &SchedulerConfig,
     owner_id: Uuid,
@@ -56,7 +56,7 @@ impl ExistingUnlocks {
     }
 }
 
-fn extend_queue_with_unlocks<S: CardStore>(
+fn extend_queue_with_unlocks<S: SchedulerStore>(
     store: &mut S,
     config: &SchedulerConfig,
     owner_id: Uuid,

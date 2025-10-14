@@ -9,7 +9,7 @@ use crate::chess_position::ChessPosition;
 use crate::errors::PositionError;
 use crate::model::{Card, Edge, EdgeId, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
 
-/// Unified error type returned by [`CardStore`] implementations.
+/// Unified error type returned by [`ReviewCardStore`] implementations.
 #[derive(Debug, Error, PartialEq)]
 pub enum StoreError {
     /// A required position was not found.
@@ -41,8 +41,8 @@ pub enum StoreError {
     InvalidSchedulerState { reason: String },
 }
 
-/// Persistence abstraction used across services.
-pub trait CardStore: Send + Sync + fmt::Debug {
+/// Persistence abstraction used across review services.
+pub trait ReviewCardStore: Send + Sync + fmt::Debug {
     /// Insert or update a [`Position`]. Returns the stored record.
     ///
     /// # Errors

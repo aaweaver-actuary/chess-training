@@ -98,6 +98,48 @@ _Source:_ `crates/review-domain/src/unlock.rs`
 - Review storage writes `UnlockDetail` entries so historical logs remain compatible when the opening-edge payload grows.
 - Importer pipelines convert scheduler-oriented unlock data into `UnlockDetail`, ensuring unlock analytics consume the shared handle.
 
+### `IdKind`
+
+**Overview:** Enumerates the strongly typed identifiers used throughout the review domain. Provides readable labels that error messages and logs can rely on when conversions fail.
+
+**Definition:**
+```rust
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum IdKind {
+    Position,
+    Edge,
+    Move,
+    Card,
+    Learner,
+    Unlock,
+}
+```
+_Source:_ `crates/review-domain/src/ids.rs`
+
+**Usage in this repository:**
+- `crates/review-domain/src/ids.rs` emits `IdKind` values in conversion errors so callers can pinpoint which identifier wrapper overflowed or received an invalid value.
+- Integration tests under `crates/card-store/tests/identifier_wrappers.rs` assert that the kind labels render human-readable names like `"card"` when displayed.
+
+### `IdConversionError`
+
+**Overview:** Shared error type for converting raw integers into identifier wrappers. Tracks whether the issue was an overflow or a negative input and includes contextual metadata like the identifier kind and offending value.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum IdConversionError {
+    Overflow { kind: IdKind, value: u128, max: u64 },
+    Negative { kind: IdKind, value: i128 },
+}
+```
+_Source:_ `crates/review-domain/src/ids.rs`
+
+**Usage in this repository:**
+- The identifier macro in `crates/review-domain/src/ids.rs` returns `IdConversionError` from `TryFrom` implementations, ensuring overflow and negative values surface descriptive diagnostics.
+- Tests in `crates/review-domain/src/ids.rs` and `crates/card-store/tests/identifier_wrappers.rs` verify that the error conveys the expected bounds and identifier kind across success and failure paths.
+
 ### `ReviewRequest`
 
 **Overview:** Simple DTO representing the input a service sends when a learner grades a card. Storage implementations rely on it to update `StoredCardState` without exposing scheduler internals.
@@ -230,7 +272,7 @@ _Source:_ `crates/scheduler-core/src/domain/mod.rs`
 
 ### `InMemoryStore`
 
-**Overview:** Reference implementation of the scheduler’s `CardStore` trait. Backs tests and the WASM facade with deterministic behavior without requiring external storage.
+**Overview:** Reference implementation of the scheduler’s `SchedulerStore` trait. Backs tests and the WASM facade with deterministic behavior without requiring external storage.
 
 **Definition:**
 ```rust
@@ -263,13 +305,13 @@ _Source:_ `crates/scheduler-core/src/queue.rs`
 - `crates/scheduler-core/src/queue.rs` seeds `ExistingUnlocks` from prior unlock logs, then updates it as new cards unlock within the same queue build.
 - Scheduler queue tests create prior unlock records to ensure `ExistingUnlocks` blocks cards sharing a prefix from unlocking twice in one day.
 
-### `Scheduler<S: CardStore>`
+### `Scheduler<S: SchedulerStore>`
 
-**Overview:** High-level orchestrator that coordinates SM-2 reviews and unlock queue generation against an abstract `CardStore`. Encapsulates the SM-2 algorithm so callers only provide storage and configuration.
+**Overview:** High-level orchestrator that coordinates SM-2 reviews and unlock queue generation against an abstract `SchedulerStore`. Encapsulates the SM-2 algorithm so callers only provide storage and configuration.
 
 **Definition:**
 ```rust
-pub struct Scheduler<S: CardStore> {
+pub struct Scheduler<S: SchedulerStore> {
     store: S,
     config: SchedulerConfig,
 }
@@ -284,12 +326,12 @@ _Source:_ `crates/scheduler-core/src/scheduler.rs`
 ```mermaid
 classDiagram
     class Scheduler {
-      -store: CardStore
+      -store: SchedulerStore
       -config: SchedulerConfig
       +review(card_id, grade, today) ReviewOutcome
       +build_queue(owner_id, today) Vec<Card>
     }
-    class CardStore {
+    class SchedulerStore {
       <<interface>>
       +get_card(id): Option<Card>
       +upsert_card(card)
@@ -305,8 +347,8 @@ classDiagram
       kind
       state: Sm2State
     }
-    Scheduler --> CardStore
-    InMemoryStore ..|> CardStore
+    Scheduler --> SchedulerStore
+    InMemoryStore ..|> SchedulerStore
     Scheduler --> Card
 ```
 
@@ -343,7 +385,7 @@ pub struct WasmScheduler {
 _Source:_ `crates/scheduler-wasm/src/bindings.rs`
 
 **Usage in this repository:**
-- The wasm bindings expose `WasmScheduler::build_queue_length` to JavaScript, allowing the web UI to request queue sizes without handling raw Rust types.
+- The wasm bindings expose `WasmScheduler::queue_length` to JavaScript, allowing the web UI to request queue sizes without handling raw Rust types.
 - `WasmScheduler::new` applies `SchedulerConfigPatch` values so JS callers can override defaults when initializing the module.
 
 ### `SchedulerConfigDto`
@@ -491,16 +533,16 @@ _Source:_ `crates/review-domain/src/repertoire/graph.rs`
 
 ### `OpeningEdge`
 
-**Overview:** Canonical representation of a move from one position to another in the opening tree. Encodes IDs and notation for durable storage and reuse.
+**Overview:** Canonical representation of a move from one position to another in the opening tree. Encodes strongly typed identifiers (`EdgeId`, `PositionId`) alongside notation for durable storage and reuse.
 
 **Definition:**
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OpeningEdge {
-    pub id: u64,
-    pub parent_id: u64,
-    pub child_id: u64,
+    pub id: EdgeId,
+    pub parent_id: PositionId,
+    pub child_id: PositionId,
     pub move_uci: String,
     pub move_san: String,
 }
@@ -508,8 +550,8 @@ pub struct OpeningEdge {
 _Source:_ `crates/review-domain/src/opening/edge.rs`
 
 **Usage in this repository:**
-- `EdgeInput::into_edge` normalizes client submissions into `OpeningEdge`, ensuring consistent IDs before storing edges.
-- PGN importer records embed `OpeningEdge` within `OpeningEdgeRecord`, sharing the same struct across crates.
+- `EdgeInput::into_edge` normalizes client submissions into `OpeningEdge`, ensuring consistent `EdgeId`/`PositionId` assignments before storing edges.
+- PGN importer records embed `OpeningEdge` within `OpeningEdgeRecord`, sharing the same strongly typed struct across crates.
 
 ### `EdgeInput`
 
@@ -583,7 +625,7 @@ _Source:_ `crates/review-domain/src/tactic.rs`
 
 ### `Position`
 
-**Overview:** Importer-side representation of a chess position with deterministic hashing. Mirrors `ChessPosition` but tailored for ingestion workflows and serde-friendly serialization.
+**Overview:** Importer-side representation of a chess position with deterministic hashing. Mirrors `ChessPosition` but tailored for ingestion workflows, reusing the shared `PositionId` newtype for typed identifier plumbing and serde-friendly serialization.
 
 **Definition:**
 ```rust
@@ -622,7 +664,7 @@ _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 ### `RepertoireEdge`
 
-**Overview:** Links an owner and repertoire key to a canonical opening edge ID. Lets import runs track which moves belong to a learner’s repertoire without duplicating edge data.
+**Overview:** Links an owner and repertoire key to a canonical `EdgeId`. Lets import runs track which moves belong to a learner’s repertoire without duplicating edge data.
 
 **Definition:**
 ```rust
@@ -636,8 +678,8 @@ pub struct RepertoireEdge {
 _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 **Usage in this repository:**
-- Importer inserts `RepertoireEdge` entries whenever it records an opening move, linking the move back to the learner (`owner`) and repertoire grouping.
-- `ImportInMemoryStore::repertoire_edges` reconstructs `RepertoireEdge` instances from its internal set so tests can verify contents easily.
+- Importer inserts `RepertoireEdge` entries whenever it records an opening move, linking the move back to the learner (`owner`) and repertoire grouping via the canonical `EdgeId`.
+- `InMemoryImportStore::repertoire_edges` reconstructs `RepertoireEdge` instances from its internal set so tests can verify contents easily.
 
 ### `Tactic`
 
@@ -743,7 +785,7 @@ _Source:_ `crates/chess-training-pgn-import/src/importer.rs`
 
 ### `Importer<S: Storage>`
 
-**Overview:** Orchestrates PGN ingestion: parsing games, updating storage, and capturing metrics. Parameterized over a storage implementation so tests can plug in `ImportInMemoryStore` while production can use real databases.
+**Overview:** Orchestrates PGN ingestion: parsing games, updating storage, and capturing metrics. Parameterized over a storage implementation so tests can plug in `InMemoryImportStore` while production can use real databases.
 
 **Definition:**
 ```rust
@@ -756,7 +798,7 @@ pub struct Importer<S: Storage> {
 _Source:_ `crates/chess-training-pgn-import/src/importer.rs`
 
 **Usage in this repository:**
-- CLI workflows instantiate `Importer::new_in_memory` for smoke tests, then call `ingest_pgn_str` with PGN text.
+- CLI workflows instantiate `Importer::with_in_memory_store` for smoke tests, then call `ingest_pgn_str` with PGN text.
 - After ingestion, `Importer::finalize` returns the storage backend and metrics, letting callers inspect inserted data or persist the store.
 
 ### `GameContext`
@@ -818,14 +860,14 @@ _Source:_ `crates/chess-training-pgn-import/src/importer.rs`
 - `parse_games` produces `RawGame` instances from PGN text, which `Importer::ingest_pgn_str` iterates over.
 - Tests inspect `RawGame::tag` results to ensure PGN header parsing preserves case-insensitive keys.
 
-### `ImportInMemoryStore`
+### `InMemoryImportStore`
 
 **Overview:** In-memory storage backend for the PGN importer. Uses `BTreeMap`/`BTreeSet` collections to track positions, edges, repertoire associations, and tactics without requiring external databases.
 
 **Definition:**
 ```rust
 #[derive(Default)]
-pub struct ImportInMemoryStore {
+pub struct InMemoryImportStore {
     positions: BTreeMap<u64, Position>,
     edges: BTreeMap<u64, OpeningEdgeRecord>,
     repertoire_edges: BTreeSet<(String, String, u64)>,
@@ -835,7 +877,7 @@ pub struct ImportInMemoryStore {
 _Source:_ `crates/chess-training-pgn-import/src/storage.rs`
 
 **Usage in this repository:**
-- `Importer::new_in_memory` wires the importer to an `ImportInMemoryStore`, making integration tests deterministic and side-effect free.
+- `Importer::with_in_memory_store` wires the importer to an `InMemoryImportStore`, making integration tests deterministic and side-effect free.
 - Accessor methods (`positions`, `edges`, `tactics`, `repertoire_edges`) let tests validate the importer produced the expected records.
 
 ### `IoError`
@@ -894,7 +936,7 @@ _Source:_ `crates/chess-training-pgn-import/src/config.rs`
 
 **Usage in this repository:**
 - `Importer::new` stores an `IngestConfig` copy to decide whether to record positions, tactics, or skip malformed FEN games.
-- `CliArgs::into_ingest_config` mutates `IngestConfig` based on CLI flags and configuration files, demonstrating how multiple configuration sources converge.
+- `CliArgs::build_ingest_config` mutates `IngestConfig` based on CLI flags and configuration files, demonstrating how multiple configuration sources converge.
 
 ### `FileConfig`
 
@@ -916,8 +958,8 @@ struct FileConfig {
 _Source:_ `crates/chess-training-pgn-import/src/config.rs`
 
 **Usage in this repository:**
-- `FileConfig::from_path` reads TOML files, turning them into optional overrides that `CliArgs::into_ingest_config` merges with CLI flags.
-- When inputs are provided via config file, `into_ingest_config` appends them to CLI-specified paths, ensuring both sources are respected.
+- `FileConfig::from_path` reads TOML files, turning them into optional overrides that `CliArgs::build_ingest_config` merges with CLI flags.
+- When inputs are provided via config file, `build_ingest_config` appends them to CLI-specified paths, ensuring both sources are respected.
 
 ### `CliArgs`
 
@@ -941,17 +983,17 @@ _Source:_ `crates/chess-training-pgn-import/src/config.rs`
 
 **Usage in this repository:**
 - `CliArgs::try_parse_from` builds the CLI using clap and parses arguments provided by integration tests or binaries.
-- `CliArgs::into_ingest_config` validates that at least one PGN input is provided (raising `ConfigError::NoInputs` otherwise) and merges CLI plus file-driven configuration.
+- `CliArgs::build_ingest_config` validates that at least one PGN input is provided (raising `ConfigError::NoInputs` otherwise) and merges CLI plus file-driven configuration.
 
 **Mermaid diagram:**
 ```mermaid
 flowchart LR
-    CLI[CliArgs] -->|into_ingest_config| CFG[IngestConfig]
+    CLI[CliArgs] -->|build_ingest_config| CFG[IngestConfig]
     FileConfig -->|overrides| CFG
     CFG -->|controls| Importer
     Importer -->|produces| Metrics[ImportMetrics]
     Importer -->|uses| StorageTrait[Storage]
-    StorageTrait -.-> ImportInMemoryStore
+    StorageTrait -.-> InMemoryImportStore
 ```
 
 ## Testing and Tooling Helpers
@@ -994,7 +1036,7 @@ _Source:_ `crates/scheduler-core/tests/scheduler_sm2.rs`
 
 ### `TimedStore`
 
-**Overview:** Custom `CardStore` implementation used in opening scheduling tests. Adds availability windows and a controllable “current day” to simulate cards becoming unlockable on future dates.
+**Overview:** Custom `SchedulerStore` implementation used in opening scheduling tests. Adds availability windows and a controllable “current day” to simulate cards becoming unlockable on future dates.
 
 **Definition:**
 ```rust
@@ -1010,5 +1052,5 @@ _Source:_ `crates/scheduler-core/tests/opening_scheduling.rs`
 
 **Usage in this repository:**
 - Opening scheduling tests set availability dates via `insert_with_availability` and advance time with `set_day` to ensure unlock pacing respects day boundaries.
-- By implementing `CardStore`, `TimedStore` plugs directly into queue-building helpers, letting tests assert on queue contents without modifying production code.
+- By implementing `SchedulerStore`, `TimedStore` plugs directly into queue-building helpers, letting tests assert on queue contents without modifying production code.
 

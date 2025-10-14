@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use scheduler_core::domain::{SchedulerOpeningCard, SchedulerTacticCard};
 use scheduler_core::{
-    CardKind, CardState, CardStore, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig,
+    CardKind, CardState, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig,
     build_queue_for_day, new_card,
 };
 use uuid::Uuid;

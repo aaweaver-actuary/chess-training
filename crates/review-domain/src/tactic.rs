@@ -8,13 +8,13 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TacticCard {
     /// Identifier of the reviewed tactic.
-    pub tactic_id: u64,
+    pub tactic_id: crate::TacticId,
 }
 
 impl TacticCard {
     /// Creates a new `TacticCard` payload.
     #[must_use]
-    pub fn new(tactic_id: u64) -> Self {
+    pub const fn new(tactic_id: crate::TacticId) -> Self {
         Self { tactic_id }
     }
 }
@@ -25,8 +25,8 @@ mod tests {
 
     #[test]
     fn tactic_card_constructor_sets_fields() {
-        let card = TacticCard::new(99);
-        assert_eq!(card.tactic_id, 99);
+        let card = TacticCard::new(crate::TacticId::new(99));
+        assert_eq!(card.tactic_id, crate::TacticId::new(99));
     }
 
     #[test]
