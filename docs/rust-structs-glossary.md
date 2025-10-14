@@ -512,16 +512,16 @@ _Source:_ `crates/review-domain/src/repertoire/move_.rs`
 
 ### `OpeningEdge`
 
-**Overview:** Canonical representation of a move from one position to another in the opening tree. Encodes IDs and notation for durable storage and reuse.
+**Overview:** Canonical representation of a move from one position to another in the opening tree. Encodes strongly typed identifiers (`EdgeId`, `PositionId`) alongside notation for durable storage and reuse.
 
 **Definition:**
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OpeningEdge {
-    pub id: u64,
-    pub parent_id: u64,
-    pub child_id: u64,
+    pub id: EdgeId,
+    pub parent_id: PositionId,
+    pub child_id: PositionId,
     pub move_uci: String,
     pub move_san: String,
 }
@@ -529,8 +529,8 @@ pub struct OpeningEdge {
 _Source:_ `crates/review-domain/src/opening/edge.rs`
 
 **Usage in this repository:**
-- `EdgeInput::into_edge` normalizes client submissions into `OpeningEdge`, ensuring consistent IDs before storing edges.
-- PGN importer records embed `OpeningEdge` within `OpeningEdgeRecord`, sharing the same struct across crates.
+- `EdgeInput::into_edge` normalizes client submissions into `OpeningEdge`, ensuring consistent `EdgeId`/`PositionId` assignments before storing edges.
+- PGN importer records embed `OpeningEdge` within `OpeningEdgeRecord`, sharing the same strongly typed struct across crates.
 
 ### `EdgeInput`
 
@@ -604,13 +604,13 @@ _Source:_ `crates/review-domain/src/tactic.rs`
 
 ### `Position`
 
-**Overview:** Importer-side representation of a chess position with deterministic hashing. Mirrors `ChessPosition` but tailored for ingestion workflows and serde-friendly serialization.
+**Overview:** Importer-side representation of a chess position with deterministic hashing. Mirrors `ChessPosition` but tailored for ingestion workflows, reusing the shared `PositionId` newtype for typed identifier plumbing and serde-friendly serialization.
 
 **Definition:**
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Position {
-    pub id: u64,
+    pub id: PositionId,
     pub fen: String,
     pub side_to_move: char,
     pub ply: u32,
@@ -619,8 +619,8 @@ pub struct Position {
 _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 **Usage in this repository:**
-- `crates/chess-training-pgn-import/src/importer.rs` records positions via `Storage::upsert_position`, ensuring each unique board state is tracked during PGN ingestion.
-- Import metrics increment `opening_positions` when `UpsertOutcome::Inserted` is returned for a new `Position`.
+- `crates/chess-training-pgn-import/src/importer.rs` records positions via `Storage::upsert_position`, ensuring each unique board state (keyed by `PositionId`) is tracked during PGN ingestion.
+- Import metrics increment `opening_positions` when `UpsertOutcome::Inserted` is returned for a new position, signalling that a distinct `PositionId` entered the store.
 
 ### `OpeningEdgeRecord`
 
@@ -643,7 +643,7 @@ _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 ### `RepertoireEdge`
 
-**Overview:** Links an owner and repertoire key to a canonical opening edge ID. Lets import runs track which moves belong to a learner’s repertoire without duplicating edge data.
+**Overview:** Links an owner and repertoire key to a canonical `EdgeId`. Lets import runs track which moves belong to a learner’s repertoire without duplicating edge data.
 
 **Definition:**
 ```rust
@@ -651,13 +651,13 @@ _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 pub struct RepertoireEdge {
     pub owner: String,
     pub repertoire_key: String,
-    pub edge_id: u64,
+    pub edge_id: EdgeId,
 }
 ```
 _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 **Usage in this repository:**
-- Importer inserts `RepertoireEdge` entries whenever it records an opening move, linking the move back to the learner (`owner`) and repertoire grouping.
+- Importer inserts `RepertoireEdge` entries whenever it records an opening move, linking the move back to the learner (`owner`) and repertoire grouping via the canonical `EdgeId`.
 - `InMemoryImportStore::repertoire_edges` reconstructs `RepertoireEdge` instances from its internal set so tests can verify contents easily.
 
 ### `Tactic`
