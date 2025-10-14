@@ -1,6 +1,6 @@
 use review_domain::{
     ids::{EdgeId, PositionId},
-    repertoire::{Repertoire, RepertoireError, RepertoireMove, repertoire_::RepertoireBuilder},
+    repertoire::{Repertoire, RepertoireBuilder, RepertoireError, RepertoireMove},
 };
 
 #[test]
@@ -8,6 +8,7 @@ fn repertoire_collects_moves() {
     let mut repertoire = Repertoire::new("e4 starts");
     assert_eq!(repertoire.name(), "e4 starts");
     assert!(repertoire.moves().is_empty());
+    assert!(repertoire.graph().is_empty());
 
     let move_entry = RepertoireMove::new(
         EdgeId::new(1),
@@ -54,6 +55,13 @@ fn builder_supports_composing_repertoire() {
     assert_eq!(repertoire.moves().len(), 2);
     assert_eq!(repertoire.moves()[0].move_uci, "e2e4");
     assert_eq!(repertoire.moves()[1].move_san, "Nf3");
+
+    let children: Vec<_> = repertoire
+        .graph()
+        .children(PositionId::new(20))
+        .map(|mv| mv.edge_id.get())
+        .collect();
+    assert_eq!(children, vec![10]);
 }
 
 #[test]
@@ -79,6 +87,7 @@ fn repertoire_collect_from_iterator_preserves_moves() {
 
     assert_eq!(repertoire.name(), "");
     assert_eq!(repertoire.moves(), &moves[..]);
+    assert_eq!(repertoire.graph().len(), 2);
 }
 
 #[test]

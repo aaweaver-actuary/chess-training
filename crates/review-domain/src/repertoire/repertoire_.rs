@@ -1,9 +1,10 @@
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 
 use crate::ids::EdgeId;
-use crate::{RepertoireError, RepertoireMove};
+use crate::{OpeningGraph, RepertoireError, RepertoireMove};
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Aggregated store for the opening moves a student has committed to memory.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -11,8 +12,8 @@ use crate::{RepertoireError, RepertoireMove};
 pub struct Repertoire {
     /// Friendly label describing the scope of the repertoire (e.g. "King's Indian Defence").
     name: String,
-    /// Collection of moves that make up the repertoire.
-    moves: Vec<RepertoireMove>,
+    /// Directed graph describing the repertoire's opening moves.
+    graph: OpeningGraph,
 }
 
 impl Repertoire {
@@ -21,7 +22,7 @@ impl Repertoire {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
-            moves: Vec::new(),
+            graph: OpeningGraph::new(),
         }
     }
 
@@ -34,7 +35,13 @@ impl Repertoire {
     /// Immutable view of all moves currently tracked by the repertoire.
     #[must_use]
     pub fn moves(&self) -> &[RepertoireMove] {
-        &self.moves
+        self.graph.moves()
+    }
+
+    /// Graph representation of the repertoire for adjacency queries.
+    #[must_use]
+    pub fn graph(&self) -> &OpeningGraph {
+        &self.graph
     }
 
     /// Placeholder stub for inserting a move into the repertoire.
@@ -87,7 +94,7 @@ impl Repertoire {
             (
                 "moves".into(),
                 Value::Array(
-                    self.moves
+                    self.graph
                         .iter()
                         .map(RepertoireMove::to_avro_value)
                         .collect(),
@@ -122,8 +129,48 @@ impl FromIterator<RepertoireMove> for Repertoire {
     fn from_iter<I: IntoIterator<Item = RepertoireMove>>(iter: I) -> Self {
         Self {
             name: String::new(),
-            moves: iter.into_iter().collect(),
+            graph: OpeningGraph::from_moves(iter.into_iter().collect()),
         }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for Repertoire {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        #[derive(Serialize)]
+        struct Helper<'a> {
+            name: &'a str,
+            moves: &'a [RepertoireMove],
+        }
+
+        let helper = Helper {
+            name: &self.name,
+            moves: self.graph.moves(),
+        };
+        helper.serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for Repertoire {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Helper {
+            name: String,
+            moves: Vec<RepertoireMove>,
+        }
+
+        let helper = Helper::deserialize(deserializer)?;
+        Ok(Self {
+            name: helper.name,
+            graph: OpeningGraph::from_moves(helper.moves),
+        })
     }
 }
 
@@ -162,7 +209,7 @@ impl RepertoireBuilder {
     pub fn build(self) -> Repertoire {
         Repertoire {
             name: self.name,
-            moves: self.moves,
+            graph: OpeningGraph::from_moves(self.moves),
         }
     }
 }
@@ -218,6 +265,27 @@ mod builder_and_iter_tests {
         assert_eq!(rep.moves()[0].parent_id.get(), 10);
         assert_eq!(rep.name(), "");
     }
+
+    #[test]
+    fn test_graph_children_and_parents() {
+        let rep = RepertoireBuilder::new("Graph")
+            .add_move(sample_move(1))
+            .add_move(sample_move(2))
+            .build();
+        let children: Vec<_> = rep
+            .graph()
+            .children(crate::ids::PositionId::new(1))
+            .map(|mv| mv.child_id)
+            .collect();
+        assert_eq!(children, vec![crate::ids::PositionId::new(2)]);
+
+        let parents: Vec<_> = rep
+            .graph()
+            .parents(crate::ids::PositionId::new(3))
+            .map(|mv| mv.parent_id)
+            .collect();
+        assert_eq!(parents, vec![crate::ids::PositionId::new(2)]);
+    }
 }
 
 #[cfg(test)]
@@ -245,14 +313,15 @@ mod avro_tests {
 
     #[test]
     fn test_to_avro_value_matches_schema() {
-        let mut rep = Repertoire::new("AvroTest");
-        rep.moves.push(crate::RepertoireMove {
-            parent_id: crate::ids::PositionId::new(1),
-            child_id: crate::ids::PositionId::new(2),
-            edge_id: crate::ids::EdgeId::new(3),
-            move_uci: "e2e4".to_string(),
-            move_san: "e4".to_string(),
-        });
+        let rep = RepertoireBuilder::new("AvroTest")
+            .add_move(crate::RepertoireMove {
+                parent_id: crate::ids::PositionId::new(1),
+                child_id: crate::ids::PositionId::new(2),
+                edge_id: crate::ids::EdgeId::new(3),
+                move_uci: "e2e4".to_string(),
+                move_san: "e4".to_string(),
+            })
+            .build();
         let value = rep.to_avro_value();
         assert!(matches!(value, Value::Record(_)));
     }
@@ -267,7 +336,7 @@ mod avro_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{RepertoireError, RepertoireMove, ids::*};
+    use crate::{ids::*, RepertoireError, RepertoireMove};
 
     fn sample_move() -> RepertoireMove {
         RepertoireMove {
@@ -288,12 +357,11 @@ mod tests {
 
     #[test]
     fn test_moves_accessor() {
-        let mut rep = Repertoire::new("Test");
-        // moves() should be empty initially
-        assert_eq!(rep.moves().len(), 0);
-        // Directly push a move for testing accessor (bypassing add_move stub)
+        let empty = Repertoire::new("Test");
+        assert_eq!(empty.moves().len(), 0);
+
         let mv = sample_move();
-        rep.moves.push(mv.clone());
+        let rep = RepertoireBuilder::new("Test").add_move(mv.clone()).build();
         assert_eq!(rep.moves().len(), 1);
         assert_eq!(rep.moves()[0], mv);
     }
@@ -318,8 +386,9 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_serde_roundtrip() {
-        let mut rep = Repertoire::new("SerDe");
-        rep.moves.push(sample_move());
+        let rep = RepertoireBuilder::new("SerDe")
+            .add_move(sample_move())
+            .build();
         let json = serde_json::to_string(&rep).expect("serialize");
         let de: Repertoire = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(rep, de);

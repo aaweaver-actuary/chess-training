@@ -26,6 +26,7 @@ This document captures the implementation outline for improving the review domai
    - Model repertoire data as a DAG: `OpeningGraph { positions: HashMap<PositionId, PositionNode> }` where each node tracks outgoing `OpeningEdge` children.
    - Supply navigation helpers (`children(position_id)`, `parents(position_id)`, `path_to(position_id)`) so consumers can answer prefix questions directly.
    - Maintain serialization support (serde + Avro) by flattening the graph to the existing edge list shape when needed.
+   - Repertoire APIs should surface the graph while retaining move serialization helpers so importer pipelines can migrate without schema churn.
 
 3. **ContentUnlocks**
    - Align unlock transport types with `CardKind` by introducing enums like `UnlockDetail::Opening(OpeningUnlock)` and `UnlockDetail::Tactic(TacticUnlock)`.
@@ -66,6 +67,7 @@ This document captures the implementation outline for improving the review domai
 ## Migration Considerations
 - Provide adapter implementations (e.g., `From<CardAggregate>` for the legacy types) to support incremental adoption.
 - Document schema changes for services consuming Avro/serde payloads and coordinate version bumps where required.
+- Communicate to importer and analytics consumers that `OpeningEdgeRecord` now exposes `RepertoireMove`/`EdgeId` wrappers so they can drop direct `u64` handling when building graphs.
 - Benchmark repertoire traversal before and after introducing `OpeningGraph` to confirm the performance gains.
 
 ## Open Questions

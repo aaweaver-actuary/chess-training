@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{OpeningEdgeRecord, Position, RepertoireEdge, Tactic};
+use review_domain::{EdgeId, PositionId};
 
 /// Trait for abstracting storage of chess training data, such as positions, edges, repertoire edges, and tactics.
 ///
@@ -52,10 +53,10 @@ impl UpsertOutcome {
 
 #[derive(Default)]
 /// An in-memory implementation of the `Storage` trait, primarily used for testing purposes.
-pub struct InMemoryImportStore {
-    positions: BTreeMap<u64, Position>,
-    edges: BTreeMap<u64, OpeningEdgeRecord>,
-    repertoire_edges: BTreeSet<(String, String, u64)>,
+pub struct ImportInMemoryStore {
+    positions: BTreeMap<PositionId, Position>,
+    edges: BTreeMap<EdgeId, OpeningEdgeRecord>,
+    repertoire_edges: BTreeSet<(String, String, EdgeId)>,
     tactics: BTreeMap<u64, Tactic>,
 }
 
@@ -65,7 +66,7 @@ impl Storage for InMemoryImportStore {
     }
 
     fn upsert_edge(&mut self, edge: OpeningEdgeRecord) -> UpsertOutcome {
-        UpsertOutcome::from_bool(self.edges.insert(edge.edge.id, edge).is_none())
+        UpsertOutcome::from_bool(self.edges.insert(edge.move_entry.edge_id, edge).is_none())
     }
 
     fn upsert_repertoire_edge(&mut self, record: RepertoireEdge) -> UpsertOutcome {
@@ -133,7 +134,7 @@ mod tests {
         let parent = sample_position(0);
         let child = sample_position(1);
         let edge = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
-        let record = RepertoireEdge::new("owner", "rep", edge.edge.id);
+        let record = RepertoireEdge::new("owner", "rep", edge.move_entry.edge_id);
         let tactic = Tactic::new("fen", vec!["e2e4".into()], vec![], None);
 
         assert!(store.upsert_position(parent.clone()).is_inserted());
@@ -153,17 +154,15 @@ mod tests {
         let child = sample_position(1);
         let edge = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
         assert!(store.upsert_edge(edge.clone()).is_inserted());
-        assert!(
-            store
-                .upsert_repertoire_edge(RepertoireEdge::new("owner", "rep", edge.edge.id))
-                .is_inserted()
-        );
+        assert!(store
+            .upsert_repertoire_edge(RepertoireEdge::new("owner", "rep", edge.move_entry.edge_id,))
+            .is_inserted());
 
         let records = store.repertoire_edges();
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].owner, "owner");
         assert_eq!(records[0].repertoire_key, "rep");
-        assert_eq!(records[0].edge_id, edge.edge.id);
+        assert_eq!(records[0].edge_id, edge.move_entry.edge_id);
     }
 
     #[test]
