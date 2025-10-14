@@ -13,6 +13,7 @@ blake3 = "1"
 thiserror = "1"
 serde = { version = "1", optional = true, features = ["derive"] }
 apache-avro = { version = "0.16", optional = true, features = ["derive"] }
+derive_builder = "0.20.2"
 
 [dev-dependencies]
 serde_json = "1"

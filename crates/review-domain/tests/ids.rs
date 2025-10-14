@@ -64,13 +64,13 @@ fn ids_report_overflow_conversion_errors() {
         LearnerId::try_from(u128::from(u64::MAX) + 1).expect_err("overflow should emit error");
     assert!(matches!(
         overflow,
-        IdConversionError::Overflow { value } if value == u128::from(u64::MAX) + 1
+    IdConversionError::Overflow { value, .. } if value == u128::from(u64::MAX) + 1
     ));
 
     let tactic_overflow = TacticId::try_from(u128::from(u64::MAX) + 2)
         .expect_err("tactic overflow should emit error");
     assert!(matches!(
         tactic_overflow,
-        IdConversionError::Overflow { value } if value == u128::from(u64::MAX) + 2
+    IdConversionError::Overflow { value, .. } if value == u128::from(u64::MAX) + 2
     ));
 }

@@ -157,6 +157,6 @@ fn overflow_values_fail_to_convert_into_card_ids() {
         CardId::try_from(u128::from(u64::MAX) + 1).expect_err("overflowed identifiers should fail");
     assert!(matches!(
         overflow,
-        IdConversionError::Overflow { value } if value == u128::from(u64::MAX) + 1
+    IdConversionError::Overflow { value, .. } if value == u128::from(u64::MAX) + 1
     ));
 }
