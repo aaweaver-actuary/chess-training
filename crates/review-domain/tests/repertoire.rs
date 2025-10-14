@@ -1,6 +1,6 @@
 use review_domain::{
     ids::{EdgeId, PositionId},
-    repertoire::{Repertoire, RepertoireError, RepertoireMove},
+    repertoire::{Repertoire, RepertoireBuilder, RepertoireError, RepertoireMove},
 };
 
 #[test]
@@ -8,6 +8,7 @@ fn repertoire_collects_moves() {
     let mut repertoire = Repertoire::new("e4 starts");
     assert_eq!(repertoire.name(), "e4 starts");
     assert!(repertoire.moves().is_empty());
+    assert!(repertoire.graph().is_empty());
 
     let move_entry = RepertoireMove::new(
         EdgeId::new(1),
@@ -34,32 +35,70 @@ fn remove_move_stub_returns_expected_error() {
 #[test]
 fn builder_supports_composing_repertoire() {
     let repertoire = RepertoireBuilder::new("builder test")
-        .add_move(RepertoireMove::new(10, 20, 21, "e2e4", "e4"))
-        .extend([RepertoireMove::new(11, 21, 22, "g1f3", "Nf3")])
+        .add_move(RepertoireMove::new(
+            EdgeId::new(10),
+            PositionId::new(20),
+            PositionId::new(21),
+            "e2e4",
+            "e4",
+        ))
+        .extend([RepertoireMove::new(
+            EdgeId::new(11),
+            PositionId::new(21),
+            PositionId::new(22),
+            "g1f3",
+            "Nf3",
+        )])
         .build();
 
     assert_eq!(repertoire.name(), "builder test");
     assert_eq!(repertoire.moves().len(), 2);
     assert_eq!(repertoire.moves()[0].move_uci, "e2e4");
     assert_eq!(repertoire.moves()[1].move_san, "Nf3");
+
+    let children: Vec<_> = repertoire
+        .graph()
+        .children(PositionId::new(20))
+        .map(|mv| mv.edge_id.get())
+        .collect();
+    assert_eq!(children, vec![10]);
 }
 
 #[test]
 fn repertoire_collect_from_iterator_preserves_moves() {
     let moves = vec![
-        RepertoireMove::new(1, 1, 2, "e2e4", "e4"),
-        RepertoireMove::new(2, 2, 3, "d2d4", "d4"),
+        RepertoireMove::new(
+            EdgeId::new(1),
+            PositionId::new(1),
+            PositionId::new(2),
+            "e2e4",
+            "e4",
+        ),
+        RepertoireMove::new(
+            EdgeId::new(2),
+            PositionId::new(2),
+            PositionId::new(3),
+            "d2d4",
+            "d4",
+        ),
     ];
 
     let repertoire: Repertoire = moves.clone().into_iter().collect();
 
     assert_eq!(repertoire.name(), "");
     assert_eq!(repertoire.moves(), &moves[..]);
+    assert_eq!(repertoire.graph().len(), 2);
 }
 
 #[test]
 fn repertoire_move_constructor_accepts_string_inputs() {
-    let mv = RepertoireMove::new(7, 8, 9, String::from("e7e5"), String::from("...e5"));
+    let mv = RepertoireMove::new(
+        EdgeId::new(7),
+        PositionId::new(8),
+        PositionId::new(9),
+        String::from("e7e5"),
+        String::from("...e5"),
+    );
 
     assert_eq!(mv.edge_id, 7);
     assert_eq!(mv.parent_id, 8);

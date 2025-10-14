@@ -25,13 +25,14 @@ This file lists every `struct` and `enum` defined in the repository.
 | OpeningCard | type alias | `crates/review-domain/src/opening/card.rs#L43` |
 | OpeningEdgeHandle | struct | `crates/review-domain/src/opening/card.rs#L11` |
 | OpeningEdge | struct | `crates/review-domain/src/opening.rs#L54` |
-| OpeningEdgeRecord | struct | `crates/chess-training-pgn-import/src/model.rs#L32` |
+| OpeningGraph | struct | `crates/review-domain/src/repertoire/graph.rs#L9` |
+| OpeningEdgeRecord | struct | `crates/chess-training-pgn-import/src/model.rs#L39` |
 | ParseError | struct | `crates/chess-training-pgn-import/src/errors.rs#L46` |
-| Position | struct | `crates/chess-training-pgn-import/src/model.rs#L11` |
+| Position | struct | `crates/chess-training-pgn-import/src/model.rs#L13` |
 | PositionError | enum | `crates/review-domain/src/position.rs#L7` |
 | RawGame | struct | `crates/chess-training-pgn-import/src/importer.rs#L496` |
 | RelearningFixture | struct | `crates/scheduler-core/tests/scheduler_sm2.rs#L13` |
-| RepertoireEdge | struct | `crates/chess-training-pgn-import/src/model.rs#L55` |
+| RepertoireEdge | struct | `crates/chess-training-pgn-import/src/model.rs#L69` |
 | ReviewGrade | enum | `crates/scheduler-core/src/grade.rs#L4` |
 | ReviewOutcome | struct | `crates/scheduler-core/src/domain/mod.rs#L31` |
 | ReviewRequest | struct | `crates/review-domain/src/review.rs#L7` |

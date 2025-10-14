@@ -466,7 +466,28 @@ _Source:_ `crates/review-domain/src/repertoire/move_.rs`
 
 **Usage in this repository:**
 - `RepertoireBuilder` stores `RepertoireMove` entries internally, highlighting how the move struct underpins the builder’s API.
-- Import pipelines convert `OpeningEdgeRecord` entries into `RepertoireMove` instances when constructing learner repertoires from PGN data.
+- `OpeningGraph` indexes `RepertoireMove` nodes to answer adjacency queries while keeping iteration order stable for serde and Avro conversions.
+- Import pipelines emit `OpeningEdgeRecord` entries that already contain `RepertoireMove` instances when constructing learner repertoires from PGN data.
+
+### `OpeningGraph`
+
+**Overview:** Graph view of a repertoire built from `RepertoireMove` entries. Tracks adjacency lists for parent/child lookups and provides constant-time edge access by identifier.
+
+**Definition:**
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct OpeningGraph {
+    moves: Vec<RepertoireMove>,
+    by_edge: BTreeMap<EdgeId, usize>,
+    outgoing: BTreeMap<PositionId, Vec<usize>>,
+    incoming: BTreeMap<PositionId, Vec<usize>>,
+}
+```
+_Source:_ `crates/review-domain/src/repertoire/graph.rs`
+
+**Usage in this repository:**
+- `Repertoire` now exposes an `OpeningGraph` handle so callers can walk a learner’s repertoire using adjacency queries.
+- Unit tests assert that graph parents/children mirror the `RepertoireMove` inputs to guard against regression during importer migrations.
 
 ### `OpeningEdge`
 
@@ -568,7 +589,7 @@ _Source:_ `crates/review-domain/src/tactic.rs`
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Position {
-    pub id: u64,
+    pub id: PositionId,
     pub fen: String,
     pub side_to_move: char,
     pub ply: u32,
@@ -577,26 +598,26 @@ pub struct Position {
 _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 **Usage in this repository:**
-- `crates/chess-training-pgn-import/src/importer.rs` records positions via `Storage::upsert_position`, ensuring each unique board state is tracked during PGN ingestion.
+- `crates/chess-training-pgn-import/src/importer.rs` records positions via `Storage::upsert_position`, ensuring each unique board state is tracked during PGN ingestion while preserving the `PositionId` wrapper.
 - Import metrics increment `opening_positions` when `UpsertOutcome::Inserted` is returned for a new `Position`.
 
 ### `OpeningEdgeRecord`
 
-**Overview:** Importer structure that wraps a canonical `OpeningEdge` along with optional source metadata, such as PGN event names.
+**Overview:** Importer structure that wraps a canonical `RepertoireMove` along with optional source metadata, such as PGN event names.
 
 **Definition:**
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpeningEdgeRecord {
     #[serde(flatten)]
-    pub edge: OpeningEdge,
+    pub move_entry: RepertoireMove,
     pub source_hint: Option<String>,
 }
 ```
 _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 
 **Usage in this repository:**
-- `crates/chess-training-pgn-import/src/importer.rs` builds `OpeningEdgeRecord` when processing SAN moves, allowing analytics to trace which event produced a move.
+- `crates/chess-training-pgn-import/src/importer.rs` builds `OpeningEdgeRecord` when processing SAN moves, allowing analytics to trace which event produced a move while emitting graph-ready `RepertoireMove` payloads.
 - `ImportInMemoryStore::upsert_edge` stores these records, letting tests assert that repeated imports replace rather than duplicate edges.
 
 ### `RepertoireEdge`
@@ -609,7 +630,7 @@ _Source:_ `crates/chess-training-pgn-import/src/model.rs`
 pub struct RepertoireEdge {
     pub owner: String,
     pub repertoire_key: String,
-    pub edge_id: u64,
+    pub edge_id: EdgeId,
 }
 ```
 _Source:_ `crates/chess-training-pgn-import/src/model.rs`

@@ -382,7 +382,7 @@ fn store_opening_data_if_requested<S: Storage>(
     metrics.note_repertoire(store.upsert_repertoire_edge(RepertoireEdge::new(
         owner,
         repertoire,
-        edge.edge.id,
+        edge.move_entry.edge_id,
     )));
 }
 
