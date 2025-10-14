@@ -15,8 +15,9 @@ pub struct Card<Id, Owner, Kind, State> {
 
 #[cfg(test)]
 mod tests {
+    use crate::TEST_EPSILON;
+
     use super::Card;
-    use core::ptr;
 
     #[derive(Clone, Debug, PartialEq)]
     struct Owner(u64);
@@ -25,23 +26,6 @@ mod tests {
     enum CardKind {
         Tactics,
         Strategy,
-    }
-
-    #[derive(Clone, Debug, PartialEq)]
-    struct CardState {
-        ease: f32,
-        interval_days: u32,
-        lapses: u32,
-    }
-
-    impl CardState {
-        fn new(ease: f32, interval_days: u32, lapses: u32) -> Self {
-            Self {
-                ease,
-                interval_days,
-                lapses,
-            }
-        }
     }
 
     #[test]
@@ -109,7 +93,7 @@ mod tests {
         card.state.interval_days += 5;
         card.state.lapses += 1;
 
-        crate::assert_is_close!(card.state.ease, 2.8, f32::EPSILON);
+        crate::assert_is_close!(card.state.ease, 2.8, TEST_EPSILON);
         assert_eq!(card.state.interval_days, 15);
         assert_eq!(card.state.lapses, 1);
     }

@@ -1,11 +1,8 @@
 //! Generic flashcard classification helpers shared across services.
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 /// Describes the high-level type of a study card.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CardKind<Opening, Tactic> {
     /// Card reviewing an opening concept.
     Opening(Opening),
@@ -38,6 +35,15 @@ impl<Opening, Tactic> CardKind<Opening, Tactic> {
         match self {
             CardKind::Opening(opening) => CardKind::Opening(opening),
             CardKind::Tactic(tactic) => CardKind::Tactic(tactic),
+        }
+    }
+}
+
+impl ToString for CardKind<&str, &str> {
+    fn to_string(&self) -> String {
+        match self {
+            CardKind::Opening(name) => format!("Opening: {}", name),
+            CardKind::Tactic(name) => format!("Tactic: {}", name),
         }
     }
 }
@@ -83,5 +89,17 @@ mod tests {
         let opening_payload = String::from("Ruy Lopez");
         let opening_card: CardKind<String, String> = CardKind::Opening(opening_payload.clone());
         assert_eq!(opening_card.as_ref(), CardKind::Opening(&opening_payload));
+    }
+
+    #[test]
+    fn to_string_formats_opening_variant() {
+        let card: CardKind<&str, &str> = CardKind::Opening("Sicilian Defense");
+        assert_eq!(card.to_string(), "Opening: Sicilian Defense");
+    }
+
+    #[test]
+    fn to_string_formats_tactic_variant() {
+        let card: CardKind<&str, &str> = CardKind::Tactic("Fork");
+        assert_eq!(card.to_string(), "Tactic: Fork");
     }
 }

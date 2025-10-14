@@ -2,12 +2,9 @@
 
 use crate::EdgeId;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 /// Shared handle referencing a specific opening edge.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OpeningEdgeHandle {
     /// Identifier of the referenced opening edge.
     pub edge_id: EdgeId,
