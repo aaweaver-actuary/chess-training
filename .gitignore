@@ -21,3 +21,4 @@ lcov-report/
 # CI error logs
 ci-logs/
 ci-errors/
+Cargo.lock
