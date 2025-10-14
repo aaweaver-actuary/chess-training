@@ -1,15 +1,15 @@
-use review_domain::{GradeError, ValidGrade};
+use review_domain::{Grade, GradeError};
 
 #[test]
 fn valid_grades_round_trip_between_enum_and_u8() {
     for (value, grade) in [
-        (0, ValidGrade::Zero),
-        (1, ValidGrade::One),
-        (2, ValidGrade::Two),
-        (3, ValidGrade::Three),
-        (4, ValidGrade::Four),
+        (0, Grade::Zero),
+        (1, Grade::One),
+        (2, Grade::Two),
+        (3, Grade::Three),
+        (4, Grade::Four),
     ] {
-        let parsed = ValidGrade::from_u8(value).unwrap_or_else(|err| {
+        let parsed = Grade::from_u8(value).unwrap_or_else(|err| {
             panic!(
                 "expected {value} to be valid but encountered {}",
                 err_label(err)
@@ -18,8 +18,7 @@ fn valid_grades_round_trip_between_enum_and_u8() {
 
         assert_eq!(parsed, grade);
         assert_eq!(parsed.to_u8(), value);
-        assert_eq!(parsed.as_u8(), value);
-        let parsed_try = match ValidGrade::try_from(value) {
+        let parsed_try = match Grade::from_u8(value) {
             Ok(parsed) => parsed,
             Err(err) => panic!(
                 "expected {value} to be valid but encountered {}",
@@ -33,7 +32,7 @@ fn valid_grades_round_trip_between_enum_and_u8() {
 #[test]
 fn invalid_grades_surface_distinct_errors() {
     for value in [5, 6, u8::MAX] {
-        match ValidGrade::from_u8(value) {
+        match Grade::from_u8(value) {
             Ok(_) => panic!("expected {value} to be outside range"),
             Err(GradeError::GradeOutsideRangeError { grade }) => assert_eq!(grade, value),
             Err(other) => panic!(
@@ -42,7 +41,7 @@ fn invalid_grades_surface_distinct_errors() {
             ),
         }
 
-        match ValidGrade::try_from(value) {
+        match Grade::from_u8(value) {
             Ok(_) => panic!("expected {value} to be outside range"),
             Err(GradeError::GradeOutsideRangeError { grade }) => assert_eq!(grade, value),
             Err(other) => panic!(
@@ -55,24 +54,24 @@ fn invalid_grades_surface_distinct_errors() {
 
 #[test]
 fn grade_helpers_cover_interval_and_ease_adjustments() {
-    assert_eq!(ValidGrade::Zero.to_interval_increment(), 1);
-    assert_eq!(ValidGrade::One.to_interval_increment(), 1);
-    assert_eq!(ValidGrade::Two.to_interval_increment(), 1);
-    assert_eq!(ValidGrade::Three.to_interval_increment(), 2);
-    assert_eq!(ValidGrade::Four.to_interval_increment(), 3);
+    assert_eq!(Grade::Zero.to_interval_increment(), 1);
+    assert_eq!(Grade::One.to_interval_increment(), 1);
+    assert_eq!(Grade::Two.to_interval_increment(), 1);
+    assert_eq!(Grade::Three.to_interval_increment(), 2);
+    assert_eq!(Grade::Four.to_interval_increment(), 3);
 
     let eps = f32::EPSILON;
-    assert!((ValidGrade::Zero.to_grade_delta() - -0.3).abs() < eps);
-    assert!((ValidGrade::One.to_grade_delta() - -0.15).abs() < eps);
-    assert!((ValidGrade::Two.to_grade_delta() - -0.05).abs() < eps);
-    assert!((ValidGrade::Three.to_grade_delta() - 0.0).abs() < eps);
-    assert!((ValidGrade::Four.to_grade_delta() - 0.15).abs() < eps);
+    assert!((Grade::Zero.to_grade_delta() - -0.3).abs() < eps);
+    assert!((Grade::One.to_grade_delta() - -0.15).abs() < eps);
+    assert!((Grade::Two.to_grade_delta() - -0.05).abs() < eps);
+    assert!((Grade::Three.to_grade_delta() - 0.0).abs() < eps);
+    assert!((Grade::Four.to_grade_delta() - 0.15).abs() < eps);
 
-    assert!(!ValidGrade::Zero.is_correct());
-    assert!(!ValidGrade::One.is_correct());
-    assert!(!ValidGrade::Two.is_correct());
-    assert!(ValidGrade::Three.is_correct());
-    assert!(ValidGrade::Four.is_correct());
+    assert!(!Grade::Zero.is_correct());
+    assert!(!Grade::One.is_correct());
+    assert!(!Grade::Two.is_correct());
+    assert!(Grade::Three.is_correct());
+    assert!(Grade::Four.is_correct());
 }
 
 #[test]

@@ -32,6 +32,7 @@ pub struct PositionId(pub u64);
 
 impl PositionId {
     /// Creates a new identifier wrapper from a raw `u64` value.
+    #[must_use]
     pub const fn new(value: u64) -> Self {
         Self(value)
     }
@@ -73,7 +74,7 @@ impl TryFrom<u128> for PositionId {
                 max: u64::MAX,
             });
         }
-        Ok(Self::new(value as u64))
+        Ok(Self::new(u64::try_from(value).unwrap()))
     }
 }
 

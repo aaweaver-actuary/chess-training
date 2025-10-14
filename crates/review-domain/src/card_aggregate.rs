@@ -1,8 +1,8 @@
 use chrono::NaiveDate;
 
 use crate::{
-    Card, CardId, CardKind, EdgeId, GradeError, LearnerId, OpeningCard, ReviewRequest,
-    StoredCardState, TacticCard, TacticId, ValidGrade,
+    Card, CardId, CardKind, EdgeId, Grade, GradeError, LearnerId, OpeningCard, ReviewRequest,
+    StoredCardState, TacticCard, TacticId,
 };
 
 type StoredReviewCard = Card<CardId, LearnerId, CardKind<OpeningCard, TacticCard>, StoredCardState>;
@@ -97,7 +97,7 @@ impl CardAggregate {
     /// Returns a [`GradeError`] when the provided grade falls outside the
     /// supported spaced repetition scale.
     pub fn apply_review(&mut self, grade: u8, reviewed_on: NaiveDate) -> Result<(), GradeError> {
-        let grade = ValidGrade::new(grade)?;
+        let grade = Grade::from_u8(grade)?;
         self.apply_valid_grade(grade, reviewed_on);
         Ok(())
     }
@@ -113,7 +113,7 @@ impl CardAggregate {
     }
 
     /// Applies a validated grade to the aggregate, updating the scheduling state.
-    pub fn apply_valid_grade(&mut self, grade: ValidGrade, reviewed_on: NaiveDate) {
+    pub fn apply_valid_grade(&mut self, grade: Grade, reviewed_on: NaiveDate) {
         self.inner.state.apply_review(grade, reviewed_on);
     }
 }
@@ -139,7 +139,7 @@ pub struct GenericCardAggregate<Id, Owner, Opening, Tactic> {
 
 impl<Id, Owner, Opening, Tactic> GenericCardAggregate<Id, Owner, Opening, Tactic> {
     /// Applies a validated grade to the aggregate.
-    pub fn apply_valid_grade(&mut self, grade: ValidGrade, reviewed_on: NaiveDate) {
+    pub fn apply_valid_grade(&mut self, grade: Grade, reviewed_on: NaiveDate) {
         self.state.apply_review(grade, reviewed_on);
     }
 
@@ -150,7 +150,7 @@ impl<Id, Owner, Opening, Tactic> GenericCardAggregate<Id, Owner, Opening, Tactic
     /// Returns a [`GradeError`] when the provided grade falls outside the
     /// supported spaced repetition scale.
     pub fn apply_review(&mut self, grade: u8, reviewed_on: NaiveDate) -> Result<(), GradeError> {
-        let grade = ValidGrade::new(grade)?;
+        let grade = Grade::from_u8(grade)?;
         self.apply_valid_grade(grade, reviewed_on);
         Ok(())
     }

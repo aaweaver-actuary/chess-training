@@ -1,6 +1,5 @@
-use review_domain::ids::{
-    CardId, EdgeId, IdConversionError, LearnerId, MoveId, PositionId, TacticId, UnlockId,
-};
+use review_domain::ids::UnlockId;
+use review_domain::{CardId, EdgeId, IdConversionError, LearnerId, MoveId, PositionId, TacticId};
 
 #[test]
 fn id_round_trips_preserve_raw_value() {

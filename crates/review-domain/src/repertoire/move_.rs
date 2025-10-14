@@ -1,30 +1,8 @@
-#[cfg(test)]
-mod coverage_minimal {
-    use super::*;
-
-    #[test]
-    fn covers_new_constructor() {
-        use crate::ids::{EdgeId, PositionId};
-
-        let mv = RepertoireMove::new(
-            EdgeId::new(42),
-            PositionId::new(100),
-            PositionId::new(101),
-            "e2e4",
-        );
-        assert_eq!(mv.edge_id.get(), 42);
-        assert_eq!(mv.parent_id.get(), 100);
-        assert_eq!(mv.child_id.get(), 101);
-        assert_eq!(mv.move_uci, "e2e4");
-    }
-}
-use crate::ids::{EdgeId, PositionId};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use crate::{EdgeId, PositionId};
 
 /// A single move stored within an opening repertoire.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RepertoireMove {
     /// Identifier of the originating position.
     pub parent_id: PositionId,
@@ -60,7 +38,7 @@ mod tests {
 
     #[test]
     fn test_repertoire_move_creation() {
-        use crate::ids::{EdgeId, PositionId};
+        use crate::{EdgeId, PositionId};
 
         let move_entry = RepertoireMove::new(
             EdgeId::new(1),
@@ -81,5 +59,19 @@ mod tests {
         };
 
         assert_eq!(move_entry, move_entry2);
+    }
+
+    #[test]
+    fn covers_new_constructor() {
+        let mv = RepertoireMove::new(
+            EdgeId::new(42),
+            PositionId::new(100),
+            PositionId::new(101),
+            "e2e4",
+        );
+        assert_eq!(mv.edge_id.get(), 42);
+        assert_eq!(mv.parent_id.get(), 100);
+        assert_eq!(mv.child_id.get(), 101);
+        assert_eq!(mv.move_uci, "e2e4");
     }
 }

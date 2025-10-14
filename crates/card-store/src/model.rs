@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 /// Re-export shared review-domain types to simplify crate consumers.
 pub use review_domain::{EdgeInput, OpeningCard, ReviewRequest, StoredCardState, TacticCard};
 pub use scheduler_core::domain::{
-    hydrate_sm2_state, persist_sm2_state, CardStateBridgeError, Sm2Runtime, StoredSnapshot,
+    CardStateBridgeError, Sm2Runtime, StoredSnapshot, hydrate_sm2_state, persist_sm2_state,
 };
 
 use review_domain::{

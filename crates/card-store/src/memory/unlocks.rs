@@ -20,8 +20,9 @@ pub(super) fn insert_unlock_or_error(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{EdgeId, UnlockDetail};
+    use crate::model::UnlockDetail;
     use chrono::NaiveDate;
+    use review_domain::EdgeId;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")

@@ -39,7 +39,7 @@ fn id_newtypes_round_trip_for_card_store() {
     assert_eq!(PositionId::try_from(11_u128).unwrap(), position);
     assert!(matches!(
         PositionId::try_from(u128::from(u64::MAX) + 1),
-        Err(IdConversionError::Overflow { value }) if value == u128::from(u64::MAX) + 1
+        Err(IdConversionError::Overflow { value, .. }) if value == u128::from(u64::MAX) + 1
     ));
 
     let edge = EdgeId::from(17_u64);

@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn try_from_i128_overflow() {
-        let overflow = CardId::try_from(u128::from(u64::MAX) as i128 + 1);
+        let overflow = CardId::try_from(i128::try_from(u128::from(u64::MAX)).unwrap() + 1);
         match overflow {
             Err(IdConversionError::Overflow { kind, value, max }) => {
                 assert_eq!(kind, IdKind::Card);
@@ -78,7 +78,7 @@ mod tests {
         match negative {
             Err(IdConversionError::Negative { kind, value }) => {
                 assert_eq!(kind, IdKind::Card);
-                assert_eq!(value, -1_i64 as i128);
+                assert_eq!(value, i128::from(-1_i64));
             }
             _ => panic!("Expected Negative error"),
         }
@@ -86,10 +86,10 @@ mod tests {
 
     #[test]
     fn try_from_i64_overflow() {
-        let overflow = CardId::try_from(i64::MAX as i128 + 1);
+        let overflow = CardId::try_from(i128::from(i64::MAX) + 1);
         // This will be positive and within u64, so should succeed
         assert!(overflow.is_ok());
-        let overflow = CardId::try_from(u128::from(u64::MAX) as i64 + 1);
+        let overflow = CardId::try_from(i64::try_from(u128::from(u64::MAX)).unwrap() + 1);
         // This will be negative, so should error
         assert!(overflow.is_err());
     }
@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn display_impl() {
         let id = CardId::new(555);
-        assert_eq!(format!("{}", id), "CardId(555)");
+        assert_eq!(format!("{id}"), "CardId(555)");
     }
 
     #[test]
@@ -181,7 +181,7 @@ impl TryFrom<u128> for CardId {
                 max: u64::MAX,
             });
         }
-        Ok(Self::new(value as u64))
+        Ok(Self::new(u64::try_from(value).unwrap()))
     }
 }
 
@@ -193,7 +193,7 @@ impl TryFrom<i128> for CardId {
     /// # Errors
     ///
     /// Returns `IdConversionError::Negative` if the value is negative.
-    /// Returns `IdConversionError::Overflow` if the value exceeds `u64::MAX
+    /// Returns `IdConversionError::Overflow` if the value exceeds `u64::MAX`.
     fn try_from(value: i128) -> Result<Self, Self::Error> {
         let value = u128::try_from(value).map_err(|_| IdConversionError::Negative {
             kind: IdKind::Card,

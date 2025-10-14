@@ -13,9 +13,9 @@ macro_rules! assert_is_close {
         let left = $left;
         let right = $right;
         let tolerance = $tol;
-        let difference = (left - right).abs();
+        let difference = (f64::from(left) - f64::from(right)).abs();
         assert!(
-            difference <= tolerance,
+            difference <= f64::from(tolerance),
             "assertion failed: |{left:?} - {right:?}| (= {difference:?}) > {tolerance:?}",
             left = left,
             right = right,

@@ -1,19 +1,18 @@
-use review_domain::{GradeError, ValidGrade};
+use review_domain::{Grade, GradeError, TEST_EPSILON, assert_is_close};
 
 #[test]
 fn from_u8_accepts_all_valid_grades() {
     for (value, expected) in [
-        (0, ValidGrade::Zero),
-        (1, ValidGrade::One),
-        (2, ValidGrade::Two),
-        (3, ValidGrade::Three),
-        (4, ValidGrade::Four),
+        (0, Grade::Zero),
+        (1, Grade::One),
+        (2, Grade::Two),
+        (3, Grade::Three),
+        (4, Grade::Four),
     ] {
-        match ValidGrade::from_u8(value) {
+        match Grade::from_u8(value) {
             Ok(parsed) => {
                 assert_eq!(parsed, expected);
                 assert_eq!(parsed.to_u8(), value);
-                assert_eq!(parsed.as_u8(), value);
             }
             Err(err) => panic!(
                 "grade {value} should parse but returned error variant {}",
@@ -26,7 +25,7 @@ fn from_u8_accepts_all_valid_grades() {
 #[test]
 fn from_u8_rejects_out_of_range_grades() {
     for value in [5, 6, u8::MAX] {
-        let err = ValidGrade::from_u8(value).expect_err("grade should fail");
+        let err = Grade::from_u8(value).expect_err("grade should fail");
 
         assert_eq!(err_variant(err), ErrVariant::OutsideRange(value));
     }
@@ -34,17 +33,17 @@ fn from_u8_rejects_out_of_range_grades() {
 
 #[test]
 fn new_forwards_to_from_u8() {
-    assert_eq!(ValidGrade::new(2), Ok(ValidGrade::Two));
+    assert_eq!(Grade::from_u8(2), Ok(Grade::Two));
     assert_eq!(
-        ValidGrade::new(9),
+        Grade::from_u8(9),
         Err(GradeError::GradeOutsideRangeError { grade: 9 })
     );
 }
 
 #[test]
 fn is_correct_checks_threshold() {
-    let correct = [ValidGrade::Three, ValidGrade::Four];
-    let incorrect = [ValidGrade::Zero, ValidGrade::One, ValidGrade::Two];
+    let correct = [Grade::Three, Grade::Four];
+    let incorrect = [Grade::Zero, Grade::One, Grade::Two];
 
     for grade in correct {
         assert!(grade.is_correct(), "grade {grade:?} should be correct");
@@ -57,32 +56,32 @@ fn is_correct_checks_threshold() {
 
 #[test]
 fn to_interval_increment_matches_expected_schedule() {
-    assert_eq!(ValidGrade::Zero.to_interval_increment(), 1);
-    assert_eq!(ValidGrade::One.to_interval_increment(), 1);
-    assert_eq!(ValidGrade::Two.to_interval_increment(), 1);
-    assert_eq!(ValidGrade::Three.to_interval_increment(), 2);
-    assert_eq!(ValidGrade::Four.to_interval_increment(), 3);
+    assert_eq!(Grade::Zero.to_interval_increment(), 1);
+    assert_eq!(Grade::One.to_interval_increment(), 1);
+    assert_eq!(Grade::Two.to_interval_increment(), 1);
+    assert_eq!(Grade::Three.to_interval_increment(), 2);
+    assert_eq!(Grade::Four.to_interval_increment(), 3);
 }
 
 #[test]
 fn to_grade_delta_returns_supermemo_values() {
-    assert!((ValidGrade::Zero.to_grade_delta() - -0.3).abs() < f32::EPSILON);
-    assert!((ValidGrade::One.to_grade_delta() - -0.15).abs() < f32::EPSILON);
-    assert!((ValidGrade::Two.to_grade_delta() - -0.05).abs() < f32::EPSILON);
-    assert!((ValidGrade::Three.to_grade_delta() - 0.0).abs() < f32::EPSILON);
-    assert!((ValidGrade::Four.to_grade_delta() - 0.15).abs() < f32::EPSILON);
+    assert_is_close!(Grade::Zero.to_grade_delta(), -0.3, TEST_EPSILON);
+    assert_is_close!(Grade::One.to_grade_delta(), -0.15, TEST_EPSILON);
+    assert_is_close!(Grade::Two.to_grade_delta(), -0.05, TEST_EPSILON);
+    assert_is_close!(Grade::Three.to_grade_delta(), 0.0, TEST_EPSILON);
+    assert_is_close!(Grade::Four.to_grade_delta(), 0.15, TEST_EPSILON);
 }
 
 #[test]
 fn try_from_accepts_valid_grades() {
     for (value, expected) in [
-        (0, ValidGrade::Zero),
-        (1, ValidGrade::One),
-        (2, ValidGrade::Two),
-        (3, ValidGrade::Three),
-        (4, ValidGrade::Four),
+        (0, Grade::Zero),
+        (1, Grade::One),
+        (2, Grade::Two),
+        (3, Grade::Three),
+        (4, Grade::Four),
     ] {
-        assert_eq!(ValidGrade::try_from(value), Ok(expected));
+        assert_eq!(Grade::from_u8(value), Ok(expected));
     }
 }
 
@@ -90,7 +89,7 @@ fn try_from_accepts_valid_grades() {
 fn try_from_rejects_invalid_grades() {
     for value in [5, 6, u8::MAX] {
         let err: GradeError =
-            ValidGrade::try_from(value).expect_err("grade should fail for invalid value");
+            Grade::from_u8(value).expect_err("grade should fail for invalid value");
 
         assert_eq!(err_variant(err), ErrVariant::OutsideRange(value));
     }

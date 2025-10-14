@@ -74,7 +74,7 @@ impl TryFrom<u128> for MoveId {
                 max: u64::MAX,
             });
         }
-        Ok(Self::new(value as u64))
+        Ok(Self::new(u64::try_from(value).unwrap()))
     }
 }
 
@@ -86,7 +86,7 @@ impl TryFrom<i128> for MoveId {
     /// # Errors
     ///
     /// Returns `IdConversionError::Negative` if the value is negative.
-    /// Returns `IdConversionError::Overflow` if the value exceeds `u64::MAX
+    /// Returns `IdConversionError::Overflow` if the value exceeds `u64::MAX`.
     fn try_from(value: i128) -> Result<Self, Self::Error> {
         let value = u128::try_from(value).map_err(|_| IdConversionError::Negative {
             kind: IdKind::Move,

@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use review_domain::{StoredCardState, ValidGrade};
+use review_domain::{Grade, StoredCardState};
 
 fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
     NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
@@ -10,11 +10,11 @@ fn next_interval_walks_all_grade_branches() {
     let interval = std::num::NonZeroU8::new(3).expect("non-zero interval");
     let state = StoredCardState::new(naive_date(2024, 1, 1), interval, 2.5);
 
-    assert_eq!(state.next_interval(ValidGrade::Zero).get(), 1);
-    assert_eq!(state.next_interval(ValidGrade::One).get(), 1);
-    assert_eq!(state.next_interval(ValidGrade::Two).get(), 3);
-    assert_eq!(state.next_interval(ValidGrade::Three).get(), 4);
-    assert_eq!(state.next_interval(ValidGrade::Four).get(), 6);
+    assert_eq!(state.next_interval(Grade::Zero).get(), 1);
+    assert_eq!(state.next_interval(Grade::One).get(), 1);
+    assert_eq!(state.next_interval(Grade::Two).get(), 3);
+    assert_eq!(state.next_interval(Grade::Three).get(), 4);
+    assert_eq!(state.next_interval(Grade::Four).get(), 6);
 }
 
 #[test]
@@ -24,7 +24,7 @@ fn apply_review_mutates_state_consistently() {
 
     let review_day = naive_date(2024, 2, 10);
     state.consecutive_correct = 1;
-    state.apply_review(ValidGrade::Four, review_day);
+    state.apply_review(Grade::Four, review_day);
 
     assert_eq!(state.interval.get(), 4);
     assert_eq!(state.due_on, naive_date(2024, 2, 14));

@@ -6,7 +6,7 @@ use crate::chess_position::ChessPosition;
 #[cfg(test)]
 use crate::config::StorageConfig;
 #[cfg(test)]
-use crate::model::{Edge, EdgeId, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
+use crate::model::{Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
 #[cfg(test)]
 use crate::store::StoreError;
 
@@ -344,7 +344,7 @@ mod tests {
 
         let unlock = UnlockRecord {
             owner_id: "owner".to_string(),
-            detail: UnlockDetail::new(EdgeId::new(42)),
+            detail: UnlockDetail::new(review_domain::EdgeId::new(42)),
             unlocked_on: naive_date(2023, 1, 3),
         };
         let err = store.record_unlock(unlock).unwrap_err();
@@ -356,7 +356,7 @@ mod tests {
         let store = InMemoryCardStore::new(StorageConfig::default());
         let unlock = UnlockRecord {
             owner_id: "owner".to_string(),
-            detail: UnlockDetail::new(EdgeId::new(7)),
+            detail: UnlockDetail::new(review_domain::EdgeId::new(7)),
             unlocked_on: naive_date(2023, 1, 2),
         };
         store.record_unlock(unlock.clone()).unwrap();

@@ -1,5 +1,4 @@
 use std::convert::Infallible;
-use std::num::NonZeroU8;
 
 use review_domain::StoredCardState;
 use review_domain::card_state::bridge::{BridgeError, Sm2Runtime, StoredSnapshot};
@@ -7,17 +6,40 @@ use review_domain::card_state::bridge::{BridgeError, Sm2Runtime, StoredSnapshot}
 use super::Sm2State;
 
 /// Convert a persisted [`StoredCardState`] plus runtime counters into an [`Sm2State`].
+///
+/// # Panics
+/// Panics if the conversion from stored state is not infallible (should never happen).
+#[must_use]
 pub fn hydrate_sm2_state(stored: StoredCardState, runtime: Sm2Runtime) -> Sm2State {
     Sm2State::try_from((stored, runtime))
         .expect("conversion from stored state should be infallible")
 }
 
 /// Convert an [`Sm2State`] back into a [`StoredCardState`] for persistence.
+///
+/// # Errors
+/// Returns a [`BridgeError`] if the interval is zero or overflows u8.
 pub fn persist_sm2_state(
     sm2: &Sm2State,
     snapshot: StoredSnapshot,
 ) -> Result<StoredCardState, BridgeError> {
-    StoredCardState::try_from((sm2, snapshot))
+    use std::num::NonZeroU8;
+    if sm2.interval_days == 0 {
+        return Err(BridgeError::IntervalTooSmall);
+    }
+    let interval_u8 =
+        u8::try_from(sm2.interval_days).map_err(|_| BridgeError::IntervalOverflow {
+            interval_days: sm2.interval_days,
+            max: u8::MAX,
+        })?;
+    let interval = NonZeroU8::new(interval_u8).ok_or(BridgeError::IntervalTooSmall)?;
+    Ok(StoredCardState {
+        due_on: sm2.due,
+        interval,
+        ease_factor: sm2.ease_factor,
+        consecutive_correct: snapshot.consecutive_correct,
+        last_reviewed_on: snapshot.last_reviewed_on,
+    })
 }
 
 impl TryFrom<(StoredCardState, Sm2Runtime)> for Sm2State {
@@ -32,32 +54,6 @@ impl TryFrom<(StoredCardState, Sm2Runtime)> for Sm2State {
             due: stored.due_on,
             lapses: runtime.lapses,
             reviews: runtime.reviews,
-        })
-    }
-}
-
-impl TryFrom<(&Sm2State, StoredSnapshot)> for StoredCardState {
-    type Error = BridgeError;
-
-    fn try_from(value: (&Sm2State, StoredSnapshot)) -> Result<Self, Self::Error> {
-        let (sm2, snapshot) = value;
-        if sm2.interval_days == 0 {
-            return Err(BridgeError::IntervalTooSmall);
-        }
-
-        let interval_u8 =
-            u8::try_from(sm2.interval_days).map_err(|_| BridgeError::IntervalOverflow {
-                interval_days: sm2.interval_days,
-                max: u8::MAX,
-            })?;
-        let interval = NonZeroU8::new(interval_u8).ok_or(BridgeError::IntervalTooSmall)?;
-
-        Ok(StoredCardState {
-            due_on: sm2.due,
-            interval,
-            ease_factor: sm2.ease_factor,
-            consecutive_correct: snapshot.consecutive_correct,
-            last_reviewed_on: snapshot.last_reviewed_on,
         })
     }
 }
@@ -122,12 +118,11 @@ mod tests {
             last_reviewed_on: None,
         };
         let err = persist_sm2_state(&sm2, snapshot).expect_err("interval overflow");
-        match err {
-            BridgeError::IntervalOverflow { interval_days, max } => {
-                assert_eq!(interval_days, 512);
-                assert_eq!(max, u8::MAX);
-            }
-            other => panic!("unexpected error: {other:?}"),
+        if let BridgeError::IntervalOverflow { interval_days, max } = err {
+            assert_eq!(interval_days, 512);
+            assert_eq!(max, u8::MAX);
+        } else {
+            panic!("unexpected error: {err:?}");
         }
     }
 

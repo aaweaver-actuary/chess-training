@@ -52,7 +52,7 @@ fn importer_builds_opening_trie_and_tactics() {
     let edge_uci: Vec<_> = store
         .edges()
         .into_iter()
-        .map(|edge| edge.edge.move_uci)
+        .map(|edge| edge.move_entry.move_uci.clone())
         .collect();
     assert!(edge_uci.contains(&"e2e4".to_string()));
     assert!(edge_uci.contains(&"e7e5".to_string()));

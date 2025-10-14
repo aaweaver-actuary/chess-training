@@ -184,7 +184,7 @@ impl std::error::Error for CardStateInvariantError {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ValidGrade;
+    use crate::Grade;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
@@ -197,7 +197,7 @@ mod tests {
         let mut state = StoredCardState::new(naive_date(2024, 1, 1), interval, 2.5);
         let review_day = naive_date(2024, 1, 10);
 
-        state.apply_review(ValidGrade::Four, review_day);
+        state.apply_review(Grade::Four, review_day);
 
         invariants
             .validate(&state)

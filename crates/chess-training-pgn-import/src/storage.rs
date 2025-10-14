@@ -53,7 +53,7 @@ impl UpsertOutcome {
 
 #[derive(Default)]
 /// An in-memory implementation of the `Storage` trait, primarily used for testing purposes.
-pub struct ImportInMemoryStore {
+pub struct InMemoryImportStore {
     positions: BTreeMap<PositionId, Position>,
     edges: BTreeMap<EdgeId, OpeningEdgeRecord>,
     repertoire_edges: BTreeSet<(String, String, EdgeId)>,
@@ -133,7 +133,7 @@ mod tests {
         let mut store = InMemoryImportStore::default();
         let parent = sample_position(0);
         let child = sample_position(1);
-        let edge = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
+        let edge = OpeningEdgeRecord::new(parent.id, "e2e4", child.id, None);
         let record = RepertoireEdge::new("owner", "rep", edge.move_entry.edge_id);
         let tactic = Tactic::new("fen", vec!["e2e4".into()], vec![], None);
 
@@ -152,11 +152,17 @@ mod tests {
         let mut store = InMemoryImportStore::default();
         let parent = sample_position(0);
         let child = sample_position(1);
-        let edge = OpeningEdgeRecord::new(parent.id, "e2e4", "e4", child.id, None);
+        let edge = OpeningEdgeRecord::new(parent.id, "e2e4", child.id, None);
         assert!(store.upsert_edge(edge.clone()).is_inserted());
-        assert!(store
-            .upsert_repertoire_edge(RepertoireEdge::new("owner", "rep", edge.move_entry.edge_id,))
-            .is_inserted());
+        assert!(
+            store
+                .upsert_repertoire_edge(RepertoireEdge::new(
+                    "owner",
+                    "rep",
+                    edge.move_entry.edge_id,
+                ))
+                .is_inserted()
+        );
 
         let records = store.repertoire_edges();
         assert_eq!(records.len(), 1);

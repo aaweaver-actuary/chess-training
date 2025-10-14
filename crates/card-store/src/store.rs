@@ -7,7 +7,8 @@ use thiserror::Error;
 
 use crate::chess_position::ChessPosition;
 use crate::errors::PositionError;
-use crate::model::{Card, Edge, EdgeId, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
+use crate::model::{Card, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
+use review_domain::EdgeId;
 
 /// Unified error type returned by [`ReviewCardStore`] implementations.
 #[derive(Debug, Error, PartialEq)]

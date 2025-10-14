@@ -16,6 +16,7 @@ pub mod review_grade;
 pub mod study_stage;
 pub mod tactic;
 pub mod unlock;
+pub mod utils;
 
 /// Generic flashcard definition used across services.
 pub use card::Card;
@@ -26,16 +27,17 @@ pub use card_kind::CardKind;
 /// Scheduling metadata tracked for each stored card.
 pub use card_state::StoredCardState;
 pub use card_state::bridge::{BridgeError as CardStateBridgeError, Sm2Runtime, StoredSnapshot};
+use chrono::NaiveDate;
 /// Validated review grades and related errors.
-pub use grade::{GradeError, ValidGrade};
+pub use grade::{Grade, GradeError};
 /// Deterministic hashing helper backed by BLAKE3.
 pub use hash::hash64;
 /// Strongly typed identifier wrappers used across the crate.
-pub use ids::{CardId, EdgeId, IdConversionError, LearnerId, MoveId, PositionId, TacticId};
+pub use ids::{CardId, EdgeId, IdConversionError, LearnerId, MoveId, TacticId};
 /// Opening-focused request and payload types.
 pub use opening::{EdgeInput, OpeningCard, OpeningEdge, OpeningEdgeHandle};
 /// Normalized chess position representation and related errors.
-pub use position::{ChessPosition, PositionError};
+pub use position::{Position, PositionError, PositionId};
 /// Opening repertoire store, graph representation, and associated move model.
 pub use repertoire::{OpeningGraph, Repertoire, RepertoireError, RepertoireMove};
 /// Review submission payload capturing user input.
@@ -48,3 +50,23 @@ pub use study_stage::StudyStage;
 pub use tactic::TacticCard;
 /// Unlock record details for progressive content releases.
 pub use unlock::{UnlockDetail, UnlockRecord};
+
+pub use utils::hash_with_seed;
+
+pub const TEST_EPSILON: f32 = 1e-6;
+
+/// Helper function to create `NaiveDate` instances in tests.
+///
+/// # Panics
+/// Panics if the provided year, month, and day do not form a valid date.
+/// # Examples
+/// ```rust
+/// use chrono::NaiveDate;
+/// use review_domain::naive_date;
+/// let date = naive_date(2024, 5, 15);
+/// assert_eq!(date, NaiveDate::from_ymd_opt(2024, 5, 15).unwrap());
+/// ```
+#[must_use]
+pub fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
+    NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
+}

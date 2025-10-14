@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use chrono::NaiveDate;
 
-use crate::model::{Card, Edge, EdgeId, OpeningCard, ReviewRequest, StoredCardState};
+use crate::model::{Card, Edge, OpeningCard, ReviewRequest, StoredCardState};
 use crate::store::StoreError;
 use review_domain::CardKind as GenericCardKind;
+use review_domain::EdgeId;
 
 pub(super) fn store_opening_card(
     cards: &mut HashMap<u64, Card>,
@@ -78,7 +79,8 @@ fn build_opening_card(owner_id: &str, edge: &Edge, state: StoredCardState, card_
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{CardKind, EdgeId, OpeningCard};
+    use crate::model::{CardKind, OpeningCard};
+    use review_domain::EdgeId;
     use std::collections::HashMap;
     use std::num::NonZeroU8;
 

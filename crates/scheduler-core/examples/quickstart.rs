@@ -3,6 +3,7 @@
 //! Run with: `cargo run -p scheduler-core --example quickstart`
 
 use chrono::NaiveDate;
+use scheduler_core::SchedulerStore;
 use scheduler_core::domain::{SchedulerOpeningCard, SchedulerTacticCard};
 use scheduler_core::{CardKind, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig, new_card};
 use uuid::Uuid;

@@ -13,8 +13,7 @@ CARGO_LLVM_COV_FLAGS := \
 	--fail-under-functions 95 \
 	--fail-under-lines 95 \
 	--fail-under-regions 95 \
-	--show-missing-lines \
-	-q
+	--show-missing-lines
 
 rust-lint:
 	cargo fmt 

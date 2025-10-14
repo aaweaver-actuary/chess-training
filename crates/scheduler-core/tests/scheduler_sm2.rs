@@ -1,4 +1,5 @@
 use chrono::NaiveDate;
+use scheduler_core::SchedulerStore;
 use scheduler_core::domain::{SchedulerOpeningCard, SchedulerTacticCard};
 use scheduler_core::{
     CardKind, CardState, InMemoryStore, ReviewGrade, Scheduler, SchedulerConfig,

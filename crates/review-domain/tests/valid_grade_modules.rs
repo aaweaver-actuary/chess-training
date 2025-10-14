@@ -1,37 +1,34 @@
-use review_domain::grade::{accuracy, adjustments, conversions, intervals};
-use review_domain::{GradeError, ValidGrade};
+use review_domain::{Grade, GradeError, TEST_EPSILON, assert_is_close};
 
 #[test]
 fn conversions_module_exposes_grade_parsing() {
-    assert_eq!(conversions::from_u8(3), Ok(ValidGrade::Three));
+    assert_eq!(Grade::from_u8(3), Ok(Grade::Three));
     assert!(matches!(
-        conversions::from_u8(5),
+        Grade::from_u8(5),
         Err(GradeError::GradeOutsideRangeError { grade: 5 })
     ));
-    assert_eq!(conversions::to_u8(ValidGrade::Zero), 0);
+    assert_eq!(Grade::Zero.to_u8(), 0);
 }
 
 #[test]
 fn conversions_helpers_cover_all_entry_points() {
-    assert_eq!(conversions::new(2), Ok(ValidGrade::Two));
+    assert_eq!(Grade::from_u8(2), Ok(Grade::Two));
     assert!(matches!(
-        conversions::new(9),
+        Grade::from_u8(9),
         Err(GradeError::GradeOutsideRangeError { grade: 9 })
     ));
 
-    let grade = ValidGrade::Three;
-    assert_eq!(conversions::as_u8(grade), 3);
+    let grade = Grade::Three;
     assert_eq!(grade.to_u8(), 3);
-    assert_eq!(grade.as_u8(), 3);
 
-    assert_eq!(ValidGrade::from_u8(4), Ok(ValidGrade::Four));
-    assert_eq!(ValidGrade::new(1), Ok(ValidGrade::One));
-    assert_eq!(ValidGrade::try_from(0_u8), Ok(ValidGrade::Zero));
+    assert_eq!(Grade::from_u8(4), Ok(Grade::Four));
+    assert_eq!(Grade::from_u8(1), Ok(Grade::One));
+    assert_eq!(Grade::from_u8(0_u8), Ok(Grade::Zero));
 }
 
 #[test]
 fn accuracy_and_interval_modules_share_responsibilities() {
-    assert!(accuracy::is_correct(ValidGrade::Four));
-    assert_eq!(intervals::to_interval_increment(ValidGrade::Three), 2);
-    assert!((adjustments::to_grade_delta(ValidGrade::One) - -0.15).abs() < 1e-6);
+    assert!(Grade::Four.is_correct());
+    assert_eq!(Grade::Three.to_interval_increment(), 2);
+    assert_is_close!(Grade::One.to_interval_increment(), 0.15, TEST_EPSILON);
 }

@@ -4,14 +4,17 @@ name   ="chess-training-pgn-import"
 version="0.1.0"
 
 [dependencies]
-clap      ={ version="4", features=["derive"] }
-fnv       ="1"
-serde     ={ version="1", features=["derive"] }
-serde_json="1"
-toml      ="0.8"
-thiserror ="1"
+clap         ={ version="4", features=["derive"] }
+fnv          ="1"
+review-domain={ path="../review-domain", features=["serde"] }
+serde_json   ="1"
 shakmaty     ="0.29"
-review-domain = { path = "../review-domain", features = ["serde"] }
+thiserror    ="1"
+toml         ="0.8"
 
 [dev-dependencies]
 tempfile="3"
+
+[features]
+default=["serde"]
+serde  =["review-domain/serde", "serde"]

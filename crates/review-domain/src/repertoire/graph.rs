@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::ids::{EdgeId, PositionId};
+use crate::{EdgeId, PositionId};
 
 use super::RepertoireMove;
 
@@ -297,6 +297,7 @@ impl OpeningGraph {
     /// ];
     /// assert_eq!(subgraph.moves(), &expected_moves);
     /// ```
+    #[must_use]
     pub fn subgraph_from(&self, start: PositionId) -> Self {
         let mut visited = BTreeMap::new();
         let mut to_visit = vec![start];
@@ -318,7 +319,6 @@ impl OpeningGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::{EdgeId, PositionId};
 
     fn sample_move(edge: u64, parent: u64, child: u64) -> RepertoireMove {
         RepertoireMove::new(
@@ -326,7 +326,6 @@ mod tests {
             PositionId::new(parent),
             PositionId::new(child),
             format!("m{edge}"),
-            format!("M{edge}"),
         )
     }
 

@@ -15,10 +15,9 @@ use crate::{
         store_canonical_position, store_opening_card,
     },
     model::{
-        build_opening_card_id, Card, CardMap, Edge, EdgeInput, EdgeMap, PositionMap, ReviewRequest,
-        StoredCardState, UnlockRecord, UnlockSet,
+        Card, CardMap, Edge, EdgeInput, EdgeMap, PositionMap, ReviewRequest, StoredCardState,
+        UnlockRecord, UnlockSet, build_opening_card_id,
     },
-    CardStore, StoreError,
 };
 
 /// Thread-safe in-memory reference implementation of the storage trait.

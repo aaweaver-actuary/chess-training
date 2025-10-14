@@ -140,8 +140,6 @@ mod tests {
     }
 
     fn sample_move(n: u64) -> RepertoireMove {
-        use crate::ids::{EdgeId, PositionId};
-
         RepertoireMove {
             parent_id: PositionId::new(n),
             child_id: PositionId::new(n + 1),

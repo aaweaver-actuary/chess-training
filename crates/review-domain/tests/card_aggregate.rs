@@ -3,8 +3,8 @@ use std::num::NonZeroU8;
 use chrono::NaiveDate;
 
 use review_domain::{
-    CardAggregate, CardId, CardKind, EdgeId, GradeError, IdConversionError, LearnerId, OpeningCard,
-    ReviewRequest, StoredCardState, TacticCard, TacticId, ValidGrade,
+    CardAggregate, CardId, CardKind, EdgeId, Grade, GradeError, IdConversionError, LearnerId,
+    OpeningCard, ReviewRequest, StoredCardState, TacticCard, TacticId,
 };
 
 fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -69,7 +69,7 @@ fn apply_review_updates_internal_state() {
     );
     let review_day = naive_date(2024, 2, 10);
 
-    aggregate.apply_valid_grade(ValidGrade::Four, review_day);
+    aggregate.apply_valid_grade(Grade::Four, review_day);
     let updated = aggregate.state();
     assert_eq!(updated.interval.get(), 6);
     assert_eq!(updated.due_on, naive_date(2024, 2, 16));

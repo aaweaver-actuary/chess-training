@@ -27,6 +27,6 @@ fn review_domain_identifiers_round_trip_from_card_store() {
     let overflow = CardId::try_from(u128::from(u64::MAX) + 1);
     assert!(matches!(
         overflow,
-        Err(IdConversionError::Overflow { value }) if value == u128::from(u64::MAX) + 1
+        Err(IdConversionError::Overflow { value, .. }) if value == u128::from(u64::MAX) + 1
     ));
 }

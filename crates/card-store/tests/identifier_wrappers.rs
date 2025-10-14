@@ -8,7 +8,7 @@ fn id_conversion_errors_surface_kind_labels() {
 
     assert!(matches!(
         overflow,
-        IdConversionError::Overflow { value } if value == u128::from(u64::MAX) + 1
+        IdConversionError::Overflow { value, .. } if value == u128::from(u64::MAX) + 1
     ));
 }
 

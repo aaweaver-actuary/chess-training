@@ -5,11 +5,11 @@ use card_store::chess_position::ChessPosition;
 use card_store::config::StorageConfig;
 use card_store::memory::InMemoryCardStore;
 use card_store::model::{
-    Card, CardKind, Edge, EdgeId, EdgeInput, ReviewRequest, StoredCardState, UnlockDetail,
-    UnlockRecord,
+    Card, CardKind, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockDetail, UnlockRecord,
 };
 use card_store::store::{ReviewCardStore, StoreError};
 use chrono::{Duration, NaiveDate};
+use review_domain::EdgeId;
 
 fn new_store() -> InMemoryCardStore {
     InMemoryCardStore::new(StorageConfig::default())
