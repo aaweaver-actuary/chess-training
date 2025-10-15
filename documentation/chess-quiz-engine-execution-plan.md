@@ -6,9 +6,9 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** `documentation/chess-quiz-engine.md` solution overview, repository TDD policy, existing PGN parsing behaviors in `crates/chess-training-pgn-import`.
 - **Outputs:** A living checklist of acceptance criteria labelled AC1–AC4 (single-line PGN scope, retry policy, feedback messaging, adapter isolation) plus an ordered backlog of failing tests RT1–RT5 that map one-to-one to those behaviors (parser errors, retry exhaustion, summary math, feedback messaging coverage, adapter isolation guardrails). Published in `documentation/chess-quiz-engine.md` under “Acceptance Criteria Checklist” and “Initial Red Test Backlog”.
 
-## 2. Scaffold the `quiz-core` crate and workspace wiring
+## 2. Scaffold the `quiz-core` crate and workspace wiring ✅
 - **Inputs:** Workspace `Cargo.toml`, Makefile conventions, design decision to host adapters behind feature flags.
-- **Outputs:** `crates/quiz-core` library with `engine`, `state`, `ports`, and `errors` modules stubbed; feature declarations for `cli`, `api`, and `wasm`; placeholder binaries compiled only when their feature is enabled; workspace manifests updated to include the crate; CI/build scripts adjusted if necessary.
+- **Outputs:** `crates/quiz-core` library with `engine`, `state`, `ports`, and `errors` modules stubbed; feature declarations for `cli`, `api`, and `wasm` with an empty default feature set; placeholder binaries under `src/bin/` compiled only when their feature is enabled via `#![cfg(feature = "...")]`; workspace manifests already glob `crates/*`, so no additional wiring was required.
 
 ## 3. Establish crate-level documentation and glossary placeholders
 - **Inputs:** Repository documentation standards (`README.md`, `docs/rust-structs-glossary.md`).
