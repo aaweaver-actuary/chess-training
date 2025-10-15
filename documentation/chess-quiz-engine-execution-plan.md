@@ -26,9 +26,9 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** Outputs from Tasks 4 and 5.
 - **Outputs:** `QuizSession::from_source` and `QuizSession::from_pgn` hydrate the session from parsed PGN data, producing ordered `QuizStep` entries with legal-board FEN snapshots and SAN prompts. Unit tests confirm FEN/SAN alignment for multi-move sequences and verify that unsupported features (variations, comments) surface the explicit parsing errors introduced earlier.
 
-## 7. Define interaction ports and reference terminal adapter
+## 7. Define interaction ports and reference terminal adapter ✅
 - **Inputs:** Port trait sketch in the design brief, repository feature-flagging conventions.
-- **Outputs:** `ports::QuizPort` trait and companion message types (e.g., `FeedbackMessage`, `PromptContext`), plus a `TerminalPort` implementation behind the `cli` feature that can drive manual smoke tests. Provide adapter-focused unit tests using mock/stdout capturing to exercise the trait contract.
+- **Outputs:** `ports::QuizPort` trait with prompt, feedback, and summary hooks alongside serialisable `PromptContext` and `FeedbackMessage` structs; a generically testable `TerminalPort` adapter behind the `cli` feature that wraps arbitrary `BufRead`/`Write` handles; and adapter-focused unit tests capturing stdout to verify prompt rendering, feedback wording, summary formatting, and the helper constructors so every branch of the module is exercised.
 
 ## 8. Build the quiz orchestration engine
 - **Inputs:** Session state types, port trait, retry policy (single retry) from acceptance criteria.
