@@ -102,11 +102,11 @@ impl QuizSource {
             }
 
             let san = San::from_ascii(cleaned.as_bytes()).map_err(|err: ParseSanError| {
-                QuizError::unreadable_from_parse(cleaned.clone(), err)
+                QuizError::unreadable_from_parse(cleaned.clone(), &err)
             })?;
             let mv = san
                 .to_move(&board)
-                .map_err(|err: SanError| QuizError::unreadable_from_san(cleaned.clone(), err))?;
+                .map_err(|err: SanError| QuizError::unreadable_from_san(cleaned.clone(), &err))?;
             board.play_unchecked(mv);
             san_moves.push(san);
         }
