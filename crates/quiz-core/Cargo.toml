@@ -13,6 +13,7 @@ api = []
 wasm = []
 
 [dependencies]
+chess-training-pgn-import = { path = "../chess-training-pgn-import" }
 serde = { version = "1", features = ["derive"] }
 shakmaty = "0.29"
 thiserror = "1"

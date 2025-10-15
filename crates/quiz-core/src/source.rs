@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use chess_training_pgn_import::parse_games;
 use shakmaty::san::{ParseSanError, San, SanError};
 use shakmaty::{Chess, Position};
 
@@ -37,70 +38,38 @@ impl QuizSource {
             return Err(QuizError::NoMoves);
         }
 
-        // Remove PGN headers (lines starting with '[' and ending with ']')
-        let moves_section = trimmed
-            .lines()
-            .filter(|line| !line.trim_start().starts_with('['))
-            .collect::<Vec<_>>()
-            .join("\n");
+        let mut games = parse_games(trimmed);
 
-        // Remove comments (enclosed in '{...}' or after ';')
-        let mut cleaned = String::new();
-        let mut in_brace = false;
-        for c in moves_section.chars() {
-            match c {
-                '{' => in_brace = true,
-                '}' => in_brace = false,
-                ';' => break, // ignore rest of line after ';'
-                _ if !in_brace => cleaned.push(c),
-                _ => {}
-            }
+        if games.is_empty() {
+            return Err(QuizError::NoMoves);
         }
-        let cleaned = cleaned.trim();
 
-        if cleaned.contains('(') || cleaned.contains(')') {
+        if games.len() > 1 {
+            return Err(QuizError::MultipleGames);
+        }
+
+        let game = games.remove(0);
+
+        if game.saw_variation_markers {
             return Err(QuizError::VariationsUnsupported);
         }
 
-        // TODO: Consider using a proper PGN parser library for more robust validation.
-
-        if trimmed.contains('{')
-            || trimmed.contains('}')
-            || trimmed.contains(';')
-            || trimmed.contains('[')
-            || trimmed.contains(']')
-        {
+        if game.saw_comment_markers {
             return Err(QuizError::WrongFormat);
+        }
+
+        if game.tokens_after_result {
+            return Err(QuizError::MultipleGames);
+        }
+
+        if game.moves.is_empty() {
+            return Err(QuizError::NoMoves);
         }
 
         let mut board = Chess::default();
         let initial_position = board.clone();
         let mut san_moves = Vec::new();
-        let mut finished = false;
-
-        for raw in trimmed.split_whitespace() {
-            if raw.is_empty() {
-                continue;
-            }
-
-            if finished {
-                return Err(QuizError::MultipleGames);
-            }
-
-            let token = raw.trim();
-            if is_result_token(token) {
-                finished = true;
-                continue;
-            }
-
-            let Some(cleaned) = sanitize_token(token) else {
-                continue;
-            };
-
-            if cleaned.is_empty() {
-                continue;
-            }
-
+        for cleaned in game.moves {
             let san = San::from_ascii(cleaned.as_bytes()).map_err(|err: ParseSanError| {
                 QuizError::unreadable_from_parse(cleaned.clone(), &err)
             })?;
@@ -120,28 +89,6 @@ impl QuizSource {
             san_moves,
         })
     }
-}
-
-fn sanitize_token(raw: &str) -> Option<String> {
-    let stripped = raw
-        .trim_start_matches(|c: char| c.is_ascii_digit() || c == '.')
-        .trim();
-
-    if stripped.is_empty() {
-        return None;
-    }
-
-    let cleaned = stripped.trim_end_matches(['+', '#', '!', '?']).trim();
-
-    if cleaned.is_empty() {
-        return None;
-    }
-
-    Some(cleaned.to_string())
-}
-
-fn is_result_token(token: &str) -> bool {
-    matches!(token, "1-0" | "0-1" | "1/2-1/2" | "*")
 }
 
 #[cfg(test)]
@@ -173,6 +120,14 @@ mod tests {
     }
 
     #[test]
+    fn rejects_line_comments() {
+        let pgn = "1. e4 e5 ; sideline 2. Nf3 Nc6 *";
+        let err = QuizSource::from_pgn(pgn).unwrap_err();
+
+        assert!(matches!(err, QuizError::WrongFormat));
+    }
+
+    #[test]
     fn parses_single_game_main_line() {
         let pgn = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *";
         let source = QuizSource::from_pgn(pgn).expect("single game should parse");
@@ -185,6 +140,20 @@ mod tests {
 
         assert_eq!(moves, vec!["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]);
         assert_eq!(source.initial_position, Chess::default());
+    }
+
+    #[test]
+    fn parses_moves_after_normalisation() {
+        let pgn = "1. e4! e5?! 2. Nf3+ Nc6# 3. Bb5!! a6?? *";
+        let source = QuizSource::from_pgn(pgn).expect("annotated moves should normalise");
+
+        let moves: Vec<String> = source
+            .san_moves
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect();
+
+        assert_eq!(moves, vec!["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"],);
     }
 
     #[test]

@@ -8,6 +8,8 @@ pub mod errors;
 pub mod importer;
 /// Intermediate data structures produced during import.
 pub mod model;
+/// Shared PGN normalisation utilities used across crates.
+pub mod normalization;
 /// Storage abstractions used by the importer.
 pub mod storage;
 
@@ -15,5 +17,7 @@ pub mod storage;
 pub use crate::config::IngestConfig;
 /// Importer façade and error type exposed to binary crates.
 pub use crate::importer::{ImportError, Importer};
+/// Normalized PGN accessors exposed for integration consumers.
+pub use crate::normalization::{RawGame, parse_games};
 /// In-memory storage implementation useful for tests and tooling.
 pub use crate::storage::InMemoryImportStore;

@@ -4,6 +4,7 @@ use shakmaty::{CastlingMode, Chess, Color, EnPassantMode, Move, Position as Shak
 
 use crate::config::IngestConfig;
 use crate::model::{OpeningEdgeRecord, RepertoireEdge};
+use crate::normalization::{RawGame, parse_games};
 use crate::storage::{InMemoryImportStore, Storage, UpsertOutcome};
 use review_domain::Position;
 
@@ -364,76 +365,6 @@ fn store_opening_data_if_requested<S: Storage>(
     metrics.note_repertoire(repertoire_outcome, context.record_tactic_moves);
 }
 
-fn parse_games(input: &str) -> Vec<RawGame> {
-    let mut games = Vec::new();
-    let mut current = RawGame::default();
-    let mut header_in_progress = false;
-    let mut saw_moves = false;
-
-    for line in input.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        if trimmed.starts_with('[') {
-            if !header_in_progress && current.has_content() {
-                games.push(current);
-                current = RawGame::default();
-                saw_moves = false;
-            }
-            header_in_progress = true;
-            if let Some(tag) = parse_tag(trimmed) {
-                current.tags.push(tag);
-            }
-            continue;
-        }
-
-        header_in_progress = false;
-        saw_moves = true;
-        current.moves.extend(sanitize_tokens(trimmed));
-    }
-
-    if saw_moves || current.has_content() {
-        games.push(current);
-    }
-
-    games
-}
-
-fn parse_tag(line: &str) -> Option<(String, String)> {
-    let trimmed = line.strip_prefix('[').and_then(|s| s.strip_suffix(']'))?;
-    let (key, raw_value) = trimmed.split_once(' ')?;
-    let value = raw_value.trim().strip_prefix('"')?.strip_suffix('"')?;
-    Some((key.to_string(), value.to_string()))
-}
-
-fn sanitize_tokens(line: &str) -> Vec<String> {
-    line.split_whitespace().filter_map(sanitize_token).collect()
-}
-
-fn sanitize_token(raw: &str) -> Option<String> {
-    if raw == "*" || raw == "1-0" || raw == "0-1" || raw == "1/2-1/2" {
-        return None;
-    }
-
-    if raw.contains('{') || raw.contains('}') || raw.contains('(') || raw.contains(')') {
-        return None;
-    }
-
-    let stripped = raw.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
-    if stripped.is_empty() {
-        return None;
-    }
-
-    let cleaned = stripped.trim_end_matches(['!', '?', '+', '#']);
-    if cleaned.is_empty() {
-        return None;
-    }
-
-    Some(cleaned.to_string())
-}
-
 fn parse_san(token: &str) -> Result<San, ImportError> {
     San::from_ascii(token.as_bytes()).map_err(|_| ImportError::Pgn(token.to_string()))
 }
@@ -461,25 +392,6 @@ fn board_to_ply(board: &Chess) -> u32 {
 fn position_from_board(board: &Chess, _ply: u32) -> Position {
     let fen = Fen::from_position(board, EnPassantMode::Legal).to_string();
     Position::new(&fen)
-}
-
-#[derive(Default)]
-struct RawGame {
-    tags: Vec<(String, String)>,
-    moves: Vec<String>,
-}
-
-impl RawGame {
-    fn tag(&self, name: &str) -> Option<&str> {
-        self.tags
-            .iter()
-            .find(|(key, _)| key.eq_ignore_ascii_case(name))
-            .map(|(_, value)| value.as_str())
-    }
-
-    fn has_content(&self) -> bool {
-        !self.tags.is_empty() || !self.moves.is_empty()
-    }
 }
 
 #[cfg(test)]
@@ -512,50 +424,6 @@ mod tests {
         assert!(store.edges().is_empty());
         assert!(store.tactics().is_empty());
         assert_eq!(metrics, ImportMetrics::default());
-    }
-
-    #[test]
-    fn parse_tag_reads_key_value_pairs() {
-        let tag = parse_tag("[Event \"Test\"]");
-        assert_eq!(tag, Some(("Event".into(), "Test".into())));
-    }
-
-    #[test]
-    fn parse_tag_rejects_missing_quotes() {
-        assert_eq!(parse_tag("[Event Test]"), None);
-        assert_eq!(parse_tag("[Event \"Test]"), None);
-    }
-
-    #[test]
-    fn parse_tag_requires_closing_bracket_and_space() {
-        assert_eq!(parse_tag("[Malformed"), None);
-        assert_eq!(parse_tag("[Event\"Test\"]"), None);
-    }
-
-    #[test]
-    fn sanitize_token_removes_results_and_markers() {
-        assert_eq!(sanitize_token("1-0"), None);
-        assert_eq!(sanitize_token("{comment}"), None);
-        assert_eq!(sanitize_token("(variation)"), None);
-    }
-
-    #[test]
-    fn sanitize_token_strips_move_numbers_and_glyphs() {
-        assert_eq!(sanitize_token("12...Qxe4+!?"), Some("Qxe4".to_string()));
-    }
-
-    #[test]
-    fn sanitize_token_drops_tokens_without_moves() {
-        assert_eq!(sanitize_token("12...?!"), None);
-    }
-
-    #[test]
-    fn parse_games_splits_multiple_pgn_entries() {
-        let pgn = "[Event \"Game\"]\n\n1. e4 e5\n\n[Event \"Second\"]\n1. d4 d5 *";
-        let games = parse_games(pgn);
-        assert_eq!(games.len(), 2);
-        assert_eq!(games[0].moves, vec!["e4".to_string(), "e5".to_string()]);
-        assert_eq!(games[1].moves, vec!["d4".to_string(), "d5".to_string()]);
     }
 
     #[test]
