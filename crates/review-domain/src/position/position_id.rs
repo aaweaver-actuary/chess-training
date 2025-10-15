@@ -6,7 +6,7 @@ use crate::ids::{IdConversionError, IdKind};
 ///
 /// # Examples
 /// ```rust
-/// use review_domain::ids::{PositionId, IdConversionError, IdKind};
+/// use review_domain::{PositionId, IdConversionError, IdKind};
 ///
 /// let id = PositionId::try_from(7_u128).unwrap();
 /// assert_eq!(id.get(), 7);

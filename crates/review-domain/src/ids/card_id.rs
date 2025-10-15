@@ -86,12 +86,13 @@ mod tests {
 
     #[test]
     fn try_from_i64_overflow() {
-        let overflow = CardId::try_from(i128::from(i64::MAX) + 1);
-        // This will be positive and within u64, so should succeed
-        assert!(overflow.is_ok());
-        let overflow = CardId::try_from(i64::try_from(u128::from(u64::MAX)).unwrap() + 1);
-        // This will be negative, so should error
-        assert!(overflow.is_err());
+        // `i64` values are always representable as `u64` when non-negative, so the
+        // largest `i64` should succeed.
+        assert!(CardId::try_from(i64::MAX).is_ok());
+
+        // Negative inputs should still surface an error, matching the documented
+        // contract for `TryFrom<i64>`.
+        assert!(CardId::try_from(-1_i64).is_err());
     }
 
     #[test]

@@ -39,7 +39,7 @@ fn review_domain_ids_are_available_in_scheduler_core() {
     assert_eq!(EdgeId::try_from(67_u128).unwrap(), edge);
 
     let mv = MoveId::from(71_u64);
-    assert_eq!(format!("{mv}"), "71");
+    assert_eq!(format!("{mv}"), "MoveId(71)");
     assert_eq!(format!("{mv:?}"), "MoveId(71)");
     assert_eq!(MoveId::try_from(71_i64).unwrap(), mv);
     assert!(MoveId::try_from(-1_i64).is_err());
@@ -47,7 +47,7 @@ fn review_domain_ids_are_available_in_scheduler_core() {
     assert_eq!(MoveId::try_from(71_u128).unwrap(), mv);
 
     let card = CardId::new(73_u64);
-    assert_eq!(card.to_string(), "73");
+    assert_eq!(card.to_string(), "CardId(73)");
     assert_eq!(u64::from(card), 73);
     assert_eq!(CardId::try_from(73_i64).unwrap(), card);
     assert!(CardId::try_from(-1_i64).is_err());

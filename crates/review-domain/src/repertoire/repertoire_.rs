@@ -108,8 +108,14 @@ impl RepertoireBuilder {
     ///
     /// # Examples
     /// ```rust
-    /// use review_domain::ids::{EdgeId, PositionId};
-    /// use review_domain::repertoire::{RepertoireBuilder, RepertoireMove};
+    /// use review_domain::{EdgeId, PositionId, Repertoire, RepertoireMove};
+    /// let mut builder = Repertoire::builder("Example");
+    /// builder.add(RepertoireMove::new(
+    ///     EdgeId::new(1),
+    ///     PositionId::new(10),
+    ///     PositionId::new(11),
+    ///     "e2e4",
+    /// ));
     pub fn add(&mut self, mv: RepertoireMove) -> &mut Self {
         self.initialize_graph_if_needed();
         self.add_move_without_checking(mv);
