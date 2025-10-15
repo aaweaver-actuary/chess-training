@@ -38,9 +38,9 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** `QuizError` enum, adapter isolation requirement, prior error-handling tests.
 - **Outputs:** Exhaustive conversions from lower-level errors (`shakmaty`, `std::io`) into `QuizError`; adapter-facing result aliases used across ports and the CLI implementation; regression tests for CLI I/O failures alongside existing retry-exhaustion and summary guard rails. Documentation updated to describe adapter-safe failure modes and the new error-conversion helpers.
 
-## 10. Assemble integration tests for end-to-end quiz runs
+## 10. Assemble integration tests for end-to-end quiz runs ✅
 - **Inputs:** Engine implementation, terminal adapter, acceptance criteria backlog from Task 1.
-- **Outputs:** Integration tests under `crates/quiz-core/tests/` that orchestrate full quiz sessions with deterministic ports. Scenarios cover perfect runs, retries leading to success, failures after retries, and PGN parsing rejection. Tests start as red cases before the relevant code is implemented.
+- **Outputs:** Integration tests under `crates/quiz-core/tests/end_to_end.rs` orchestrate full quiz sessions with deterministic ports. Scenarios cover perfect runs, retries leading to success, failures after retries, and PGN parsing rejection, verifying adapter prompts, feedback, and summary delivery in one flow.
 
 ## 11. Update documentation and knowledge artifacts
 - **Inputs:** Implemented API surface, glossary placeholders, documentation obligations described in the brief.

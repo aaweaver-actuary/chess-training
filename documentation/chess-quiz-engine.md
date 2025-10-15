@@ -106,6 +106,15 @@ operator, with tests that inject failing writers to prove `QuizError::Io` is sur
 advancing quiz state. Parsing helpers annotate PGN failures with both the offending SAN token and the
 underlying `shakmaty` message so adapters can display actionable diagnostics.
 
+### End-to-End Integration Tests
+
+Task 10 adds integration coverage in `crates/quiz-core/tests/end_to_end.rs`, pairing the engine with a
+deterministic fake port to drive complete quiz sessions. These tests exercise the full loop mandated
+by the acceptance criteria: a perfect run with zero retries, a single-retry recovery, retry
+exhaustion leading to a recorded miss, and PGN parsing rejection. The port fixture records prompts,
+feedback, and the delivered summary, giving confidence that adapter interactions and summary totals
+stay coherent across the entire session.
+
 ## Implementation Roadmap
 The roadmap breaks implementation into four atomic streams. Each subsection describes candidate approaches, the trade-offs we e
 valuated, and the decision we committed to.
