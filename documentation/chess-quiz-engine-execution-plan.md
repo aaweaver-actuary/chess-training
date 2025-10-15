@@ -10,9 +10,9 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** Workspace `Cargo.toml`, Makefile conventions, design decision to host adapters behind feature flags.
 - **Outputs:** `crates/quiz-core` library with `engine`, `state`, `ports`, and `errors` modules stubbed; feature declarations for `cli`, `api`, and `wasm` with an empty default feature set; placeholder binaries under `src/bin/` compiled only when their feature is enabled via `#![cfg(feature = "...")]`; workspace manifests already glob `crates/*`, so no additional wiring was required.
 
-## 3. Establish crate-level documentation and glossary placeholders
+## 3. Establish crate-level documentation and glossary placeholders ✅
 - **Inputs:** Repository documentation standards (`README.md`, `docs/rust-structs-glossary.md`).
-- **Outputs:** Crate `README` describing architecture boundaries and feature gating; glossary placeholder entries for forthcoming types (`QuizEngine`, `QuizSession`, `QuizError`, `FeedbackMessage`) noting “implementation pending” so downstream writers know what to expect.
+- **Outputs:** Added `crates/quiz-core/README.md` to describe architecture boundaries and feature gating; appended placeholder glossary entries for forthcoming types (`QuizEngine`, `QuizSession`, `QuizError`, `FeedbackMessage`) in `docs/rust-structs-glossary.md`, each marked “implementation pending” so downstream writers know what to expect.
 
 ## 4. Model quiz session state structures
 - **Inputs:** Design brief architecture section, existing domain patterns for immutable state.
