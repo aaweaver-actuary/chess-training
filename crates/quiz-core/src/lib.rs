@@ -5,6 +5,7 @@
 pub mod engine;
 pub mod errors;
 pub mod ports;
+pub mod source;
 pub mod state;
 
 #[cfg(feature = "cli")]

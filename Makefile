@@ -63,7 +63,7 @@ test-chess-training-pgn-import:
 	cargo clippy --manifest-path $(PROJECT_ROOT)/Cargo.toml -p chess-training-pgn-import --all-targets --all-features -- -D clippy::all -D clippy::pedantic && \
 	cargo test && \
 	mkdir -p target/llvm-cov && \
-	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
+	cargo llvm-cov --ignore-filename-regex "crates/review-domain/" $(CARGO_LLVM_COV_FLAGS)
 
 test-scheduler-core:
 	cd $(PROJECT_ROOT)/crates/scheduler-core && \

@@ -20,6 +20,7 @@ pub struct QuizSession {
 impl QuizSession {
     /// Constructs a session from prepared steps, initialising summary totals to
     /// align with the number of steps and resetting the active index to zero.
+    #[must_use]
     pub fn new(steps: Vec<QuizStep>) -> Self {
         let summary = QuizSummary::new(steps.len());
 
@@ -31,11 +32,13 @@ impl QuizSession {
     }
 
     /// Returns `true` when all steps have been attempted.
+    #[must_use]
     pub fn is_complete(&self) -> bool {
         self.current_index >= self.steps.len()
     }
 
     /// Provides a reference to the currently active step, if any remain.
+    #[must_use]
     pub fn current_step(&self) -> Option<&QuizStep> {
         self.steps.get(self.current_index)
     }
@@ -66,6 +69,7 @@ impl QuizStep {
     ///
     /// The `max_retries` parameter configures how many retries the learner is
     /// allowed before the step is marked incorrect.
+    #[must_use]
     pub fn new(
         board_fen: impl Into<String>,
         prompt_san: impl Into<String>,
@@ -100,6 +104,7 @@ pub struct AttemptState {
 
 impl AttemptState {
     /// Creates a pending attempt state configured with a retry allowance.
+    #[must_use]
     pub fn new(max_retries: u8) -> Self {
         Self {
             result: AttemptResult::Pending,
@@ -110,6 +115,7 @@ impl AttemptState {
     }
 
     /// Calculates how many retries remain available to the learner.
+    #[must_use]
     pub fn remaining_retries(&self) -> u8 {
         self.retries_allowed.saturating_sub(self.retries_used)
     }
@@ -119,7 +125,7 @@ impl AttemptState {
 ///
 /// Stores totals for correct/incorrect answers and the number of retries
 /// consumed so analytics and adapters can present aggregate outcomes.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct QuizSummary {
     /// Total number of steps included in the quiz session.
     pub total_steps: usize,
@@ -135,22 +141,11 @@ pub struct QuizSummary {
 
 impl QuizSummary {
     /// Prepares a summary for a quiz with the specified number of steps.
+    #[must_use]
     pub fn new(total_steps: usize) -> Self {
         Self {
             total_steps,
             ..Self::default()
-        }
-    }
-}
-
-impl Default for QuizSummary {
-    fn default() -> Self {
-        Self {
-            total_steps: 0,
-            completed_steps: 0,
-            correct_answers: 0,
-            incorrect_answers: 0,
-            retries_consumed: 0,
         }
     }
 }

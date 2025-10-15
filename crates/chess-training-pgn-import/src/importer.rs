@@ -35,9 +35,12 @@ impl ImportMetrics {
         }
     }
 
-    fn note_repertoire(&mut self, outcome: UpsertOutcome) {
+    fn note_repertoire(&mut self, outcome: UpsertOutcome, recorded_tactic: bool) {
         if outcome.is_inserted() {
             self.repertoire_edges += 1;
+            if recorded_tactic {
+                self.tactics += 1;
+            }
         }
     }
 }
@@ -353,11 +356,12 @@ fn store_opening_data_if_requested<S: Storage>(
     // OpeningEdgeRecord::new signature changed; update to use only move_uci and source_hint
     let edge = OpeningEdgeRecord::new(&movement.uci, context.source_hint.clone());
     metrics.note_edge(store.upsert_edge(edge.clone()));
-    metrics.note_repertoire(store.upsert_repertoire_edge(RepertoireEdge::new(
+    let repertoire_outcome = store.upsert_repertoire_edge(RepertoireEdge::new(
         owner,
         repertoire,
         edge.move_entry.edge_id,
-    )));
+    ));
+    metrics.note_repertoire(repertoire_outcome, context.record_tactic_moves);
 }
 
 fn parse_games(input: &str) -> Vec<RawGame> {
@@ -607,7 +611,7 @@ mod tests {
         let mut metrics = ImportMetrics::default();
         metrics.note_position(UpsertOutcome::Replaced);
         metrics.note_edge(UpsertOutcome::Replaced);
-        metrics.note_repertoire(UpsertOutcome::Replaced);
+        metrics.note_repertoire(UpsertOutcome::Replaced, false);
 
         assert_eq!(metrics.opening_positions, 0);
         assert_eq!(metrics.opening_edges, 0);
@@ -616,7 +620,7 @@ mod tests {
 
         metrics.note_position(UpsertOutcome::Inserted);
         metrics.note_edge(UpsertOutcome::Inserted);
-        metrics.note_repertoire(UpsertOutcome::Inserted);
+        metrics.note_repertoire(UpsertOutcome::Inserted, true);
 
         assert_eq!(metrics.opening_positions, 1);
         assert_eq!(metrics.opening_edges, 1);
