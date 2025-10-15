@@ -7,13 +7,9 @@ export type FloatingCornerButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
 export const FloatingCornerButton = forwardRef<HTMLButtonElement, FloatingCornerButtonProps>(
   ({ className, type = 'button', ...buttonProps }, ref) => {
-    const combinedClassName = ['floating-corner-button', className]
-      .filter(Boolean)
-      .join(' ');
+    const combinedClassName = ['floating-corner-button', className].filter(Boolean).join(' ');
 
-    return (
-      <button {...buttonProps} className={combinedClassName} ref={ref} type={type} />
-    );
+    return <button {...buttonProps} className={combinedClassName} ref={ref} type={type} />;
   },
 );
 

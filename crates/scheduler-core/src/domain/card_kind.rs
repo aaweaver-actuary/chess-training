@@ -10,6 +10,13 @@ pub struct SchedulerOpeningCard {
 
 impl SchedulerOpeningCard {
     /// Constructs an opening card payload for the provided parent prefix.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use scheduler_core::SchedulerOpeningCard;
+    /// let card = SchedulerOpeningCard::new("e4-e5-Nf3");
+    /// assert_eq!(card.parent_prefix, "e4-e5-Nf3");
+    /// ```
     #[must_use]
     pub fn new(parent_prefix: impl Into<String>) -> Self {
         Self {

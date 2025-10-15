@@ -21,10 +21,10 @@ The web client provides a chess study workspace with an importable command conso
 
 ## Highlights
 
-* **Command console** – global keyboard shortcut (`:`) opens an omnibox that dispatches registered navigation commands.
-* **Opening review flow** – `SessionRoutes` coordinates the review board, scheduling helpers, and state store.
-* **Dashboard and tools pages** – routed via React Router with page components under `src/pages/`.
-* **Sample repertoire data** – fixtures under `src/fixtures/` drive local development and automated tests.
+- **Command console** – global keyboard shortcut (`:`) opens an omnibox that dispatches registered navigation commands.
+- **Opening review flow** – `SessionRoutes` coordinates the review board, scheduling helpers, and state store.
+- **Dashboard and tools pages** – routed via React Router with page components under `src/pages/`.
+- **Sample repertoire data** – fixtures under `src/fixtures/` drive local development and automated tests.
 
 ## Local development
 
@@ -46,16 +46,16 @@ npm run test:coverage  # Vitest with coverage reporting
 
 ## File layout
 
-| Path | Purpose |
-| --- | --- |
-| `src/components/` | Reusable UI primitives (command console, review board, dashboards). |
-| `src/pages/` | Route-level screens such as the dashboard and review flows. |
-| `src/state/` | Session store abstractions used by the router and components. |
-| `src/services/` | Domain logic, including the `ReviewPlanner`. |
-| `src/utils/` | Helpers for command dispatching, formatting, and opening line scheduling. |
-| `src/application/` | View models and controllers that glue fixtures to the UI. |
-| `src/fixtures/` | Sample payloads for local development and tests. |
-| `docs/` | UI-focused troubleshooting guides. |
+| Path               | Purpose                                                                   |
+| ------------------ | ------------------------------------------------------------------------- |
+| `src/components/`  | Reusable UI primitives (command console, review board, dashboards).       |
+| `src/pages/`       | Route-level screens such as the dashboard and review flows.               |
+| `src/state/`       | Session store abstractions used by the router and components.             |
+| `src/services/`    | Domain logic, including the `ReviewPlanner`.                              |
+| `src/utils/`       | Helpers for command dispatching, formatting, and opening line scheduling. |
+| `src/application/` | View models and controllers that glue fixtures to the UI.                 |
+| `src/fixtures/`    | Sample payloads for local development and tests.                          |
+| `docs/`            | UI-focused troubleshooting guides.                                        |
 
 ## Extending the UI
 

@@ -51,17 +51,39 @@ impl QuizSession {
     }
 
     /// Parses PGN text directly into a [`QuizSession`].
+    /// This is a convenience method that combines parsing and hydration.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quiz_core::{QuizError, QuizSession};
+    /// let pgn = "1. e4 e5 2. Nf3 Nc6 *";
+    /// let session = QuizSession::from_pgn(pgn, 1).expect("valid PGN should parse");
+    /// assert_eq!(session.steps.len(), 4);
+    /// assert_eq!(session.steps[0].prompt_san, "e4");
+    /// ```
     ///
     /// # Errors
-    ///
-    /// Returns a [`QuizError`] when the supplied PGN cannot be normalised into
-    /// a single main line of SAN moves.
+    /// Returns a [`QuizError`] if the PGN cannot be parsed into a valid `QuizSource`.
+    #[allow(clippy::result_large_err)]
     pub fn from_pgn(pgn: &str, max_retries: u8) -> Result<Self, QuizError> {
         let source = QuizSource::from_pgn(pgn)?;
         Ok(Self::from_source(&source, max_retries))
     }
 
     /// Returns `true` when all steps have been attempted.
+    ///
+    /// This is used to determine if the quiz has been completed.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quiz_core::{QuizSession, QuizStep};
+    /// let steps = vec![
+    ///     QuizStep::new("fen1", "e4", "e4", 1),
+    ///     QuizStep::new("fen2", "e5", "e5", 1),
+    /// ];
+    /// let mut session = QuizSession::new(steps);
+    /// assert!(!session.is_complete());
+    /// ```
     #[must_use]
     pub fn is_complete(&self) -> bool {
         self.current_index >= self.steps.len()

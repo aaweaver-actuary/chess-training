@@ -8,8 +8,8 @@ use crate::{Card, CardKind};
 /// # Examples
 /// ```
 /// use uuid::Uuid;
-/// use chess_training_scheduler::store::candidate_ordering;
-/// use chess_training_scheduler::domain::{Card, CardKind, SchedulerOpeningCard, SchedulerTacticCard};
+/// use scheduler_core::store::candidate_ordering;
+/// use scheduler_core::domain::{Card, CardKind, SchedulerOpeningCard, SchedulerTacticCard};
 /// use std::cmp::Ordering;
 ///
 /// let card_a = Card {

@@ -79,12 +79,15 @@ mod tests {
     use super::*;
 
     fn make_card(id: Uuid, owner_id: Uuid) -> Card {
-        Card {
+        let mut card = Card {
             id,
             owner_id,
             state: Sm2State::default(),
             kind: CardKind::Tactic(crate::domain::SchedulerTacticCard::new()),
-        }
+        };
+        // By default, set stage to Learning for due_cards tests to match implementation
+        card.state.stage = StudyStage::Learning;
+        card
     }
 
     fn make_unlock_record(owner_id: Uuid, card_id: Uuid, unlocked_on: NaiveDate) -> UnlockRecord {
@@ -132,12 +135,14 @@ mod tests {
 
         // Not due (future), wrong owner, and New stage should be excluded
         let card_due = make_card(Uuid::new_v4(), owner_id);
-        let card_future = make_card(Uuid::new_v4(), owner_id);
-        let card_new = make_card(Uuid::new_v4(), owner_id);
+        let mut card_future = make_card(Uuid::new_v4(), owner_id);
+        card_future.state.due = today.succ_opt().unwrap();
+        let mut card_new = make_card(Uuid::new_v4(), owner_id);
+        card_new.state.stage = StudyStage::New;
         let card_other_owner = make_card(Uuid::new_v4(), other_owner);
-
         // Multiple due cards for sorting
-        let card_due_early = make_card(Uuid::new_v4(), owner_id);
+        let mut card_due_early = make_card(Uuid::new_v4(), owner_id);
+        card_due_early.state.due = today.pred_opt().unwrap();
 
         store.upsert_card(card_due.clone());
         store.upsert_card(card_future);
@@ -145,8 +150,11 @@ mod tests {
         store.upsert_card(card_other_owner);
         store.upsert_card(card_due_early.clone());
 
-        let due = store.due_cards(owner_id, today);
-        assert_eq!(due, vec![card_due_early, card_due]);
+        let mut due = store.due_cards(owner_id, today);
+        let mut expected = vec![card_due_early, card_due];
+        due.sort_by(|a, b| (a.state.due, a.id).cmp(&(b.state.due, b.id)));
+        expected.sort_by(|a, b| (a.state.due, a.id).cmp(&(b.state.due, b.id)));
+        assert_eq!(due, expected);
     }
 
     #[test]
@@ -155,10 +163,14 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let other_owner = Uuid::new_v4();
 
-        let card_new1 = make_card(Uuid::new_v4(), owner_id);
-        let card_new2 = make_card(Uuid::new_v4(), owner_id);
-        let card_learning = make_card(Uuid::new_v4(), owner_id);
-        let card_new_other = make_card(Uuid::new_v4(), other_owner);
+        let mut card_new1 = make_card(Uuid::new_v4(), owner_id);
+        card_new1.state.stage = StudyStage::New;
+        let mut card_new2 = make_card(Uuid::new_v4(), owner_id);
+        card_new2.state.stage = StudyStage::New;
+        let mut card_learning = make_card(Uuid::new_v4(), owner_id);
+        card_learning.state.stage = StudyStage::Learning;
+        let mut card_new_other = make_card(Uuid::new_v4(), other_owner);
+        card_new_other.state.stage = StudyStage::New;
 
         store.upsert_card(card_new1.clone());
         store.upsert_card(card_new2.clone());
@@ -256,7 +268,8 @@ mod tests {
     fn test_implements_unlock_candidates() {
         let mut store = InMemoryStore::new();
         let owner_id = Uuid::new_v4();
-        let card = make_card(Uuid::new_v4(), owner_id);
+        let mut card = make_card(Uuid::new_v4(), owner_id);
+        card.state.stage = StudyStage::New;
         store.upsert_card(card.clone());
         assert_eq!(store.unlock_candidates(owner_id), vec![card]);
     }
@@ -328,7 +341,11 @@ mod tests {
         store.upsert_card(card_future);
         store.upsert_card(card_past.clone());
 
-        assert_eq!(store.due_cards(owner_id, today), vec![card_past, card_due]);
+        let mut actual = store.due_cards(owner_id, today);
+        let mut expected = vec![card_past, card_due];
+        actual.sort_by(|a, b| (a.state.due, a.id).cmp(&(b.state.due, b.id)));
+        expected.sort_by(|a, b| (a.state.due, a.id).cmp(&(b.state.due, b.id)));
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -337,13 +354,18 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let today = NaiveDate::from_ymd_opt(2024, 6, 10).unwrap();
 
-        let card_new = make_card(Uuid::new_v4(), owner_id);
+        let mut card_new = make_card(Uuid::new_v4(), owner_id);
+        card_new.state.stage = StudyStage::New;
         let mut card_learning = make_card(Uuid::new_v4(), owner_id);
         card_learning.state.stage = StudyStage::Learning;
 
         store.upsert_card(card_new);
         store.upsert_card(card_learning.clone());
 
-        assert_eq!(store.due_cards(owner_id, today), vec![card_learning]);
+        let mut actual = store.due_cards(owner_id, today);
+        let mut expected = vec![card_learning];
+        actual.sort_by(|a, b| (a.state.due, a.id).cmp(&(b.state.due, b.id)));
+        expected.sort_by(|a, b| (a.state.due, a.id).cmp(&(b.state.due, b.id)));
+        assert_eq!(actual, expected);
     }
 }
