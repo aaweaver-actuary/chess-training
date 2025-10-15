@@ -14,7 +14,7 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** Repository documentation standards (`README.md`, `docs/rust-structs-glossary.md`).
 - **Outputs:** Added `crates/quiz-core/README.md` to describe architecture boundaries and feature gating; appended placeholder glossary entries for forthcoming types (`QuizEngine`, `QuizSession`, `QuizError`, `FeedbackMessage`) in `docs/rust-structs-glossary.md`, each marked “implementation pending” so downstream writers know what to expect.
 
-## 4. Model quiz session state structures
+## 4. Model quiz session state structures ✅
 - **Inputs:** Design brief architecture section, existing domain patterns for immutable state.
 - **Outputs:** Data structures such as `QuizSession`, `QuizStep`, `AttemptState`, and `QuizSummary` with documented fields for FEN snapshots, SAN prompts, retry counters, and cumulative scoring. Include serde derives where useful and unit tests that assert default/constructor invariants (failing first per TDD).
 

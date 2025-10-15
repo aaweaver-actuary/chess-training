@@ -66,6 +66,18 @@ The architecture mirrors other workspace crates that separate pure logic from de
 Adapters depend on the engine via the `ports` traits, while the engine never touches `std::io` directly. This inversion keeps t
 he code testable and future-proof for async or embedded environments.
 
+### Session State Model
+The `state` module now codifies the data exchanged between the engine and adapters:
+
+- `QuizSession` aggregates ordered `QuizStep` entries, tracks the active index, and mirrors
+  `QuizSummary` totals so adapters can serialise a complete snapshot at any point.
+- `QuizStep` pairs a FEN board snapshot with the SAN prompt and solution, embedding an
+  `AttemptState` that records retries and learner responses alongside optional annotations.
+- `AttemptState` and its `AttemptResult` enum capture retry allowances, responses, and the final
+  outcome so retry policies remain enforceable without leaking implementation details to adapters.
+- `QuizSummary` tallies correct, incorrect, and retry counts, giving the orchestration layer a
+  single structure to update as the session advances.
+
 ## Implementation Roadmap
 The roadmap breaks implementation into four atomic streams. Each subsection describes candidate approaches, the trade-offs we e
 valuated, and the decision we committed to.

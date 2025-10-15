@@ -1075,18 +1075,116 @@ defined.
 
 ### `QuizSession`
 
-**Overview:** Upcoming representation of an immutable quiz session snapshot used by the engine to
-track prompts, retries, and scoring metadata. Implementation pending until the session modelling
-task lands.
+**Overview:** Immutable container for the ordered quiz steps being executed along with the
+aggregate scoring summary. Exposes helpers for navigating the active step while keeping the state
+serialisable for adapters.
 
 **Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QuizSession {
+    pub steps: Vec<QuizStep>,
+    pub current_index: usize,
+    pub summary: QuizSummary,
+}
 ```
-// implementation pending in `crates/quiz-core/src/state.rs`
-```
+_Source:_ `crates/quiz-core/src/state.rs`
 
 **Usage in this repository:**
-- Will carry move-by-move context (FEN/SAN pairs) consumed by the engine and adapters.
-- Will provide helpers for aggregating session summaries and retry counters.
+- `QuizSession::new` initialises sessions with summaries sized to the provided steps, ensuring the
+  engine can report totals without recomputing counts mid-run.
+- Tests in `crates/quiz-core/src/state.rs` validate that new sessions start at index `0` and expose
+  the expected summary totals.
+
+### `QuizStep`
+
+**Overview:** Encapsulates the board context and SAN prompt for a single quiz move, tracking the
+learner's attempt state and any annotations revealed after grading.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QuizStep {
+    pub board_fen: String,
+    pub prompt_san: String,
+    pub solution_san: String,
+    pub attempt: AttemptState,
+    pub annotations: Vec<String>,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- Constructed via `QuizStep::new`, which seeds the embedded `AttemptState` with the configured retry
+  allowance and keeps annotation storage empty until feedback is attached.
+- Unit tests assert that a new step starts with a pending attempt and no retries consumed.
+
+### `AttemptState`
+
+**Overview:** Tracks retries, learner responses, and the final outcome for a single quiz step so the
+engine can enforce retry limits and emit accurate summaries.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AttemptState {
+    pub result: AttemptResult,
+    pub retries_allowed: u8,
+    pub retries_used: u8,
+    pub responses: Vec<String>,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- `AttemptState::new` seeds a pending result with zero retries consumed, and
+  `remaining_retries()` helps the engine determine if another prompt is allowed.
+- Tests cover retry math to guard against regressions in how many attempts remain available.
+
+### `QuizSummary`
+
+**Overview:** Aggregates scoring statistics (correct, incorrect, retries) for the entire quiz so
+adapters and analytics layers have a ready-to-serialise payload once a session ends.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QuizSummary {
+    pub total_steps: usize,
+    pub completed_steps: usize,
+    pub correct_answers: usize,
+    pub incorrect_answers: usize,
+    pub retries_consumed: usize,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- Initialised via `QuizSummary::new` when creating a `QuizSession`, ensuring totals align with the
+  number of steps in the quiz.
+- Provides storage for retry counts so summary reporting can include how many second chances were
+  used during a run.
+
+### `AttemptResult`
+
+**Overview:** Enum describing whether a step remains pending, finished correctly, or exhausted its
+retries incorrectly. Keeps the attempt state expressive for future engine logic.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AttemptResult {
+    Pending,
+    Correct,
+    Incorrect,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- Embedded within `AttemptState` to clearly communicate the learner's progress on a step.
+- Backed by tests that expect new attempts to begin in the `Pending` state, preventing premature
+  completion flags.
 
 ### `QuizError`
 
