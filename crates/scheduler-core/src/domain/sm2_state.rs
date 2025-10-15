@@ -100,6 +100,12 @@ mod tests {
             let state = Sm2State::new(CardState::Review, today(), ease);
             if ease.is_nan() {
                 assert!(state.ease_factor.is_nan());
+            } else if ease.is_infinite() {
+                assert!(state.ease_factor.is_infinite());
+                assert_eq!(
+                    state.ease_factor.is_sign_positive(),
+                    ease.is_sign_positive()
+                );
             } else {
                 assert_is_close!(state.ease_factor, ease, TEST_EPSILON);
             }

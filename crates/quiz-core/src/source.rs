@@ -17,6 +17,15 @@ pub struct QuizSource {
 impl QuizSource {
     /// Attempts to parse the provided PGN string into a quiz source.
     ///
+    /// # Examples
+    /// ```rust
+    /// use quiz_core::{QuizError, QuizSource};
+    /// let pgn = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *";
+    /// let source = QuizSource::from_pgn(pgn).expect("valid PGN should parse");
+    /// assert_eq!(source.san_moves.len(), 6);
+    /// assert_eq!(format!("{}", source.san_moves[0]), "e4");
+    /// ```
+    ///
     /// # Errors
     ///
     /// Returns a [`QuizError`] when the input includes multiple games, nested
