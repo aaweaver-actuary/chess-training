@@ -37,8 +37,15 @@ impl QuizSession {
     }
 
     /// Hydrates a new session from a parsed [`QuizSource`].
+    ///
+    /// # Parameters
+    /// - `max_retries`: The maximum number of retries allowed per step. Must be greater than zero.
+    ///
+    /// # Panics
+    /// Panics if `max_retries` is zero.
     #[must_use]
     pub fn from_source(source: &QuizSource, max_retries: u8) -> Self {
+        assert!(max_retries > 0, "max_retries must be greater than zero");
         let steps = hydrate_steps(source, max_retries);
         Self::new(steps)
     }
