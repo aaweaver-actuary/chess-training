@@ -37,6 +37,19 @@ flowchart TD
     H -->|End of Line| K[Return Summary]
 ```
 
+## Acceptance Criteria Checklist
+
+- [ ] **Single-line PGN scope is enforced.** The engine only accepts PGN strings that describe a single game presented as one main line without comments, annotations, or nested variations. Inputs that include multiple games, line breaks with alternate lines, or unsupported metadata must surface targeted `QuizError` variants so adapters can relay actionable feedback. Normalisation work already available in `crates/chess-training-pgn-import` must be reused instead of re-implementing parsing logic.
+- [ ] **Retry policy allows exactly one additional attempt per move.** When a learner submits an incorrect answer the engine must prompt the port for one—and only one—retry before revealing the correct SAN. Exhausted retries mark the step as incorrect, advance the session automatically, and increment retry counters captured in the session summary.
+- [ ] **Feedback messaging captures correctness and annotations.** Each engine decision results in a `FeedbackMessage` delivered through the active `QuizPort`. Correct attempts report success alongside any annotations configured for the move. Incorrect answers must communicate failure reasons (wrong SAN, retry exhausted) and, after the final attempt, include the authoritative move so adapters can render the teaching moment.
+- [ ] **Adapter isolation remains intact.** All user interaction flows through the `QuizPort` trait so adapters can live behind feature flags (`cli`, `api`, `wasm`). Engine code must stay free of direct `std::io` usage, expose deterministic error types for adapters to translate, and provide documentation hooks so downstream teams understand the boundary contract.
+
+## Initial Red Test Backlog
+
+1. **`pgn_rejects_non_single_line_games`** – Feed `QuizSource::from_pgn` examples containing multiple games, PGN comments, or variation markers and assert the precise `QuizError` variant. This validates the single-line scope before any engine orchestration work begins.
+2. **`engine_limits_retry_attempts`** – Simulate a quiz session where the learner answers a move incorrectly twice and verify that the engine surfaces retry exhaustion, records the miss, and emits the reveal feedback. Establishing this guard ensures future features cannot regress the retry contract.
+3. **`summary_counts_correct_and_retry_totals`** – Drive a short session with a mix of correct answers, single-retry saves, and final misses to assert the `QuizSummary` math (correct/incorrect counts, retry tally, move index progression). Locking the summary rules early protects downstream analytics integrations.
+
 ## Architecture
 The architecture mirrors other workspace crates that separate pure logic from delivery concerns.
 

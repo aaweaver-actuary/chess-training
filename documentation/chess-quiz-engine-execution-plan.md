@@ -2,9 +2,9 @@
 
 This plan translates the chess quiz engine design brief and the surrounding repository conventions into a concrete sequence of deliverables. Each task documents the primary inputs we depend upon and the tangible outputs that signal completion. The tasks are ordered to support strict red–green-refactor development and to keep parallel contributors coordinated.
 
-## 1. Finalise acceptance criteria and red tests
+## 1. Finalise acceptance criteria and red tests ✅
 - **Inputs:** `documentation/chess-quiz-engine.md` solution overview, repository TDD policy, existing PGN parsing behaviors in `crates/chess-training-pgn-import`.
-- **Outputs:** A living checklist of acceptance criteria (single-line PGN scope, retry policy, feedback messaging, adapter isolation) plus an ordered backlog of failing tests to write first (parser errors, retry exhaustion, summary math). Publish in `documentation/chess-quiz-engine.md` or `docs/` for team visibility.
+- **Outputs:** A living checklist of acceptance criteria (single-line PGN scope, retry policy, feedback messaging, adapter isolation) plus an ordered backlog of failing tests to write first (parser errors, retry exhaustion, summary math). Published in `documentation/chess-quiz-engine.md` under “Acceptance Criteria Checklist” and “Initial Red Test Backlog”.
 
 ## 2. Scaffold the `quiz-core` crate and workspace wiring
 - **Inputs:** Workspace `Cargo.toml`, Makefile conventions, design decision to host adapters behind feature flags.
