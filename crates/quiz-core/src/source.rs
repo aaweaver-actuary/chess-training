@@ -28,9 +28,32 @@ impl QuizSource {
             return Err(QuizError::NoMoves);
         }
 
-        if trimmed.contains('(') || trimmed.contains(')') {
+        // Remove PGN headers (lines starting with '[' and ending with ']')
+        let moves_section = trimmed
+            .lines()
+            .filter(|line| !line.trim_start().starts_with('['))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        // Remove comments (enclosed in '{...}' or after ';')
+        let mut cleaned = String::new();
+        let mut in_brace = false;
+        for c in moves_section.chars() {
+            match c {
+                '{' => in_brace = true,
+                '}' => in_brace = false,
+                ';' => break, // ignore rest of line after ';'
+                _ if !in_brace => cleaned.push(c),
+                _ => {}
+            }
+        }
+        let cleaned = cleaned.trim();
+
+        if cleaned.contains('(') || cleaned.contains(')') {
             return Err(QuizError::VariationsUnsupported);
         }
+
+        // TODO: Consider using a proper PGN parser library for more robust validation.
 
         if trimmed.contains('{')
             || trimmed.contains('}')
