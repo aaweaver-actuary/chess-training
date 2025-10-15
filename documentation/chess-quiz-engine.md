@@ -42,9 +42,9 @@ flowchart TD
 Each acceptance criterion carries a stable identifier so red tests can reference the specific behavior they lock down.
 
 - [ ] **[AC1] Single-line PGN scope is enforced.** The engine only accepts PGN strings that describe a single game presented as one main line without comments, annotations, or nested variations. Inputs that include multiple games, line breaks with alternate lines, or unsupported metadata must surface targeted `QuizError` variants so adapters can relay actionable feedback. Normalisation work already available in `crates/chess-training-pgn-import` must be reused instead of re-implementing parsing logic.
-- [ ] **[AC2] Retry policy allows exactly one additional attempt per move.** When a learner submits an incorrect answer the engine must prompt the port for one—and only one—retry before revealing the correct SAN. Exhausted retries mark the step as incorrect, advance the session automatically, and increment retry counters captured in the session summary.
-- [ ] **[AC3] Feedback messaging captures correctness and annotations.** Each engine decision results in a `FeedbackMessage` delivered through the active `QuizPort`. Correct attempts report success alongside any annotations configured for the move. Incorrect answers must communicate failure reasons (wrong SAN, retry exhausted) and, after the final attempt, include the authoritative move so adapters can render the teaching moment.
-- [ ] **[AC4] Adapter isolation remains intact.** All user interaction flows through the `QuizPort` trait so adapters can live behind feature flags (`cli`, `api`, `wasm`). Engine code must stay free of direct `std::io` usage, expose deterministic error types for adapters to translate, and provide documentation hooks so downstream teams understand the boundary contract.
+- [x] **[AC2] Retry policy allows exactly one additional attempt per move.** When a learner submits an incorrect answer the engine must prompt the port for one—and only one—retry before revealing the correct SAN. Exhausted retries mark the step as incorrect, advance the session automatically, and increment retry counters captured in the session summary.
+- [x] **[AC3] Feedback messaging captures correctness and annotations.** Each engine decision results in a `FeedbackMessage` delivered through the active `QuizPort`. Correct attempts report success alongside any annotations configured for the move. Incorrect answers must communicate failure reasons (wrong SAN, retry exhausted) and, after the final attempt, include the authoritative move so adapters can render the teaching moment.
+- [x] **[AC4] Adapter isolation remains intact.** All user interaction flows through the `QuizPort` trait so adapters can live behind feature flags (`cli`, `api`, `wasm`). Engine code must stay free of direct `std::io` usage, expose deterministic error types for adapters to translate, and provide documentation hooks so downstream teams understand the boundary contract.
 
 ## Initial Red Test Backlog
 
@@ -80,6 +80,24 @@ The `state` module now codifies the data exchanged between the engine and adapte
 - `QuizSession::from_source` and `QuizSession::from_pgn` hydrate session steps from a validated
   PGN source, ensuring each `QuizStep` carries the legal-board FEN snapshot and canonical SAN
   prompt while bubbling up any parsing errors for adapters to display.
+
+### Engine Run Loop
+
+`QuizEngine::run` iterates through each `QuizStep`, building a `PromptContext` for the active move
+and delegating user interaction to the injected `QuizPort`. Responses are graded through
+`grade_attempt`, which enforces the single-retry policy, records attempt history, and produces the
+appropriate `FeedbackMessage`. Once a step resolves as correct or incorrect the engine advances the
+session, updates `QuizSummary` totals (including retries consumed), and continues until every move
+is processed before presenting the final summary through the adapter.
+
+### Adapter Failure Handling
+
+The fake-port test harness now exercises error propagation for every adapter touchpoint. When
+`present_prompt`, `publish_feedback`, or `present_summary` return `QuizError::Io`, the engine bubbles
+the error immediately so adapters can recover, while leaving session and summary state in the last
+consistent position (e.g., completed steps remain counted even if summary presentation fails).
+Additional assertions cover attempt history capture, ensuring trimmed SAN responses are recorded in
+order even when learners take a retry before submitting the correct move.
 
 ## Implementation Roadmap
 The roadmap breaks implementation into four atomic streams. Each subsection describes candidate approaches, the trade-offs we e

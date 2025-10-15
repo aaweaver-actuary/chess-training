@@ -1059,19 +1059,25 @@ _Source:_ `crates/scheduler-core/tests/opening_scheduling.rs`
 
 ### `QuizEngine`
 
-**Overview:** Planned orchestrator responsible for executing quiz sessions against a provided
-question source and adapter port. Implementation pending while session state and port contracts are
-defined.
+**Overview:** Orchestrates quiz execution by hydrating a `QuizSession`, delegating prompts to an
+adapter `QuizPort`, and updating attempt state plus summary totals as each move is graded.
 
 **Definition:**
+```rust
+pub struct QuizEngine {
+    session: QuizSession,
+}
 ```
-// implementation pending in `crates/quiz-core/src/engine.rs`
-```
+_Source:_ `crates/quiz-core/src/engine.rs`
 
 **Usage in this repository:**
-- Will coordinate quiz execution loops, advancing through prompts, recording attempts, and producing
-  session summaries once implemented.
-- Will expose constructors such as `QuizEngine::from_pgn` that prepare state from a PGN source.
+- `QuizEngine::from_pgn` and `QuizEngine::from_source` construct runnable engines from PGN strings
+  or `QuizSource` values while configuring retry allowances for each `QuizStep`.
+- `QuizEngine::run` loops over session steps, emitting `PromptContext` values through the active
+  port, enforcing the one-retry policy via `grade_attempt`, and publishing `FeedbackMessage`
+  instances before finally calling `present_summary` with the aggregated `QuizSummary`.
+- Unit tests in `crates/quiz-core/src/engine.rs` exercise perfect runs, retry saves, and exhausted
+  attempts against a fake port to keep adapter isolation intact.
 
 ### `QuizSession`
 

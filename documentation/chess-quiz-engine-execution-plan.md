@@ -30,9 +30,9 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** Port trait sketch in the design brief, repository feature-flagging conventions.
 - **Outputs:** `ports::QuizPort` trait with prompt, feedback, and summary hooks alongside serialisable `PromptContext` and `FeedbackMessage` structs; a generically testable `TerminalPort` adapter behind the `cli` feature that wraps arbitrary `BufRead`/`Write` handles; and adapter-focused unit tests capturing stdout to verify prompt rendering, feedback wording, summary formatting, and the helper constructors so every branch of the module is exercised.
 
-## 8. Build the quiz orchestration engine
+## 8. Build the quiz orchestration engine ✅
 - **Inputs:** Session state types, port trait, retry policy (single retry) from acceptance criteria.
-- **Outputs:** `QuizEngine` implementation with constructors (`from_pgn`, `from_source`), the main execution loop (`run`), and helper methods (`advance`, `grade_attempt`). Tests simulate correct/incorrect answers, retry flows, and summary aggregation using fake ports.
+- **Outputs:** Implemented `QuizEngine` with constructors (`new`, `from_source`, `from_pgn`), the execution loop (`run`/`process_current_step`), and grading helpers that update attempts and summaries. Augmented unit tests with fake ports covering perfect runs, retry saves, exhausted retries, prompt context metadata, adapter summary publication, adapter failure propagation (prompt, feedback, summary), and attempt history capture for trimmed SAN submissions.
 
 ## 9. Harden error handling boundaries for adapters
 - **Inputs:** `QuizError` enum, adapter isolation requirement, prior error-handling tests.
