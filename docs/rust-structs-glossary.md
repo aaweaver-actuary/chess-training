@@ -1220,29 +1220,67 @@ _Source:_ `crates/quiz-core/src/state.rs`
 
 ### `QuizError`
 
-**Overview:** Planned error enumeration unifying parsing, state management, and adapter failures in
-the quiz engine. Implementation pending until error boundaries are finalised.
+**Overview:** Error enumeration that unifies PGN validation and adapter I/O failures for the quiz
+engine. Each variant highlights a concrete boundary violation—malformed SAN tokens, multi-game
+inputs, unsupported variations, missing moves, or downstream read/write issues—so adapters can
+produce actionable messaging.
 
 **Definition:**
+```rust
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum QuizError {
+    #[error("failed to parse PGN: {0}")]
+    UnreadablePgn(String),
+    #[error("PGN must contain exactly one game")]
+    MultipleGames,
+    #[error("variations are not supported in quiz mode")]
+    VariationsUnsupported,
+    #[error("expected a single main line of moves")]
+    WrongFormat,
+    #[error("PGN did not contain any moves")]
+    NoMoves,
+    #[error("I/O error")]
+    Io,
+}
 ```
-// implementation pending in `crates/quiz-core/src/errors.rs`
-```
+_Source:_ `crates/quiz-core/src/errors.rs`
 
 **Usage in this repository:**
-- Will surface descriptive failure modes to adapters, including PGN issues and retry exhaustion.
-- Will standardise conversions from lower-level libraries (e.g., `shakmaty`) into quiz-specific
-  error variants.
+- [`QuizSource::from_pgn`](#quizsource) normalises quiz inputs and maps parser outcomes into
+  `QuizError` variants so callers can distinguish unreadable tokens, multi-game payloads, nested
+  variations, illegal formatting, or empty move lists.【F:crates/quiz-core/src/source.rs†L31-L116】
+- The shared `QuizResult`/`AdapterResult` aliases exported from `quiz-core` let `QuizEngine`
+  orchestration and every `QuizPort` method surface `QuizError::Io` when adapters fail to read or
+  write data, preserving a single error type across prompt, feedback, and summary hooks.【F:crates/quiz-core/src/engine.rs†L202-L328】【F:crates/quiz-core/src/ports.rs†L4-L33】
+- Conversion helpers translate `std::io::Error`, `ParseSanError`, and `SanError` into
+  `QuizError::UnreadablePgn`, ensuring lower-level parsing failures bubble up with the exact SAN
+  token that triggered them.【F:crates/quiz-core/src/errors.rs†L47-L95】
 
 ### `FeedbackMessage`
 
-**Overview:** Placeholder for the adapter-facing message type the engine will emit after each
-attempt. Implementation pending while interaction ports are defined.
+**Overview:** Adapter-facing payload emitted after each graded attempt. Captures the step index,
+[`AttemptResult`](#attemptresult), learner response, reveal SAN, annotations, and remaining retries
+so UI layers can render success, retry prompts, or failure reveals without inspecting engine state.
 
 **Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FeedbackMessage {
+    pub step_index: usize,
+    pub result: AttemptResult,
+    pub learner_response: Option<String>,
+    pub solution_san: String,
+    pub annotations: Vec<String>,
+    pub remaining_retries: u8,
+}
 ```
-// implementation pending in `crates/quiz-core/src/ports.rs`
-```
+_Source:_ `crates/quiz-core/src/ports.rs`
 
 **Usage in this repository:**
-- Will convey graded attempt feedback (correctness, hints, retry availability) to UI adapters.
-- Will help keep adapter implementations isolated from internal scoring state.
+- [`QuizEngine::run`](#quizengine) constructs `FeedbackMessage` values via the `success`, `retry`,
+  and `failure` helpers to notify ports about correct moves, remaining attempts, or final reveals as
+  each step resolves.【F:crates/quiz-core/src/engine.rs†L106-L150】
+- `QuizPort::publish_feedback` delivers these messages to adapters, with the CLI `TerminalPort`
+  formatting retries, annotations, and solution SANs directly from the struct fields.【F:crates/quiz-core/src/ports.rs†L16-L24】【F:crates/quiz-core/src/cli.rs†L37-L101】
+- Unit tests exercise all constructor paths to guarantee adapters receive consistent retry counts,
+  annotations, and learner responses regardless of outcome.【F:crates/quiz-core/src/ports.rs†L180-L205】
