@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::errors::QuizError;
+use crate::errors::QuizResult;
 use crate::source::QuizSource;
 use shakmaty::fen::Fen;
 use shakmaty::{EnPassantMode, Position};
@@ -65,7 +65,7 @@ impl QuizSession {
     /// # Errors
     /// Returns a [`QuizError`] if the PGN cannot be parsed into a valid `QuizSource`.
     #[allow(clippy::result_large_err)]
-    pub fn from_pgn(pgn: &str, max_retries: u8) -> Result<Self, QuizError> {
+    pub fn from_pgn(pgn: &str, max_retries: u8) -> QuizResult<Self> {
         let source = QuizSource::from_pgn(pgn)?;
         Ok(Self::from_source(&source, max_retries))
     }

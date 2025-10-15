@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::errors::QuizError;
+use crate::errors::AdapterResult;
 use crate::state::{AttemptResult, QuizSummary};
 
 /// Trait describing how adapters interact with the quiz engine.
@@ -9,25 +9,25 @@ pub trait QuizPort {
     ///
     /// # Errors
     ///
-    /// Implementations should return [`QuizError::Io`] when underlying I/O
+    /// Implementations should return [`crate::errors::QuizError::Io`] when underlying I/O
     /// operations fail.
-    fn present_prompt(&mut self, context: PromptContext) -> Result<String, QuizError>;
+    fn present_prompt(&mut self, context: PromptContext) -> AdapterResult<String>;
 
     /// Emits feedback reflecting the outcome of the most recent attempt.
     ///
     /// # Errors
     ///
-    /// Implementations should return [`QuizError::Io`] when emitting feedback
+    /// Implementations should return [`crate::errors::QuizError::Io`] when emitting feedback
     /// encounters I/O failures.
-    fn publish_feedback(&mut self, feedback: FeedbackMessage) -> Result<(), QuizError>;
+    fn publish_feedback(&mut self, feedback: FeedbackMessage) -> AdapterResult<()>;
 
     /// Shares the final summary once the quiz completes.
     ///
     /// # Errors
     ///
-    /// Implementations should return [`QuizError::Io`] when summary delivery
+    /// Implementations should return [`crate::errors::QuizError::Io`] when summary delivery
     /// fails due to adapter I/O.
-    fn present_summary(&mut self, summary: &QuizSummary) -> Result<(), QuizError>;
+    fn present_summary(&mut self, summary: &QuizSummary) -> AdapterResult<()>;
 }
 
 /// Context supplied to adapters when prompting for the next SAN move.
@@ -131,8 +131,10 @@ mod tests {
     use super::*;
     use crate::state::QuizSummary;
     use std::io::Cursor;
+    use std::io::{self, Write};
 
     use crate::cli::TerminalPort;
+    use crate::errors::QuizError;
 
     fn context() -> PromptContext {
         PromptContext {
@@ -143,6 +145,31 @@ mod tests {
             previous_move_san: Some("Nc6".into()),
             remaining_retries: 1,
         }
+    }
+
+    struct FailingWriter;
+
+    impl Write for FailingWriter {
+        fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
+            Err(io::Error::new(io::ErrorKind::Other, "writer failed"))
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Err(io::Error::new(io::ErrorKind::Other, "flush failed"))
+        }
+    }
+
+    #[test]
+    fn terminal_port_surfaces_io_errors_via_quiz_error() {
+        let input = Cursor::new("e4\n");
+        let writer = FailingWriter;
+        let mut port = TerminalPort::with_io(input, writer);
+
+        let error = port
+            .present_prompt(context())
+            .expect_err("writer failure should surface as QuizError");
+
+        assert_eq!(error, QuizError::Io);
     }
 
     #[test]

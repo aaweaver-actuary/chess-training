@@ -9,7 +9,7 @@ pub mod source;
 pub mod state;
 
 pub use engine::QuizEngine;
-pub use errors::QuizError;
+pub use errors::{AdapterResult, QuizError, QuizResult};
 pub use ports::{FeedbackMessage, PromptContext, QuizPort};
 pub use source::QuizSource;
 pub use state::{AttemptResult, AttemptState, QuizSession, QuizStep, QuizSummary};

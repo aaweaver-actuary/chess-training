@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use shakmaty::san::{ParseSanError, SanError};
+use std::io;
 use thiserror::Error;
 
 /// Error enumeration for quiz engine failures.
@@ -39,4 +41,83 @@ pub enum QuizError {
     /// Adapter-facing error for underlying I/O failures.
     #[error("I/O error")]
     Io,
+}
+
+/// Convenience result alias used across the quiz engine and adapters.
+pub type QuizResult<T> = Result<T, QuizError>;
+
+/// Specialised alias emphasising adapter-facing interactions.
+pub type AdapterResult<T> = QuizResult<T>;
+
+impl From<io::Error> for QuizError {
+    fn from(_: io::Error) -> Self {
+        QuizError::Io
+    }
+}
+
+impl From<ParseSanError> for QuizError {
+    fn from(err: ParseSanError) -> Self {
+        QuizError::UnreadablePgn(err.to_string())
+    }
+}
+
+impl From<SanError> for QuizError {
+    fn from(err: SanError) -> Self {
+        QuizError::UnreadablePgn(err.to_string())
+    }
+}
+
+impl QuizError {
+    pub(crate) fn unreadable_from_parse(token: impl Into<String>, err: ParseSanError) -> Self {
+        let token = token.into();
+        let detail = err.to_string();
+
+        if token.is_empty() {
+            QuizError::UnreadablePgn(detail)
+        } else {
+            QuizError::UnreadablePgn(format!("{token}: {detail}"))
+        }
+    }
+
+    pub(crate) fn unreadable_from_san(token: impl Into<String>, err: SanError) -> Self {
+        let token = token.into();
+        let detail = err.to_string();
+
+        if token.is_empty() {
+            QuizError::UnreadablePgn(detail)
+        } else {
+            QuizError::UnreadablePgn(format!("{token}: {detail}"))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::QuizError;
+    use shakmaty::san::{ParseSanError, SanError};
+    use std::io;
+
+    #[test]
+    fn converts_io_error_into_quiz_error() {
+        let io_error = io::Error::new(io::ErrorKind::Other, "boom");
+        let quiz_error: QuizError = io_error.into();
+
+        assert_eq!(quiz_error, QuizError::Io);
+    }
+
+    #[test]
+    fn converts_parse_san_error_into_unreadable_pgn() {
+        let parse_error = ParseSanError;
+        let quiz_error: QuizError = parse_error.into();
+
+        assert_eq!(quiz_error, QuizError::UnreadablePgn("invalid san".into()));
+    }
+
+    #[test]
+    fn converts_san_error_into_unreadable_pgn() {
+        let san_error = SanError::AmbiguousSan;
+        let quiz_error: QuizError = san_error.into();
+
+        assert_eq!(quiz_error, QuizError::UnreadablePgn("ambiguous san".into()));
+    }
 }

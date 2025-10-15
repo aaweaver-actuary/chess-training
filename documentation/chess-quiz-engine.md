@@ -99,6 +99,13 @@ consistent position (e.g., completed steps remain counted even if summary presen
 Additional assertions cover attempt history capture, ensuring trimmed SAN responses are recorded in
 order even when learners take a retry before submitting the correct move.
 
+Task 9 extends this surface by giving adapters dedicated result aliases (`QuizResult` and
+`AdapterResult`) and `From` conversions from `std::io::Error`, `shakmaty::san::ParseSanError`, and
+`shakmaty::san::SanError`. The CLI adapter now leans on these conversions directly via the `?`
+operator, with tests that inject failing writers to prove `QuizError::Io` is surfaced without
+advancing quiz state. Parsing helpers annotate PGN failures with both the offending SAN token and the
+underlying `shakmaty` message so adapters can display actionable diagnostics.
+
 ## Implementation Roadmap
 The roadmap breaks implementation into four atomic streams. Each subsection describes candidate approaches, the trade-offs we e
 valuated, and the decision we committed to.
