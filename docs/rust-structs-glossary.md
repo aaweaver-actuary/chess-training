@@ -1054,3 +1054,65 @@ _Source:_ `crates/scheduler-core/tests/opening_scheduling.rs`
 - Opening scheduling tests set availability dates via `insert_with_availability` and advance time with `set_day` to ensure unlock pacing respects day boundaries.
 - By implementing `SchedulerStore`, `TimedStore` plugs directly into queue-building helpers, letting tests assert on queue contents without modifying production code.
 
+
+## Quiz Engine Core
+
+### `QuizEngine`
+
+**Overview:** Planned orchestrator responsible for executing quiz sessions against a provided
+question source and adapter port. Implementation pending while session state and port contracts are
+defined.
+
+**Definition:**
+```
+// implementation pending in `crates/quiz-core/src/engine.rs`
+```
+
+**Usage in this repository:**
+- Will coordinate quiz execution loops, advancing through prompts, recording attempts, and producing
+  session summaries once implemented.
+- Will expose constructors such as `QuizEngine::from_pgn` that prepare state from a PGN source.
+
+### `QuizSession`
+
+**Overview:** Upcoming representation of an immutable quiz session snapshot used by the engine to
+track prompts, retries, and scoring metadata. Implementation pending until the session modelling
+task lands.
+
+**Definition:**
+```
+// implementation pending in `crates/quiz-core/src/state.rs`
+```
+
+**Usage in this repository:**
+- Will carry move-by-move context (FEN/SAN pairs) consumed by the engine and adapters.
+- Will provide helpers for aggregating session summaries and retry counters.
+
+### `QuizError`
+
+**Overview:** Planned error enumeration unifying parsing, state management, and adapter failures in
+the quiz engine. Implementation pending until error boundaries are finalised.
+
+**Definition:**
+```
+// implementation pending in `crates/quiz-core/src/errors.rs`
+```
+
+**Usage in this repository:**
+- Will surface descriptive failure modes to adapters, including PGN issues and retry exhaustion.
+- Will standardise conversions from lower-level libraries (e.g., `shakmaty`) into quiz-specific
+  error variants.
+
+### `FeedbackMessage`
+
+**Overview:** Placeholder for the adapter-facing message type the engine will emit after each
+attempt. Implementation pending while interaction ports are defined.
+
+**Definition:**
+```
+// implementation pending in `crates/quiz-core/src/ports.rs`
+```
+
+**Usage in this repository:**
+- Will convey graded attempt feedback (correctness, hints, retry availability) to UI adapters.
+- Will help keep adapter implementations isolated from internal scoring state.
