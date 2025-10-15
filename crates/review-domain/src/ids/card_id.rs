@@ -1,8 +1,217 @@
+use std::fmt;
+
+use crate::ids::{IdConversionError, IdKind};
+
+/// Strongly typed identifier for review cards stored in the system.
+///
+/// ```
+/// use review_domain::ids::{CardId, IdConversionError, IdKind};
+///
+/// let id = CardId::try_from(7_u128).unwrap();
+/// assert_eq!(id.get(), 7);
+///
+/// let overflow = CardId::try_from(u128::from(u64::MAX) + 1);
+/// assert!(matches!(
+///     overflow,
+///     Err(IdConversionError::Overflow { kind, value, max })
+///         if kind == IdKind::Card && value == u128::from(u64::MAX) + 1 && max == u64::MAX
+/// ));
+///
+/// let negative = CardId::try_from(-1_i64);
+/// assert!(matches!(
+///     negative,
+///     Err(IdConversionError::Negative { kind, value })
+///         if kind == IdKind::Card && value == -1
+/// ));
+/// ```
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default)]
+#[repr(transparent)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CardId(u64);
+
+impl CardId {
+    /// Creates a new identifier wrapper from a raw `u64` value.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use review_domain::ids::CardId;
+    /// let id = CardId::new(123);
+    /// assert_eq!(id.get(), 123);
+    /// ```
+    #[must_use]
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    /// Returns the raw `u64` backing this identifier.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use review_domain::ids::CardId;
+    /// let id = CardId::new(123);
+    /// assert_eq!(id.get(), 123);
+    /// ```
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
+
+impl From<u64> for CardId {
+    /// Creates a new identifier wrapper from a raw `u64` value.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use review_domain::ids::CardId;
+    /// let id: CardId = 42u64.into();
+    /// assert_eq!(id.get(), 42);
+    /// ```
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<CardId> for u64 {
+    /// Returns the raw `u64` backing this identifier.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use review_domain::ids::CardId;
+    /// let id = CardId::new(42);
+    /// let raw: u64 = id.into();
+    /// assert_eq!(raw, 42);
+    /// ```
+    fn from(value: CardId) -> Self {
+        value.0
+    }
+}
+
+impl TryFrom<u128> for CardId {
+    type Error = IdConversionError;
+    /// Attempts to create a new identifier wrapper from a raw `u128` value.
+    /// Fails if the value exceeds the `u64` range.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use review_domain::ids::CardId;
+    /// let id = CardId::try_from(42_u128).unwrap();
+    /// assert_eq!(id.get(), 42);
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns `IdConversionError::Overflow` if the value exceeds `u64::MAX`.
+    fn try_from(value: u128) -> Result<Self, Self::Error> {
+        if value > u128::from(u64::MAX) {
+            return Err(IdConversionError::Overflow {
+                kind: IdKind::Card,
+                value,
+                max: u64::MAX,
+            });
+        }
+        Ok(Self::new(u64::try_from(value).unwrap()))
+    }
+}
+
+impl TryFrom<i128> for CardId {
+    type Error = IdConversionError;
+    /// Attempts to create a new identifier wrapper from a raw `i128` value.
+    /// Fails if the value is negative or exceeds the `u64` range.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use review_domain::ids::CardId;
+    /// let id = CardId::try_from(123_i128).unwrap();
+    /// assert_eq!(id.get(), 123);
+    /// ```
+    /// # Errors
+    ///
+    /// Returns `IdConversionError::Negative` if the value is negative.
+    /// Returns `IdConversionError::Overflow` if the value exceeds `u64::MAX`.
+    fn try_from(value: i128) -> Result<Self, Self::Error> {
+        let value = u128::try_from(value).map_err(|_| IdConversionError::Negative {
+            kind: IdKind::Card,
+            value,
+        })?;
+        Self::try_from(value)
+    }
+}
+
+impl TryFrom<i64> for CardId {
+    type Error = IdConversionError;
+
+    /// Attempts to create a new identifier wrapper from a raw `i64` value.
+    /// Fails if the value is negative or exceeds the `u64` range.
+    ///
+    /// # Examples
+    /// ```
+    /// use review_domain::ids::CardId;
+    /// let id = CardId::try_from(42_i64).unwrap();
+    /// assert_eq!(id.get(), 42);
+    /// ```
+    /// # Errors
+    ///
+    /// Returns `IdConversionError::Negative` if the value is negative.
+    /// Returns `IdConversionError::Overflow` if the value exceeds `u64::MAX`.
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        Self::try_from(i128::from(value))
+    }
+}
+
+impl fmt::Display for CardId {
+    /// Formats the identifier for display purposes.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use review_domain::ids::CardId;
+    /// let id = CardId::new(555);
+    /// assert_eq!(format!("{id}"), "CardId(555)");
+    /// ```
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CardId({})", self.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::{IdConversionError, IdKind};
 
+    #[test]
+    fn test_card_id_display() {
+        let id = CardId::new(42);
+        assert_eq!(format!("{id}"), "CardId(42)");
+    }
+
+    #[test]
+    fn test_card_id_from_u64() {
+        let id: CardId = 42u64.into();
+        assert_eq!(id.get(), 42);
+    }
+
+    #[test]
+    fn test_card_id_into_u64() {
+        let id = CardId::new(42);
+        let raw: u64 = id.into();
+        assert_eq!(raw, 42);
+    }
+
+    #[test]
+    fn test_card_id_try_from_u128() {
+        let id = CardId::try_from(42_u128).unwrap();
+        assert_eq!(id.get(), 42);
+    }
+
+    #[test]
+    fn test_card_id_try_from_i128() {
+        let id = CardId::try_from(42_i128).unwrap();
+        assert_eq!(id.get(), 42);
+    }
+
+    #[test]
+    fn test_card_id_try_from_i64() {
+        let id = CardId::try_from(42_i64).unwrap();
+        assert_eq!(id.get(), 42);
+    }
     #[test]
     fn new_and_get() {
         let id = CardId::new(123);
@@ -105,123 +314,5 @@ mod tests {
     fn default_is_zero() {
         let id = CardId::default();
         assert_eq!(id.get(), 0);
-    }
-}
-use std::fmt;
-
-use crate::ids::{IdConversionError, IdKind};
-
-/// Strongly typed identifier for review cards stored in the system.
-///
-/// ```
-/// use review_domain::ids::{CardId, IdConversionError, IdKind};
-///
-/// let id = CardId::try_from(7_u128).unwrap();
-/// assert_eq!(id.get(), 7);
-///
-/// let overflow = CardId::try_from(u128::from(u64::MAX) + 1);
-/// assert!(matches!(
-///     overflow,
-///     Err(IdConversionError::Overflow { kind, value, max })
-///         if kind == IdKind::Card && value == u128::from(u64::MAX) + 1 && max == u64::MAX
-/// ));
-///
-/// let negative = CardId::try_from(-1_i64);
-/// assert!(matches!(
-///     negative,
-///     Err(IdConversionError::Negative { kind, value })
-///         if kind == IdKind::Card && value == -1
-/// ));
-/// ```
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default)]
-#[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct CardId(u64);
-
-impl CardId {
-    /// Creates a new identifier wrapper from a raw `u64` value.
-    #[must_use]
-    pub const fn new(value: u64) -> Self {
-        Self(value)
-    }
-
-    /// Returns the raw `u64` backing this identifier.
-    #[must_use]
-    pub const fn get(self) -> u64 {
-        self.0
-    }
-}
-
-impl From<u64> for CardId {
-    /// Creates a new identifier wrapper from a raw `u64` value.
-    fn from(value: u64) -> Self {
-        Self(value)
-    }
-}
-
-impl From<CardId> for u64 {
-    /// Returns the raw `u64` backing this identifier.
-    fn from(value: CardId) -> Self {
-        value.0
-    }
-}
-
-impl TryFrom<u128> for CardId {
-    type Error = IdConversionError;
-    /// Attempts to create a new identifier wrapper from a raw `u128` value.
-    /// Fails if the value exceeds the `u64` range.
-    ///
-    /// # Errors
-    ///
-    /// Returns `IdConversionError::Overflow` if the value exceeds `u64::MAX`.
-    fn try_from(value: u128) -> Result<Self, Self::Error> {
-        if value > u128::from(u64::MAX) {
-            return Err(IdConversionError::Overflow {
-                kind: IdKind::Card,
-                value,
-                max: u64::MAX,
-            });
-        }
-        Ok(Self::new(u64::try_from(value).unwrap()))
-    }
-}
-
-impl TryFrom<i128> for CardId {
-    type Error = IdConversionError;
-    /// Attempts to create a new identifier wrapper from a raw `i128` value.
-    /// Fails if the value is negative or exceeds the `u64` range.
-    ///
-    /// # Errors
-    ///
-    /// Returns `IdConversionError::Negative` if the value is negative.
-    /// Returns `IdConversionError::Overflow` if the value exceeds `u64::MAX`.
-    fn try_from(value: i128) -> Result<Self, Self::Error> {
-        let value = u128::try_from(value).map_err(|_| IdConversionError::Negative {
-            kind: IdKind::Card,
-            value,
-        })?;
-        Self::try_from(value)
-    }
-}
-
-impl TryFrom<i64> for CardId {
-    type Error = IdConversionError;
-
-    /// Attempts to create a new identifier wrapper from a raw `i64` value.
-    /// Fails if the value is negative or exceeds the `u64` range.
-    ///
-    /// # Errors
-    ///
-    /// Returns `IdConversionError::Negative` if the value is negative.
-    /// Returns `IdConversionError::Overflow` if the value exceeds `u64::MAX`.
-    fn try_from(value: i64) -> Result<Self, Self::Error> {
-        Self::try_from(i128::from(value))
-    }
-}
-
-impl fmt::Display for CardId {
-    /// Formats the identifier for display purposes.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "CardId({})", self.0)
     }
 }

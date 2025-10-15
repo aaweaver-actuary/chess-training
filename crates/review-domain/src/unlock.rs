@@ -2,7 +2,7 @@
 
 use chrono::NaiveDate;
 
-use crate::OpeningEdgeHandle;
+use crate::{EdgeId, OpeningEdgeHandle};
 
 /// Represents a record of new study material being unlocked for a learner.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -23,6 +23,16 @@ impl<Owner, Detail> UnlockRecord<Owner, Detail> {
             owner_id: self.owner_id,
             detail: mapper(self.detail),
             unlocked_on: self.unlocked_on,
+        }
+    }
+}
+
+impl Default for UnlockRecord<String, OpeningEdgeHandle> {
+    fn default() -> Self {
+        Self {
+            owner_id: String::new(),
+            detail: OpeningEdgeHandle::new(EdgeId::new(0)),
+            unlocked_on: NaiveDate::from_ymd_opt(1970, 1, 1).unwrap(),
         }
     }
 }

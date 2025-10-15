@@ -23,3 +23,34 @@ impl Default for StorageConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::StorageConfig;
+
+    #[test]
+    fn default_config() {
+        let config = StorageConfig::default();
+        assert_eq!(config.dsn, None);
+        assert_eq!(config.max_connections, 10);
+        assert_eq!(config.batch_size, 5_000);
+        assert_eq!(config.retry_attempts, 3);
+    }
+
+    #[test]
+    fn custom_config() {
+        let config = StorageConfig {
+            dsn: Some("postgres://user:pass@localhost/db".to_string()),
+            max_connections: 20,
+            batch_size: 10_000,
+            retry_attempts: 5,
+        };
+        assert_eq!(
+            config.dsn,
+            Some("postgres://user:pass@localhost/db".to_string())
+        );
+        assert_eq!(config.max_connections, 20);
+        assert_eq!(config.batch_size, 10_000);
+        assert_eq!(config.retry_attempts, 5);
+    }
+}

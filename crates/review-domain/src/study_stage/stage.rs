@@ -11,6 +11,9 @@ pub enum StudyStage {
     Review,
     /// The card was previously learned but has lapsed and is being re-learned.
     Relearning,
+    /// The card is temporarily inactive and will not be scheduled for review.
+    /// (Not currently used in scheduling logic.)
+    Suspended,
 }
 
 impl StudyStage {
@@ -22,6 +25,7 @@ impl StudyStage {
             'L' | 'l' => Some(Self::Learning),
             'R' | 'r' => Some(Self::Review),
             'E' | 'e' => Some(Self::Relearning),
+            'S' | 's' => Some(Self::Suspended),
             _ => None,
         }
     }
@@ -58,6 +62,12 @@ impl StudyStage {
             StudyStage::Learning | StudyStage::Review | StudyStage::Relearning
         )
     }
+
+    /// Returns true if the card is in the Suspended stage.
+    #[must_use]
+    pub fn is_suspended(&self) -> bool {
+        matches!(self, StudyStage::Suspended)
+    }
 }
 
 #[cfg(test)]
@@ -78,6 +88,8 @@ mod tests {
         assert!(StudyStage::Review.is_active());
         assert!(StudyStage::Relearning.is_active());
         assert!(!StudyStage::New.is_active());
+        assert!(StudyStage::Suspended.is_suspended());
+        assert!(!StudyStage::New.is_suspended());
     }
 
     #[test]
@@ -86,6 +98,7 @@ mod tests {
         assert_eq!(StudyStage::from_char('l'), Some(StudyStage::Learning));
         assert_eq!(StudyStage::from_char('R'), Some(StudyStage::Review));
         assert_eq!(StudyStage::from_char('e'), Some(StudyStage::Relearning));
+        assert_eq!(StudyStage::from_char('S'), Some(StudyStage::Suspended));
         assert_eq!(StudyStage::from_char('x'), None);
     }
 
@@ -95,6 +108,7 @@ mod tests {
         assert_eq!(StudyStage::from_char('L'), Some(StudyStage::Learning));
         assert_eq!(StudyStage::from_char('r'), Some(StudyStage::Review));
         assert_eq!(StudyStage::from_char('E'), Some(StudyStage::Relearning));
+        assert_eq!(StudyStage::from_char('S'), Some(StudyStage::Suspended));
         assert_eq!(StudyStage::from_char('0'), None);
     }
 }

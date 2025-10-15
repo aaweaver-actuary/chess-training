@@ -116,3 +116,139 @@ impl fmt::Display for LearnerId {
         write!(f, "LearnerId({})", self.0)
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    #[test]
+    fn test_new_and_get() {
+        let id = LearnerId::new(42);
+        assert_eq!(id.get(), 42);
+    }
+
+    #[test]
+    fn test_from_u64_and_into_u64() {
+        let id: LearnerId = 123u64.into();
+        assert_eq!(id.get(), 123);
+        let raw: u64 = id.into();
+        assert_eq!(raw, 123);
+    }
+
+    #[test]
+    fn test_try_from_u128_within_range() {
+        let id = LearnerId::try_from(u128::from(u64::MAX));
+        assert!(id.is_ok());
+        assert_eq!(id.unwrap().get(), u64::MAX);
+    }
+
+    #[test]
+    fn test_try_from_u128_overflow() {
+        let overflow = LearnerId::try_from(u128::from(u64::MAX) + 1);
+        assert!(matches!(
+            overflow,
+            Err(IdConversionError::Overflow { kind, value, max })
+                if kind == IdKind::Learner && value == u128::from(u64::MAX) + 1 && max == u64::MAX
+        ));
+    }
+
+    #[test]
+    fn test_try_from_i128_positive_within_range() {
+        let id = LearnerId::try_from(i128::from(u64::MAX));
+        assert!(id.is_ok());
+        assert_eq!(id.unwrap().get(), u64::MAX);
+    }
+
+    #[test]
+    fn test_try_from_i128_negative() {
+        let negative = LearnerId::try_from(-1_i128);
+        assert!(matches!(
+            negative,
+            Err(IdConversionError::Negative { kind, value })
+                if kind == IdKind::Learner && value == -1
+        ));
+    }
+
+    #[test]
+    fn test_try_from_i128_overflow() {
+        let overflow = LearnerId::try_from(i128::try_from(u128::from(u64::MAX) + 1).unwrap());
+        assert!(matches!(
+            overflow,
+            Err(IdConversionError::Overflow { kind, value, max })
+                if kind == IdKind::Learner && value == u128::from(u64::MAX) + 1 && max == u64::MAX
+        ));
+    }
+
+    #[test]
+    fn test_try_from_i64_positive_within_range() {
+        let id = LearnerId::try_from(123_i64);
+        assert!(id.is_ok());
+        assert_eq!(id.unwrap().get(), 123);
+    }
+
+    #[test]
+    fn test_try_from_i64_negative() {
+        let negative = LearnerId::try_from(-42_i64);
+        assert!(matches!(
+            negative,
+            Err(IdConversionError::Negative { kind, value })
+                if kind == IdKind::Learner && value == -42
+        ));
+    }
+
+    #[test]
+    fn test_try_from_i64_max() {
+        let id = LearnerId::try_from(i64::MAX);
+        assert!(id.is_ok());
+        assert_eq!(id.unwrap().get(), i64::MAX as u64);
+    }
+
+    #[test]
+    fn test_try_from_i64_min() {
+        let negative = LearnerId::try_from(i64::MIN);
+        assert!(matches!(
+            negative,
+            Err(IdConversionError::Negative { kind, value })
+                if kind == IdKind::Learner && value == i128::from(i64::MIN)
+        ));
+    }
+
+    #[test]
+    fn test_display_trait() {
+        let id = LearnerId::new(999);
+        assert_eq!(format!("{id}"), "LearnerId(999)");
+    }
+
+    #[test]
+    fn test_debug_trait() {
+        let id = LearnerId::new(888);
+        assert!(format!("{id:?}").contains("LearnerId"));
+    }
+
+    #[test]
+    fn test_default_trait() {
+        let id = LearnerId::default();
+        assert_eq!(id.get(), 0);
+    }
+
+    #[test]
+    fn test_equality_and_ordering() {
+        let a = LearnerId::new(1);
+        let b = LearnerId::new(2);
+        assert!(a < b);
+        assert!(a != b);
+        assert_eq!(a, LearnerId::new(1));
+    }
+
+    #[test]
+    fn test_hash_trait() {
+        let id1 = LearnerId::new(12345);
+        let id2 = LearnerId::new(12345);
+        let mut hasher1 = DefaultHasher::new();
+        let mut hasher2 = DefaultHasher::new();
+        id1.hash(&mut hasher1);
+        id2.hash(&mut hasher2);
+        assert_eq!(hasher1.finish(), hasher2.finish());
+    }
+}

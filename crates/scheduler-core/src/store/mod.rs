@@ -1,101 +1,12 @@
 //! Persistence abstraction used by the scheduler along with an in-memory reference store.
 
-use std::collections::BTreeMap;
+pub mod candidate_ordering;
+pub mod in_memory_store;
+pub mod scheduler_store;
 
-use chrono::NaiveDate;
-use uuid::Uuid;
-
-use crate::domain::{Card, CardKind, CardState, UnlockRecord};
-
-/// Storage abstraction required by the scheduler to retrieve and persist cards.
-pub trait SchedulerStore {
-    /// Fetch a card by identifier if it exists.
-    fn get_card(&self, id: Uuid) -> Option<Card>;
-    /// Insert or update a card in the backing store.
-    fn upsert_card(&mut self, card: Card);
-    /// Retrieve cards due for review on the given day.
-    fn due_cards(&self, owner_id: Uuid, today: NaiveDate) -> Vec<Card>;
-    /// Fetch cards eligible to be unlocked for future study.
-    fn unlock_candidates(&self, owner_id: Uuid) -> Vec<Card>;
-    /// Record a newly unlocked card.
-    fn record_unlock(&mut self, record: UnlockRecord);
-    /// Retrieve unlock events that occurred on the provided day.
-    fn unlocked_on(&self, owner_id: Uuid, day: NaiveDate) -> Vec<UnlockRecord>;
-}
-
-/// Reference in-memory implementation of [`SchedulerStore`] used in tests.
-#[derive(Debug, Default)]
-pub struct InMemoryStore {
-    cards: BTreeMap<Uuid, Card>,
-    unlock_log: Vec<UnlockRecord>,
-}
-
-impl InMemoryStore {
-    /// Construct a new, empty in-memory store.
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl SchedulerStore for InMemoryStore {
-    fn get_card(&self, id: Uuid) -> Option<Card> {
-        self.cards.get(&id).cloned()
-    }
-
-    fn upsert_card(&mut self, card: Card) {
-        self.cards.insert(card.id, card);
-    }
-
-    fn due_cards(&self, owner_id: Uuid, today: NaiveDate) -> Vec<Card> {
-        let mut due: Vec<Card> = self
-            .cards
-            .values()
-            .filter(|card| {
-                card.owner_id == owner_id
-                    && card.state.due <= today
-                    && !matches!(card.state.stage, CardState::New)
-            })
-            .cloned()
-            .collect();
-        due.sort_by(|a, b| (a.state.due, a.id).cmp(&(b.state.due, b.id)));
-        due
-    }
-
-    fn unlock_candidates(&self, owner_id: Uuid) -> Vec<Card> {
-        let mut candidates: Vec<Card> = self
-            .cards
-            .values()
-            .filter(|card| card.owner_id == owner_id && matches!(card.state.stage, CardState::New))
-            .cloned()
-            .collect();
-        candidates.sort_by(candidate_ordering);
-        candidates
-    }
-
-    fn record_unlock(&mut self, record: UnlockRecord) {
-        self.unlock_log.push(record);
-    }
-
-    fn unlocked_on(&self, owner_id: Uuid, day: NaiveDate) -> Vec<UnlockRecord> {
-        self.unlock_log
-            .iter()
-            .filter(|record| record.owner_id == owner_id && record.unlocked_on == day)
-            .cloned()
-            .collect()
-    }
-}
-
-fn candidate_ordering(a: &Card, b: &Card) -> std::cmp::Ordering {
-    match (&a.kind, &b.kind) {
-        (CardKind::Opening(a_opening), CardKind::Opening(b_opening)) => {
-            (&a_opening.parent_prefix, &a.id).cmp(&(&b_opening.parent_prefix, &b.id))
-        }
-        (CardKind::Opening(_), _) => std::cmp::Ordering::Less,
-        (_, CardKind::Opening(_)) => std::cmp::Ordering::Greater,
-        (CardKind::Tactic(_), CardKind::Tactic(_)) => a.id.cmp(&b.id),
-    }
-}
+pub use candidate_ordering::candidate_ordering;
+pub use in_memory_store::InMemoryStore;
+pub use scheduler_store::SchedulerStore;
 
 #[cfg(test)]
 mod tests {
@@ -104,8 +15,11 @@ mod tests {
     use crate::domain::{
         SchedulerOpeningCard, SchedulerTacticCard, SchedulerUnlockDetail, new_card,
     };
+    use crate::{CardKind, UnlockRecord};
     use chrono::NaiveDate;
+    use review_domain::StudyStage;
     use std::cmp::Ordering;
+    use uuid::Uuid;
 
     fn naive_date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).expect("valid date")
@@ -121,7 +35,7 @@ mod tests {
             naive_date(2023, 1, 1),
             &SchedulerConfig::default(),
         );
-        card.state.stage = CardState::Review;
+        card.state.stage = StudyStage::Review;
         card.state.due = naive_date(2023, 1, 2);
         store.upsert_card(card.clone());
         let due = store.due_cards(owner, naive_date(2023, 1, 2));
@@ -144,7 +58,7 @@ mod tests {
             naive_date(2023, 1, 1),
             &SchedulerConfig::default(),
         );
-        review_card.state.stage = CardState::Review;
+        review_card.state.stage = StudyStage::Review;
         store.upsert_card(fresh_card.clone());
         store.upsert_card(review_card);
         let candidates = store.unlock_candidates(owner);

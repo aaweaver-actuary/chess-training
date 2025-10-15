@@ -1,10 +1,8 @@
 use chrono::NaiveDate;
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use std::num::NonZeroU8;
 
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StoredCardState {
     pub due_on: NaiveDate,
     pub interval: NonZeroU8,
