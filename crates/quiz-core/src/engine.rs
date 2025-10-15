@@ -22,11 +22,17 @@ impl QuizEngine {
     }
 
     /// Parses PGN text into a quiz engine ready to run.
+    ///
+    /// # Errors
+    /// Returns an error when the PGN text cannot be parsed into a valid quiz.
     pub fn from_pgn(pgn: &str, max_retries: u8) -> QuizResult<Self> {
         Ok(Self::new(QuizSession::from_pgn(pgn, max_retries)?))
     }
 
     /// Runs the quiz using the supplied adapter port.
+    ///
+    /// # Errors
+    /// Propagates any adapter or grading errors encountered while running the quiz.
     pub fn run<P: QuizPort>(&mut self, port: &mut P) -> QuizResult<&QuizSummary> {
         while !self.session.is_complete() {
             self.process_current_step(port)?;
@@ -71,7 +77,7 @@ impl QuizEngine {
                 final_result,
             } = {
                 let step = &mut self.session.steps[step_index];
-                Self::grade_attempt(step_index, step, response)
+                Self::grade_attempt(step_index, step, &response)
             };
 
             port.publish_feedback(feedback)?;
@@ -101,7 +107,7 @@ impl QuizEngine {
     }
 
     /// Grades an attempt and returns the corresponding feedback message.
-    fn grade_attempt(step_index: usize, step: &mut QuizStep, response: String) -> GradeOutcome {
+    fn grade_attempt(step_index: usize, step: &mut QuizStep, response: &str) -> GradeOutcome {
         let trimmed = response.trim().to_string();
         step.attempt.responses.push(trimmed.clone());
 
@@ -207,10 +213,10 @@ mod tests {
         fn publish_feedback(&mut self, feedback: FeedbackMessage) -> Result<(), QuizError> {
             self.feedback_calls += 1;
 
-            if let Some(threshold) = self.fail_feedback_after {
-                if self.feedback_calls >= threshold {
-                    return Err(QuizError::Io);
-                }
+            if let Some(threshold) = self.fail_feedback_after
+                && self.feedback_calls >= threshold
+            {
+                return Err(QuizError::Io);
             }
 
             self.feedback.push(feedback);

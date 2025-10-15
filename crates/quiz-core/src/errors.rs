@@ -68,7 +68,7 @@ impl From<SanError> for QuizError {
 }
 
 impl QuizError {
-    pub(crate) fn unreadable_from_parse(token: impl Into<String>, err: ParseSanError) -> Self {
+    pub(crate) fn unreadable_from_parse(token: impl Into<String>, err: &ParseSanError) -> Self {
         let token = token.into();
         let detail = err.to_string();
 
@@ -79,7 +79,7 @@ impl QuizError {
         }
     }
 
-    pub(crate) fn unreadable_from_san(token: impl Into<String>, err: SanError) -> Self {
+    pub(crate) fn unreadable_from_san(token: impl Into<String>, err: &SanError) -> Self {
         let token = token.into();
         let detail = err.to_string();
 
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn converts_io_error_into_quiz_error() {
-        let io_error = io::Error::new(io::ErrorKind::Other, "boom");
+        let io_error = io::Error::other("boom");
         let quiz_error: QuizError = io_error.into();
 
         assert_eq!(quiz_error, QuizError::Io);

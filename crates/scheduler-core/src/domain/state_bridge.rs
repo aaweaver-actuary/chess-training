@@ -1,5 +1,3 @@
-use std::convert::Infallible;
-
 use review_domain::StoredCardState;
 
 use chrono::NaiveDate;
@@ -34,8 +32,7 @@ use super::Sm2State;
 /// Panics if the conversion from stored state is not infallible (should never happen).
 #[must_use]
 pub fn hydrate_sm2_state(stored: StoredCardState, runtime: Sm2Runtime) -> Sm2State {
-    Sm2State::try_from((stored, runtime))
-        .expect("conversion from stored state should be infallible")
+    Sm2State::from((stored, runtime))
 }
 
 /// Convert an [`Sm2State`] back into a [`StoredCardState`] for persistence.
@@ -65,20 +62,17 @@ pub fn persist_sm2_state(
     })
 }
 
-#[allow(clippy::fallible_impl_from, clippy::fallible_impl_from)]
-impl TryFrom<(StoredCardState, Sm2Runtime)> for Sm2State {
-    type Error = Infallible;
-
-    fn try_from(value: (StoredCardState, Sm2Runtime)) -> Result<Self, Self::Error> {
+impl From<(StoredCardState, Sm2Runtime)> for Sm2State {
+    fn from(value: (StoredCardState, Sm2Runtime)) -> Self {
         let (stored, runtime) = value;
-        Ok(Sm2State {
+        Self {
             stage: runtime.stage,
             ease_factor: stored.ease_factor,
             interval_days: u32::from(stored.interval.get()),
             due: stored.due_on,
             lapses: runtime.lapses,
             reviews: runtime.reviews,
-        })
+        }
     }
 }
 
