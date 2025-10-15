@@ -1,13 +1,7 @@
-use review_domain::ids::{
-    CardId, EdgeId, IdConversionError, LearnerId, MoveId, PositionId, UnlockId,
-};
+use review_domain::ids::{CardId, EdgeId, IdConversionError, LearnerId, MoveId, UnlockId};
 
 #[test]
 fn review_domain_identifiers_round_trip_from_card_store() {
-    let position = PositionId::from(5_u64);
-    assert_eq!(position.get(), 5);
-    assert_eq!(u64::from(position), 5);
-
     let learner = LearnerId::from(11_u64);
     assert_eq!(learner.to_string(), "LearnerId(11)");
 

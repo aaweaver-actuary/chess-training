@@ -17,12 +17,12 @@ pub use card::{Card, new_card};
 pub use card_kind::{CardKind, SchedulerOpeningCard, SchedulerTacticCard};
 /// Scheduler-specific card state enumeration.
 pub use card_state::CardState;
-pub use review_domain::card_state::bridge::{
-    BridgeError as CardStateBridgeError, Sm2Runtime, StoredSnapshot,
-};
 /// SM-2 state tracked for each scheduled card.
 pub use sm2_state::Sm2State;
-pub use state_bridge::{hydrate_sm2_state, persist_sm2_state};
+pub use state_bridge::{
+    BridgeError as CardStateBridgeError, Sm2Runtime, StoredSnapshot, hydrate_sm2_state,
+    persist_sm2_state,
+};
 
 use chrono::NaiveDate;
 use uuid::Uuid;

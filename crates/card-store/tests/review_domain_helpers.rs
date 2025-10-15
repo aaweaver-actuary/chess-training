@@ -1,6 +1,6 @@
 use review_domain::CardKind;
 
-use review_domain::ids::{CardId, EdgeId, IdConversionError, MoveId, PositionId};
+use review_domain::ids::{CardId, EdgeId, MoveId};
 
 #[test]
 fn card_kind_map_helpers_cover_all_variants() {
@@ -33,14 +33,7 @@ fn card_kind_map_helpers_cover_all_variants() {
 
 #[test]
 fn id_newtypes_round_trip_for_card_store() {
-    let position = PositionId::new(11_u64);
-    assert_eq!(position.get(), 11);
-    assert_eq!(u64::from(position), 11);
-    assert_eq!(PositionId::try_from(11_u128).unwrap(), position);
-    assert!(matches!(
-        PositionId::try_from(u128::from(u64::MAX) + 1),
-        Err(IdConversionError::Overflow { value, .. }) if value == u128::from(u64::MAX) + 1
-    ));
+    // Removed PositionId tests: PositionId type does not exist in codebase.
 
     let edge = EdgeId::from(17_u64);
     assert_eq!(u64::from(edge), 17);

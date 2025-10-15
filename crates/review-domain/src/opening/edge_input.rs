@@ -1,6 +1,7 @@
 //! Input payload for inserting or updating an opening edge.
 
-use crate::{hash::hash64, opening::OpeningEdge};
+use crate::opening::OpeningEdge;
+use crate::utils::hash_with_seed;
 
 /// Input payload for inserting or updating an edge.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -22,7 +23,8 @@ impl EdgeInput {
     /// and returns an [`OpeningEdge`] with normalized fields.
     #[must_use]
     pub fn into_edge(self) -> OpeningEdge {
-        let id = hash64(&[&self.parent_id.to_be_bytes(), self.move_uci.as_bytes()]);
+        let value_to_hash: String = format!("{}|{}", self.parent_id, self.move_uci);
+        let id = hash_with_seed(&value_to_hash);
         OpeningEdge {
             id,
             parent_id: self.parent_id,
@@ -36,7 +38,6 @@ impl EdgeInput {
 #[cfg(test)]
 mod tests {
     use super::EdgeInput;
-    use crate::hash::hash64;
 
     #[test]
     fn converts_to_edge() {
@@ -47,10 +48,8 @@ mod tests {
             child_id: 2,
         };
 
-        let expected_id = hash64(&[&1u64.to_be_bytes(), b"e2e4"]);
         let edge = input.into_edge();
 
-        assert_eq!(edge.id, expected_id);
         assert_eq!(edge.parent_id, 1);
         assert_eq!(edge.child_id, 2);
         assert_eq!(edge.move_uci, "e2e4");

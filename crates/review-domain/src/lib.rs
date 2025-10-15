@@ -1,11 +1,7 @@
 //! Core domain types shared across the chess training back-end services.
 
 pub mod card;
-pub mod card_aggregate;
-pub mod card_kind;
-pub mod card_state;
 pub mod grade;
-pub mod hash;
 pub mod ids;
 pub mod macros;
 pub mod opening;
@@ -18,20 +14,12 @@ pub mod tactic;
 pub mod unlock;
 pub mod utils;
 
-/// Generic flashcard definition used across services.
-pub use card::Card;
-/// Aggregate wrapper around the default card representation.
-pub use card_aggregate::CardAggregate;
-/// High-level classification of review cards.
-pub use card_kind::CardKind;
-/// Scheduling metadata tracked for each stored card.
-pub use card_state::StoredCardState;
-pub use card_state::bridge::{BridgeError as CardStateBridgeError, Sm2Runtime, StoredSnapshot};
 use chrono::NaiveDate;
+
+/// Generic flashcard definition used across services.
+pub use card::{Card, CardKind, StoredCardState};
 /// Validated review grades and related errors.
 pub use grade::{Grade, GradeError};
-/// Deterministic hashing helper backed by BLAKE3.
-pub use hash::hash64;
 /// Strongly typed identifier wrappers used across the crate.
 pub use ids::{CardId, EdgeId, IdConversionError, LearnerId, MoveId, TacticId};
 /// Opening-focused request and payload types.

@@ -72,7 +72,13 @@ fn build_opening_card(owner_id: &str, edge: &Edge, state: StoredCardState, card_
         id: card_id,
         owner_id: owner_id.to_string(),
         kind: GenericCardKind::Opening(OpeningCard::new(EdgeId::new(edge.id))),
-        state,
+        state: StoredCardState {
+            due_on: state.due_on,
+            interval: state.interval,
+            ease_factor: state.ease_factor,
+            consecutive_correct: 0,
+            last_reviewed_on: None,
+        },
     }
 }
 
@@ -89,7 +95,13 @@ mod tests {
     }
 
     fn sample_card_state(due_on: NaiveDate) -> StoredCardState {
-        StoredCardState::new(due_on, NonZeroU8::new(1).unwrap(), 2.5)
+        StoredCardState {
+            due_on,
+            interval: NonZeroU8::new(1).unwrap(),
+            ease_factor: 2.5,
+            consecutive_correct: 0,
+            last_reviewed_on: None,
+        }
     }
 
     fn sample_edge(id: u64) -> Edge {

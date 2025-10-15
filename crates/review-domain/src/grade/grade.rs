@@ -1,3 +1,4 @@
+use crate::GradeError;
 
 /// A grade between 0 and 4 inclusive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -6,27 +6,29 @@ use std::{
 use chrono::NaiveDate;
 
 use crate::{
-    ReviewCardStore, StoreError,
-    chess_position::ChessPosition,
+    ReviewCardStore,
+    StoreError,
+    // chess_position::ChessPosition, // No longer available
     config::StorageConfig,
     memory::{
-        apply_review, borrow_card_for_review, canonicalize_position_for_storage,
-        collect_due_cards_for_owner, insert_unlock_or_error, store_canonical_edge,
-        store_canonical_position, store_opening_card,
+        apply_review, borrow_card_for_review, collect_due_cards_for_owner, insert_unlock_or_error,
+        store_canonical_edge, store_opening_card,
     },
     model::{
-        Card, CardMap, Edge, EdgeInput, EdgeMap, PositionMap, ReviewRequest, StoredCardState,
-        UnlockRecord, UnlockSet, build_opening_card_id,
+        Card, Edge, EdgeInput, EdgeMap, ReviewRequest, StoredCardState, UnlockRecord, UnlockSet,
+        build_opening_card_id,
     },
 };
+// fn upsert_position(&self, _position: ChessPosition) -> Result<ChessPosition, StoreError> {
+//     // ChessPosition is not available. Function skipped or refactor needed.
+// }
 
 /// Thread-safe in-memory reference implementation of the storage trait.
 #[derive(Debug)]
 pub struct InMemoryCardStore {
     _config: StorageConfig,
-    positions: RwLock<PositionMap>,
     edges: RwLock<EdgeMap>,
-    cards: RwLock<CardMap>,
+    cards: RwLock<HashMap<u64, Card>>,
     unlocks: RwLock<UnlockSet>,
 }
 
@@ -36,7 +38,6 @@ impl InMemoryCardStore {
     pub fn new(config: StorageConfig) -> Self {
         Self {
             _config: config,
-            positions: RwLock::new(HashMap::new()),
             edges: RwLock::new(HashMap::new()),
             cards: RwLock::new(HashMap::new()),
             unlocks: RwLock::new(HashSet::new()),
@@ -50,21 +51,7 @@ impl InMemoryCardStore {
     /// Returns [`StoreError::PoisonedLock`] when the underlying position lock is poisoned.
     #[must_use = "handle potential store errors when counting positions"]
     pub fn position_count(&self) -> Result<usize, StoreError> {
-        Ok(self.positions_read()?.len())
-    }
-
-    fn positions_read(&self) -> Result<RwLockReadGuard<'_, PositionMap>, StoreError> {
-        self.positions.read().map_err(|_| StoreError::PoisonedLock {
-            resource: "positions",
-        })
-    }
-
-    fn positions_write(&self) -> Result<RwLockWriteGuard<'_, PositionMap>, StoreError> {
-        self.positions
-            .write()
-            .map_err(|_| StoreError::PoisonedLock {
-                resource: "positions",
-            })
+        Ok(0) // positions are removed, returning 0
     }
 
     fn edges_read(&self) -> Result<RwLockReadGuard<'_, EdgeMap>, StoreError> {
@@ -79,13 +66,13 @@ impl InMemoryCardStore {
             .map_err(|_| StoreError::PoisonedLock { resource: "edges" })
     }
 
-    fn cards_read(&self) -> Result<RwLockReadGuard<'_, CardMap>, StoreError> {
+    fn cards_read(&self) -> Result<RwLockReadGuard<'_, HashMap<u64, Card>>, StoreError> {
         self.cards
             .read()
             .map_err(|_| StoreError::PoisonedLock { resource: "cards" })
     }
 
-    fn cards_write(&self) -> Result<RwLockWriteGuard<'_, CardMap>, StoreError> {
+    fn cards_write(&self) -> Result<RwLockWriteGuard<'_, HashMap<u64, Card>>, StoreError> {
         self.cards
             .write()
             .map_err(|_| StoreError::PoisonedLock { resource: "cards" })
@@ -97,13 +84,6 @@ impl InMemoryCardStore {
         })
     }
 
-    fn ensure_position_exists(&self, id: u64) -> Result<(), StoreError> {
-        if !self.positions_read()?.contains_key(&id) {
-            return Err(StoreError::MissingPosition { id });
-        }
-        Ok(())
-    }
-
     fn ensure_edge_exists(&self, id: u64) -> Result<(), StoreError> {
         if !self.edges_read()?.contains_key(&id) {
             return Err(StoreError::MissingEdge { id });
@@ -113,15 +93,13 @@ impl InMemoryCardStore {
 }
 
 impl ReviewCardStore for InMemoryCardStore {
-    fn upsert_position(&self, position: ChessPosition) -> Result<ChessPosition, StoreError> {
-        let canonical = canonicalize_position_for_storage(position)?;
-        let mut positions = self.positions_write()?;
-        store_canonical_position(&mut positions, canonical)
-    }
+    // fn upsert_position(&self, _position: ChessPosition) -> Result<ChessPosition, StoreError> {
+    //     // ChessPosition is not available. Function skipped or refactor needed.
+    //     unimplemented!("Position storage is not implemented in this version of InMemoryCardStore")
+    // }
 
     fn upsert_edge(&self, edge: EdgeInput) -> Result<Edge, StoreError> {
-        self.ensure_position_exists(edge.parent_id)?;
-        self.ensure_position_exists(edge.child_id)?;
+        // Position existence checks removed (positions are not stored in this implementation)
         let canonical = edge.into_edge();
         let mut edges = self.edges_write()?;
         store_canonical_edge(&mut edges, canonical)
@@ -159,24 +137,16 @@ impl ReviewCardStore for InMemoryCardStore {
 
 #[cfg(test)]
 impl InMemoryCardStore {
-    pub(crate) fn positions_lock(&self) -> &RwLock<PositionMap> {
-        &self.positions
-    }
-
     pub(crate) fn edges_lock(&self) -> &RwLock<EdgeMap> {
         &self.edges
     }
 
-    pub(crate) fn cards_lock(&self) -> &RwLock<CardMap> {
+    pub(crate) fn cards_lock(&self) -> &RwLock<HashMap<u64, Card>> {
         &self.cards
     }
 
     pub(crate) fn unlocks_lock(&self) -> &RwLock<UnlockSet> {
         &self.unlocks
-    }
-
-    pub(crate) fn ensure_position_exists_for_test(&self, id: u64) -> Result<(), StoreError> {
-        self.ensure_position_exists(id)
     }
 
     pub(crate) fn ensure_edge_exists_for_test(&self, id: u64) -> Result<(), StoreError> {

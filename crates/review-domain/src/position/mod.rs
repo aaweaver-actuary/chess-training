@@ -1,7 +1,7 @@
-pub mod position;
-pub mod _id;
-pub mod _error;
+mod position_error;
+mod position_id;
+mod position_impl;
 
-pub use position::Position;
-pub use _id::PositionId;
-pub use _error::PositionError;
+pub use self::position_error::PositionError;
+pub use self::position_id::PositionId;
+pub use self::position_impl::Position;

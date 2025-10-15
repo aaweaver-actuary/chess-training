@@ -2,18 +2,24 @@
 
 use std::collections::{HashMap, HashSet};
 
-/// Re-export shared review-domain types to simplify crate consumers.
-pub use review_domain::{EdgeInput, OpeningCard, ReviewRequest, StoredCardState, TacticCard};
+// Use canonical card types from review-domain
+pub use review_domain::{
+    CardKind as GenericCardKind, EdgeInput, OpeningCard, OpeningEdge, ReviewRequest,
+    StoredCardState, TacticCard, UnlockDetail, UnlockRecord as GenericUnlockRecord,
+};
+
+/// `CardKind` type with concrete generics for this store.
+pub type CardKind = GenericCardKind<OpeningCard, TacticCard>;
+/// Card type with concrete generics for this store.
+pub type Card = review_domain::Card<u64, String, CardKind, StoredCardState>;
+/// `UnlockRecord` type with concrete generics for this store.
+pub type UnlockRecord = review_domain::UnlockRecord<String, UnlockDetail>;
+
 pub use scheduler_core::domain::{
     CardStateBridgeError, Sm2Runtime, StoredSnapshot, hydrate_sm2_state, persist_sm2_state,
 };
 
-use review_domain::{
-    Card as GenericCard, CardKind as GenericCardKind, ChessPosition, OpeningEdge,
-    UnlockDetail as GenericUnlockDetail, UnlockRecord as GenericUnlockRecord,
-};
-
-use crate::hash64;
+use review_domain::hash_with_seed;
 
 /// Opening edge describing a transition between two positions.
 pub type Edge = OpeningEdge;
@@ -21,37 +27,25 @@ pub type Edge = OpeningEdge;
 /// Hash Map from an integer ID to an [`Edge`].
 pub type EdgeMap = HashMap<u64, Edge>;
 
-/// Classification of a card target.
-pub type CardKind = GenericCardKind<OpeningCard, TacticCard>;
-
-/// Hash Map from an integer ID to a [`Card`].
-pub type CardMap = HashMap<u64, GenericCard<u64, String, CardKind, StoredCardState>>;
-
-/// Hash Map from a position ID to a [`ChessPosition`]
-pub type PositionMap = HashMap<u64, ChessPosition>;
+// PositionMap is not defined because ChessPosition is not re-exported from review-domain.
+// pub type PositionMap = HashMap<u64, ChessPosition>;
 
 /// Set of unlock records.
 pub type UnlockSet = HashSet<UnlockRecord>;
 
-/// Specialized review card type for the card-store service.
-pub type Card = GenericCard<u64, String, CardKind, StoredCardState>;
-
-/// Domain payload stored for each unlock record.
-pub type UnlockDetail = GenericUnlockDetail;
-
-/// Unlock ledger entry representing newly released opening moves.
-pub type UnlockRecord = GenericUnlockRecord<String, UnlockDetail>;
-
 /// Deterministically compute a card identifier for an opening edge.
 #[must_use]
 pub fn build_opening_card_id(owner_id: &str, edge_id: u64) -> u64 {
-    hash64(&[owner_id.as_bytes(), &edge_id.to_be_bytes()])
+    // Compose a string key for deterministic hashing
+    let key = format!("{owner_id}:{edge_id}");
+    hash_with_seed(&key)
 }
 
 /// Deterministically compute a card identifier for a tactic.
 #[must_use]
 pub fn build_tactic_card_id(owner_id: &str, tactic_id: u64) -> u64 {
-    hash64(&[owner_id.as_bytes(), &tactic_id.to_be_bytes()])
+    let key = format!("{owner_id}:{tactic_id}");
+    hash_with_seed(&key)
 }
 
 #[cfg(test)]

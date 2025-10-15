@@ -1,7 +1,30 @@
 use std::convert::Infallible;
 
 use review_domain::StoredCardState;
-use review_domain::card_state::bridge::{BridgeError, Sm2Runtime, StoredSnapshot};
+
+use chrono::NaiveDate;
+
+/// Error type for state bridge conversions.
+#[derive(Debug, Clone, PartialEq)]
+pub enum BridgeError {
+    IntervalTooSmall,
+    IntervalOverflow { interval_days: u32, max: u8 },
+}
+
+/// Runtime counters and stage for SM-2 scheduling.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sm2Runtime {
+    pub stage: super::card_state::CardState,
+    pub lapses: u32,
+    pub reviews: u32,
+}
+
+/// Snapshot of stored review state for persistence.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredSnapshot {
+    pub consecutive_correct: u32,
+    pub last_reviewed_on: Option<NaiveDate>,
+}
 
 use super::Sm2State;
 
@@ -21,7 +44,7 @@ pub fn hydrate_sm2_state(stored: StoredCardState, runtime: Sm2Runtime) -> Sm2Sta
 /// Returns a [`BridgeError`] if the interval is zero or overflows u8.
 pub fn persist_sm2_state(
     sm2: &Sm2State,
-    snapshot: StoredSnapshot,
+    snapshot: &StoredSnapshot,
 ) -> Result<StoredCardState, BridgeError> {
     use std::num::NonZeroU8;
     if sm2.interval_days == 0 {
@@ -87,7 +110,7 @@ mod tests {
             lapses: 2,
             reviews: 7,
         };
-        let sm2 = hydrate_sm2_state(stored.clone(), runtime);
+        let sm2 = hydrate_sm2_state(stored.clone(), runtime.clone());
         assert_eq!(sm2.stage, runtime.stage);
         assert_eq!(sm2.lapses, runtime.lapses);
         assert_eq!(sm2.reviews, runtime.reviews);
@@ -99,7 +122,7 @@ mod tests {
             consecutive_correct: stored.consecutive_correct,
             last_reviewed_on: stored.last_reviewed_on,
         };
-        let persisted = persist_sm2_state(&sm2, snapshot).expect("conversion should succeed");
+        let persisted = persist_sm2_state(&sm2, &snapshot).expect("conversion should succeed");
         assert_eq!(persisted, stored);
     }
 
@@ -117,7 +140,7 @@ mod tests {
             consecutive_correct: 0,
             last_reviewed_on: None,
         };
-        let err = persist_sm2_state(&sm2, snapshot).expect_err("interval overflow");
+        let err = persist_sm2_state(&sm2, &snapshot).expect_err("interval overflow");
         if let BridgeError::IntervalOverflow { interval_days, max } = err {
             assert_eq!(interval_days, 512);
             assert_eq!(max, u8::MAX);
@@ -140,7 +163,7 @@ mod tests {
             consecutive_correct: 0,
             last_reviewed_on: None,
         };
-        let err = persist_sm2_state(&sm2, snapshot).expect_err("zero interval");
+        let err = persist_sm2_state(&sm2, &snapshot).expect_err("zero interval");
         assert!(matches!(err, BridgeError::IntervalTooSmall));
     }
 }

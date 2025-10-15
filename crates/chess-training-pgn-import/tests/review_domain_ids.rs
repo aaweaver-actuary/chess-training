@@ -1,4 +1,4 @@
-use review_domain::ids::{CardId, EdgeId, MoveId, PositionId};
+use review_domain::{CardId, EdgeId, MoveId, PositionId};
 
 #[test]
 fn review_domain_ids_are_available_to_importer_consumers() {

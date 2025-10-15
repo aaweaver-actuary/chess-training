@@ -251,6 +251,7 @@ dependencies = [
 name = "chess-training-pgn-import"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "clap",
  "fnv",
  "review-domain",

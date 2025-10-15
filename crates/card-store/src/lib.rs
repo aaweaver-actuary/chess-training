@@ -20,7 +20,6 @@ pub use crate::errors::PositionError;
 pub use crate::store::{ReviewCardStore, StoreError};
 
 /// Deterministic hashing helper shared with review-domain.
-pub use review_domain::hash64;
-
+// pub use review_domain::hash64; // No longer available
 #[cfg(test)]
 pub(crate) mod tests;

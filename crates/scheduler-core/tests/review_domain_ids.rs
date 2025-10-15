@@ -1,4 +1,4 @@
-use review_domain::ids::{CardId, EdgeId, MoveId, PositionId};
+use review_domain::{CardId, EdgeId, MoveId, PositionId};
 use std::convert::TryFrom;
 
 #[test]

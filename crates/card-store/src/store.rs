@@ -5,7 +5,8 @@ use std::fmt;
 use chrono::NaiveDate;
 use thiserror::Error;
 
-use crate::chess_position::ChessPosition;
+// use crate::chess_position::ChessPosition; // No longer available
+// use crate::chess_position::ChessPosition; // No longer available
 use crate::errors::PositionError;
 use crate::model::{Card, Edge, EdgeInput, ReviewRequest, StoredCardState, UnlockRecord};
 use review_domain::EdgeId;
@@ -44,13 +45,7 @@ pub enum StoreError {
 
 /// Persistence abstraction used across review services.
 pub trait ReviewCardStore: Send + Sync + fmt::Debug {
-    /// Insert or update a [`Position`]. Returns the stored record.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`StoreError`] when the underlying persistence layer fails to
-    /// store the position or when the provided position is invalid.
-    fn upsert_position(&self, position: ChessPosition) -> Result<ChessPosition, StoreError>;
+    // fn upsert_position(&self, position: ChessPosition) -> Result<ChessPosition, StoreError>;
     /// Insert or update an [`Edge`]. Returns the stored record.
     ///
     /// # Errors

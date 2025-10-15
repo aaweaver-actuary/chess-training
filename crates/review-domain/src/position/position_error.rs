@@ -1,4 +1,3 @@
-
 /// Errors encountered while constructing a [`ChessPosition`].
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum PositionError {

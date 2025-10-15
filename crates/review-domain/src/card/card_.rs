@@ -15,7 +15,9 @@ pub struct Card<Id, Owner, Kind, State> {
 
 #[cfg(test)]
 mod tests {
-    use crate::TEST_EPSILON;
+    use std::ptr;
+
+    use crate::{TEST_EPSILON, card::CardState};
 
     use super::Card;
 

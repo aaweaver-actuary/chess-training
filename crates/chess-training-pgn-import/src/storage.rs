@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::model::{OpeningEdgeRecord, Position, RepertoireEdge, Tactic};
+use crate::model::{OpeningEdgeRecord, RepertoireEdge, Tactic};
+use review_domain::Position;
 use review_domain::{EdgeId, PositionId};
 
 /// Trait for abstracting storage of chess training data, such as positions, edges, repertoire edges, and tactics.
@@ -122,23 +123,16 @@ impl InMemoryImportStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::Position as ModelPosition;
-
-    fn sample_position(index: u32) -> Position {
-        ModelPosition::new(&format!("fen {index}"), 'w', index)
-    }
 
     #[test]
     fn upsert_methods_report_insert_status() {
         let mut store = InMemoryImportStore::default();
-        let parent = sample_position(0);
-        let child = sample_position(1);
-        let edge = OpeningEdgeRecord::new(parent.id, "e2e4", child.id, None);
+        // parent and child no longer needed for edge construction
+        let edge = OpeningEdgeRecord::new("e2e4", None);
         let record = RepertoireEdge::new("owner", "rep", edge.move_entry.edge_id);
-        let tactic = Tactic::new("fen", vec!["e2e4".into()], vec![], None);
+        // Tactic::new no longer exists; create Tactic directly with dummy id
+        let tactic = Tactic { id: 42 };
 
-        assert!(store.upsert_position(parent.clone()).is_inserted());
-        assert!(!store.upsert_position(parent).is_inserted());
         assert!(store.upsert_edge(edge.clone()).is_inserted());
         assert!(!store.upsert_edge(edge.clone()).is_inserted());
         assert!(store.upsert_repertoire_edge(record.clone()).is_inserted());
@@ -150,9 +144,8 @@ mod tests {
     #[test]
     fn repertoire_edges_accessor_round_trips_entries() {
         let mut store = InMemoryImportStore::default();
-        let parent = sample_position(0);
-        let child = sample_position(1);
-        let edge = OpeningEdgeRecord::new(parent.id, "e2e4", child.id, None);
+        // parent and child no longer needed for edge construction
+        let edge = OpeningEdgeRecord::new("e2e4", None);
         assert!(store.upsert_edge(edge.clone()).is_inserted());
         assert!(
             store

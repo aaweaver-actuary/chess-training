@@ -1,5 +1,7 @@
 //! Generic flashcard classification helpers shared across services.
 
+use std::fmt;
+
 /// Describes the high-level type of a study card.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -39,11 +41,11 @@ impl<Opening, Tactic> CardKind<Opening, Tactic> {
     }
 }
 
-impl ToString for CardKind<&str, &str> {
-    fn to_string(&self) -> String {
+impl fmt::Display for CardKind<&str, &str> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CardKind::Opening(name) => format!("Opening: {}", name),
-            CardKind::Tactic(name) => format!("Tactic: {}", name),
+            CardKind::Opening(name) => write!(f, "Opening: {name}"),
+            CardKind::Tactic(name) => write!(f, "Tactic: {name}"),
         }
     }
 }

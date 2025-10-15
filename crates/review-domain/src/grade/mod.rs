@@ -1,5 +1,6 @@
-pub mod error;
-pub mod grade;
+mod error;
+mod grade_impl;
 
-pub use error::GradeError;
-pub use grade::Grade;
+pub use self::error::GradeError;
+
+pub use self::grade_impl::Grade;
