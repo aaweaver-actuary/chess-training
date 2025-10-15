@@ -83,18 +83,15 @@ cargo new crates/quiz-core --lib
 [package]
 name = "quiz-core"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [features]
+default = []
 cli = []
 api = []
 wasm = []
 
-default = ["cli"]
-
 [dependencies]
-thiserror = "1"
-shakmaty = "0.26"
 ```
 
 **Alternatives considered:**
@@ -106,7 +103,7 @@ shakmaty = "0.26"
 
 **Decision:** Adopt a single crate with optional features. This approach matches the repository norm (e.g., `pgn-import` crates),
  keeps dependency graphs shallow, and lets each consumer opt in only to the adapters they require. Stub binaries in `src/bin/`
- will remain minimal placeholders until their dedicated tasks flesh them out.
+ will remain minimal placeholders compiled behind `#![cfg(feature = "...")]` guards until their dedicated tasks flesh them out.
 
 ### 2. Define Quiz Interaction Ports and CLI Adapter
 **Objective:** Specify the interface through which the engine communicates with presentation layers, and provide a terminal-bac

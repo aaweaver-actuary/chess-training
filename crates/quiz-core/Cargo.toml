@@ -1,0 +1,30 @@
+[package]
+name = "quiz-core"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+cli = []
+api = []
+wasm = []
+
+[dependencies]
+
+[[bin]]
+name = "cli"
+path = "src/bin/cli.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "api"
+path = "src/bin/api.rs"
+required-features = ["api"]
+
+[[bin]]
+name = "wasm"
+path = "src/bin/wasm.rs"
+required-features = ["wasm"]

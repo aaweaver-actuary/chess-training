@@ -65,6 +65,7 @@ pub fn persist_sm2_state(
     })
 }
 
+#[allow(clippy::infallible_try_from)]
 impl TryFrom<(StoredCardState, Sm2Runtime)> for Sm2State {
     type Error = Infallible;
 
