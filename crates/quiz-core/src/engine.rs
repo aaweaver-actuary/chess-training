@@ -1,4 +1,4 @@
-use crate::errors::QuizError;
+use crate::errors::QuizResult;
 use crate::ports::{FeedbackMessage, PromptContext, QuizPort};
 use crate::source::QuizSource;
 use crate::state::{AttemptResult, QuizSession, QuizStep, QuizSummary};
@@ -22,12 +22,12 @@ impl QuizEngine {
     }
 
     /// Parses PGN text into a quiz engine ready to run.
-    pub fn from_pgn(pgn: &str, max_retries: u8) -> Result<Self, QuizError> {
+    pub fn from_pgn(pgn: &str, max_retries: u8) -> QuizResult<Self> {
         Ok(Self::new(QuizSession::from_pgn(pgn, max_retries)?))
     }
 
     /// Runs the quiz using the supplied adapter port.
-    pub fn run<P: QuizPort>(&mut self, port: &mut P) -> Result<&QuizSummary, QuizError> {
+    pub fn run<P: QuizPort>(&mut self, port: &mut P) -> QuizResult<&QuizSummary> {
         while !self.session.is_complete() {
             self.process_current_step(port)?;
         }
@@ -36,7 +36,7 @@ impl QuizEngine {
         Ok(&self.session.summary)
     }
 
-    fn process_current_step<P: QuizPort>(&mut self, port: &mut P) -> Result<(), QuizError> {
+    fn process_current_step<P: QuizPort>(&mut self, port: &mut P) -> QuizResult<()> {
         loop {
             let step_index = self.session.current_index;
             let total_steps = self.session.steps.len();
@@ -158,6 +158,7 @@ fn san_matches(input: &str, solution: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::QuizError;
     use crate::ports::QuizPort;
     use std::collections::VecDeque;
 

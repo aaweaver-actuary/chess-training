@@ -34,9 +34,9 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** Session state types, port trait, retry policy (single retry) from acceptance criteria.
 - **Outputs:** Implemented `QuizEngine` with constructors (`new`, `from_source`, `from_pgn`), the execution loop (`run`/`process_current_step`), and grading helpers that update attempts and summaries. Augmented unit tests with fake ports covering perfect runs, retry saves, exhausted retries, prompt context metadata, adapter summary publication, adapter failure propagation (prompt, feedback, summary), and attempt history capture for trimmed SAN submissions.
 
-## 9. Harden error handling boundaries for adapters
+## 9. Harden error handling boundaries for adapters ✅
 - **Inputs:** `QuizError` enum, adapter isolation requirement, prior error-handling tests.
-- **Outputs:** Exhaustive conversions from lower-level errors (`shakmaty`, `std::io`) into `QuizError`; result aliases for adapter ergonomics; tests covering I/O failures, retry exhaustion, and summary edge cases. Update documentation to describe adapter-safe failure modes.
+- **Outputs:** Exhaustive conversions from lower-level errors (`shakmaty`, `std::io`) into `QuizError`; adapter-facing result aliases used across ports and the CLI implementation; regression tests for CLI I/O failures alongside existing retry-exhaustion and summary guard rails. Documentation updated to describe adapter-safe failure modes and the new error-conversion helpers.
 
 ## 10. Assemble integration tests for end-to-end quiz runs
 - **Inputs:** Engine implementation, terminal adapter, acceptance criteria backlog from Task 1.

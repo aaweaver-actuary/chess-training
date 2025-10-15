@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use shakmaty::san::San;
+use shakmaty::san::{ParseSanError, San, SanError};
 use shakmaty::{Chess, Position};
 
-use crate::errors::QuizError;
+use crate::errors::{QuizError, QuizResult};
 
 /// Represents a parsed PGN quiz source comprised of a single game's main line.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,7 +31,7 @@ impl QuizSource {
     /// Returns a [`QuizError`] when the input includes multiple games, nested
     /// variations, unsupported annotations, or SAN tokens that cannot be
     /// converted into legal moves.
-    pub fn from_pgn(pgn: &str) -> Result<Self, QuizError> {
+    pub fn from_pgn(pgn: &str) -> QuizResult<Self> {
         let trimmed = pgn.trim();
         if trimmed.is_empty() {
             return Err(QuizError::NoMoves);
@@ -101,11 +101,12 @@ impl QuizSource {
                 continue;
             }
 
-            let san = San::from_ascii(cleaned.as_bytes())
-                .map_err(|_| QuizError::UnreadablePgn(cleaned.clone()))?;
+            let san = San::from_ascii(cleaned.as_bytes()).map_err(|err: ParseSanError| {
+                QuizError::unreadable_from_parse(cleaned.clone(), err)
+            })?;
             let mv = san
                 .to_move(&board)
-                .map_err(|_| QuizError::UnreadablePgn(cleaned.clone()))?;
+                .map_err(|err: SanError| QuizError::unreadable_from_san(cleaned.clone(), err))?;
             board.play_unchecked(mv);
             san_moves.push(san);
         }

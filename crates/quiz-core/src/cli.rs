@@ -1,6 +1,6 @@
 use std::io::{self, BufRead, BufReader, Write};
 
-use crate::errors::QuizError;
+use crate::errors::AdapterResult;
 use crate::ports::{FeedbackMessage, PromptContext, QuizPort};
 use crate::state::{AttemptResult, QuizSummary};
 
@@ -43,101 +43,93 @@ where
     R: BufRead,
     W: Write,
 {
-    fn present_prompt(&mut self, context: PromptContext) -> Result<String, QuizError> {
+    fn present_prompt(&mut self, context: PromptContext) -> AdapterResult<String> {
         writeln!(
             self.writer,
             "\nMove {}/{}",
             context.display_index(),
             context.total_steps
-        )
-        .map_err(|_| QuizError::Io)?;
-        writeln!(self.writer, "Board FEN: {}", context.board_fen).map_err(|_| QuizError::Io)?;
+        )?;
+        writeln!(self.writer, "Board FEN: {}", context.board_fen)?;
 
         if let Some(previous) = context.previous_move_san.as_deref() {
-            writeln!(self.writer, "Previous move: {previous}").map_err(|_| QuizError::Io)?;
+            writeln!(self.writer, "Previous move: {previous}")?;
         }
 
-        writeln!(self.writer, "Your move (SAN): {}", context.prompt_san)
-            .map_err(|_| QuizError::Io)?;
+        writeln!(self.writer, "Your move (SAN): {}", context.prompt_san)?;
 
         if context.remaining_retries > 0 {
             writeln!(
                 self.writer,
                 "Retries remaining after this attempt: {}",
                 context.remaining_retries
-            )
-            .map_err(|_| QuizError::Io)?;
+            )?;
         }
 
-        write!(self.writer, "> ").map_err(|_| QuizError::Io)?;
-        self.writer.flush().map_err(|_| QuizError::Io)?;
+        write!(self.writer, "> ")?;
+        self.writer.flush()?;
 
         let mut buffer = String::new();
-        self.reader
-            .read_line(&mut buffer)
-            .map_err(|_| QuizError::Io)?;
+        self.reader.read_line(&mut buffer)?;
 
         Ok(buffer.trim().to_string())
     }
 
-    fn publish_feedback(&mut self, feedback: FeedbackMessage) -> Result<(), QuizError> {
+    fn publish_feedback(&mut self, feedback: FeedbackMessage) -> AdapterResult<()> {
         match feedback.result {
             AttemptResult::Correct => {
-                writeln!(self.writer, "Correct!").map_err(|_| QuizError::Io)?;
+                writeln!(self.writer, "Correct!")?;
                 for note in &feedback.annotations {
-                    writeln!(self.writer, "Note: {note}").map_err(|_| QuizError::Io)?;
+                    writeln!(self.writer, "Note: {note}")?;
                 }
             }
             AttemptResult::Pending => {
-                writeln!(self.writer, "Incorrect, try again.").map_err(|_| QuizError::Io)?;
+                writeln!(self.writer, "Incorrect, try again.")?;
                 writeln!(
                     self.writer,
                     "Retries remaining: {}",
                     feedback.remaining_retries
-                )
-                .map_err(|_| QuizError::Io)?;
+                )?;
 
                 if let Some(response) = &feedback.learner_response {
-                    writeln!(self.writer, "Your answer: {response}").map_err(|_| QuizError::Io)?;
+                    writeln!(self.writer, "Your answer: {response}")?;
                 }
             }
             AttemptResult::Incorrect => {
-                writeln!(self.writer, "Incorrect.").map_err(|_| QuizError::Io)?;
+                writeln!(self.writer, "Incorrect.")?;
 
                 if let Some(response) = &feedback.learner_response {
-                    writeln!(self.writer, "Your answer: {response}").map_err(|_| QuizError::Io)?;
+                    writeln!(self.writer, "Your answer: {response}")?;
                 }
 
                 if !feedback.solution_san.is_empty() {
-                    writeln!(self.writer, "Solution: {}", feedback.solution_san)
-                        .map_err(|_| QuizError::Io)?;
+                    writeln!(self.writer, "Solution: {}", feedback.solution_san)?;
                 }
 
                 if !feedback.annotations.is_empty() {
-                    writeln!(self.writer, "Annotations:").map_err(|_| QuizError::Io)?;
+                    writeln!(self.writer, "Annotations:")?;
                     for note in &feedback.annotations {
-                        writeln!(self.writer, "- {note}").map_err(|_| QuizError::Io)?;
+                        writeln!(self.writer, "- {note}")?;
                     }
                 }
             }
         }
 
-        self.writer.flush().map_err(|_| QuizError::Io)
+        self.writer.flush()?;
+        Ok(())
     }
 
-    fn present_summary(&mut self, summary: &QuizSummary) -> Result<(), QuizError> {
+    fn present_summary(&mut self, summary: &QuizSummary) -> AdapterResult<()> {
         writeln!(
             self.writer,
             "\nQuiz complete: {}/{} steps",
             summary.completed_steps, summary.total_steps
-        )
-        .map_err(|_| QuizError::Io)?;
-        writeln!(self.writer, "Correct: {}", summary.correct_answers).map_err(|_| QuizError::Io)?;
-        writeln!(self.writer, "Incorrect: {}", summary.incorrect_answers)
-            .map_err(|_| QuizError::Io)?;
-        writeln!(self.writer, "Retries used: {}", summary.retries_consumed)
-            .map_err(|_| QuizError::Io)?;
-        self.writer.flush().map_err(|_| QuizError::Io)
+        )?;
+        writeln!(self.writer, "Correct: {}", summary.correct_answers)?;
+        writeln!(self.writer, "Incorrect: {}", summary.incorrect_answers)?;
+        writeln!(self.writer, "Retries used: {}", summary.retries_consumed)?;
+        self.writer.flush()?;
+        Ok(())
     }
 }
 
