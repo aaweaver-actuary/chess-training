@@ -51,6 +51,11 @@ impl QuizSession {
     }
 
     /// Parses PGN text directly into a [`QuizSession`].
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`QuizError`] when the supplied PGN cannot be normalised into
+    /// a single main line of SAN moves.
     pub fn from_pgn(pgn: &str, max_retries: u8) -> Result<Self, QuizError> {
         let source = QuizSource::from_pgn(pgn)?;
         Ok(Self::from_source(&source, max_retries))
@@ -186,6 +191,24 @@ pub enum AttemptResult {
     Incorrect,
 }
 
+fn hydrate_steps(source: &QuizSource, max_retries: u8) -> Vec<QuizStep> {
+    let mut board = source.initial_position.clone();
+    let mut steps = Vec::with_capacity(source.san_moves.len());
+
+    for san in &source.san_moves {
+        let fen = Fen::from_position(&board, EnPassantMode::Legal).to_string();
+        let san_text = san.to_string();
+        steps.push(QuizStep::new(fen, san_text.clone(), san_text, max_retries));
+
+        let mv = san
+            .to_move(&board)
+            .expect("SAN moves stored in QuizSource must remain legal");
+        board.play_unchecked(mv);
+    }
+
+    steps
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -286,22 +309,4 @@ mod tests {
 
         assert!(matches!(err, QuizError::VariationsUnsupported));
     }
-}
-
-fn hydrate_steps(source: &QuizSource, max_retries: u8) -> Vec<QuizStep> {
-    let mut board = source.initial_position.clone();
-    let mut steps = Vec::with_capacity(source.san_moves.len());
-
-    for san in &source.san_moves {
-        let fen = Fen::from_position(&board, EnPassantMode::Legal).to_string();
-        let san_text = san.to_string();
-        steps.push(QuizStep::new(fen, san_text.clone(), san_text, max_retries));
-
-        let mv = san
-            .to_move(&board)
-            .expect("SAN moves stored in QuizSource must remain legal");
-        board.play_unchecked(mv);
-    }
-
-    steps
 }

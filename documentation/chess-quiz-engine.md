@@ -125,54 +125,60 @@ wasm = []
 ked reference implementation.
 
 ```rust
-// src/ports/mod.rs
+// src/ports.rs
 pub trait QuizPort {
-    fn present_board(&mut self, fen: &str);
-    fn show_prior_move(&mut self, san: Option<&str>);
-    fn prompt_user(&mut self, turn: u32) -> Result<String, QuizError>;
-    fn emit_feedback(&mut self, feedback: FeedbackMessage);
+    fn present_prompt(&mut self, context: PromptContext) -> Result<String, QuizError>;
+    fn publish_feedback(&mut self, feedback: FeedbackMessage) -> Result<(), QuizError>;
+    fn present_summary(&mut self, summary: &QuizSummary) -> Result<(), QuizError>;
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PromptContext {
+    pub step_index: usize,
+    pub total_steps: usize,
+    pub board_fen: String,
+    pub prompt_san: String,
+    pub previous_move_san: Option<String>,
+    pub remaining_retries: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FeedbackMessage {
-    pub correct: bool,
+    pub step_index: usize,
+    pub result: AttemptResult,
+    pub learner_response: Option<String>,
+    pub solution_san: String,
     pub annotations: Vec<String>,
+    pub remaining_retries: u8,
 }
 ```
 
 ```rust
-// src/ports/terminal.rs (cfg(feature = "cli"))
-pub struct TerminalPort;
+// src/cli.rs (cfg(feature = "cli"))
+pub struct TerminalPort<R, W> {
+    reader: R,
+    writer: W,
+}
 
-impl QuizPort for TerminalPort {
-    fn present_board(&mut self, fen: &str) {
-        println!("{fen}");
+impl TerminalPort<BufReader<io::Stdin>, io::Stdout> {
+    pub fn new() -> Self {
+        Self::with_io(BufReader::new(io::stdin()), io::stdout())
     }
+}
 
-    fn show_prior_move(&mut self, san: Option<&str>) {
-        if let Some(san) = san {
-            println!("Previous move: {san}");
-        }
+impl<R, W> TerminalPort<R, W> {
+    pub fn with_io(reader: R, writer: W) -> Self {
+        Self { reader, writer }
     }
+}
 
-    fn prompt_user(&mut self, turn: u32) -> Result<String, QuizError> {
-        use std::io::{self, Write};
-        print!("Move #{turn}: ");
-        io::stdout().flush().map_err(|_| QuizError::Io)?;
-        let mut buffer = String::new();
-        io::stdin().read_line(&mut buffer).map_err(|_| QuizError::Io)?;
-        Ok(buffer.trim().to_owned())
-    }
-
-    fn emit_feedback(&mut self, feedback: FeedbackMessage) {
-        if feedback.correct {
-            println!("Correct!");
-            for note in feedback.annotations {
-                println!("Note: {note}");
-            }
-        } else {
-            println!("Incorrect, try again.");
-        }
-    }
+impl<R, W> QuizPort for TerminalPort<R, W>
+where
+    R: BufRead,
+    W: Write,
+{
+    // writes prompts, reads SAN responses, prints feedback and summary text,
+    // mapping any I/O failure into QuizError::Io
 }
 ```
 
@@ -183,9 +189,7 @@ impl QuizPort for TerminalPort {
 - *Adopt an event-sourcing abstraction up front.* Extremely flexible but adds significant ceremony before the basic quiz loop is
   working.
 
-**Decision:** Define a lightweight synchronous trait. We can layer async adapters later by having them spawn the engine on a sep
-arate task or by providing a second trait if needed. The CLI adapter remains opt-in under the `cli` feature, while future tasks
- will implement `ApiPort` and `WasmPort` modules behind their own flags.
+**Decision:** Define a lightweight synchronous trait. We can layer async adapters later by having them spawn the engine on a separate task or by providing a second trait if needed. The CLI adapter remains opt-in under the `cli` feature, while future tasks will implement `ApiPort` and `WasmPort` modules behind their own flags. Companion unit tests live immediately beneath the implementation in `ports.rs`, ensuring optional previous moves, retry exhaustion messaging, and helper constructors all stay covered.
 
 ### 3. Implement PGN Parsing Error Handling
 **Objective:** Capture all validation failures distinctly so adapters can display actionable errors to the user.
