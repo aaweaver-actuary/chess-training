@@ -230,3 +230,49 @@ to pass, and a refactor phase. Documentation updates accompany each new public t
 
 These notes should remain the canonical reference while we execute the roadmap. Each task can be tackled independently, enabling
 parallel work without design ambiguity.
+
+## Detailed Execution Plan
+To convert the roadmap into day-to-day work, we decomposed the effort into ten concrete tasks. Each task lists the inputs we rely on and the tangible outputs that signal completion so parallel contributors can coordinate efficiently.
+
+1. **Confirm scope & acceptance tests**
+   - *Inputs:* Expectations from this brief around adapter isolation, retry allowances, and documentation guarantees.
+   - *Outputs:* Written acceptance criteria describing the single-line PGN quiz flow, retry behavior, error taxonomy, and the documentation commitments that gate sign-off. Identify the initial red tests we will author before writing engine code.
+
+2. **Scaffold the `quiz-core` crate and workspace wiring**
+   - *Inputs:* Workspace manifests, design brief instructions, and dependency choices (`thiserror`, `shakmaty`).
+   - *Outputs:* A new `crates/quiz-core` library containing module stubs (`engine`, `state`, `ports`, `errors`), feature flags for adapters (`cli`, `api`, `wasm`), placeholder binaries behind those flags, and updated workspace manifests referencing the crate.
+
+3. **Design quiz state and summary data structures**
+   - *Inputs:* The architecture goals separating orchestration logic from persisted state.
+   - *Outputs:* Types such as `QuizSession`, `QuizStep`, `AttemptState`, and `QuizSummary` that track FEN snapshots, SAN prompts, retry counters, and scoring totals. Ensure they derive serde-friendly traits where useful and are documented in the structs glossary.
+
+4. **Implement PGN parsing & validation layer**
+   - *Inputs:* The parsing responsibilities outlined above and the `shakmaty` API surface.
+   - *Outputs:* A constructor like `QuizSource::from_pgn` that enforces single-main-line constraints, converts parser failures into `QuizError` variants, and yields a normalized sequence of moves with the initial board state.
+
+5. **Build the quiz orchestration engine**
+   - *Inputs:* The flow diagram in this brief that covers board rendering, prompting, retries, and summary emission.
+   - *Outputs:* `QuizEngine` methods (`from_pgn`, `advance`, `run`) that iterate through parsed moves, compare SAN answers, respect the one-retry policy, accumulate annotations, and return a `QuizSummary`.
+
+6. **Define interaction ports and CLI reference adapter**
+   - *Inputs:* Port trait specifications and expectations for feature-gated adapters.
+   - *Outputs:* A `ports::QuizPort` trait with supporting message structs plus a `TerminalPort` implementation behind the `cli` feature that exercises the end-to-end flow for manual smoke tests.
+
+7. **Harden error handling and adapter-safe boundaries**
+   - *Inputs:* The error enum defined earlier and the requirement that adapters remain decoupled from engine internals.
+   - *Outputs:* Exhaustive `QuizError` conversions, helper utilities (result aliases, adapter-safe wrappers), and tests that cover malformed PGN inputs, I/O failures, and retry exhaustion scenarios.
+
+8. **Deliver red–green test suite**
+   - *Inputs:* TDD mandate and the sample integration test sketches.
+   - *Outputs:* Unit and integration tests spanning PGN parsing, retry rules, summary math, and port interactions (mock-based). Include fixtures or snapshots for board states to simplify regression analysis.
+
+9. **Document public API & glossary updates**
+   - *Inputs:* Documentation obligations from the design brief and existing repo conventions.
+   - *Outputs:* Crate-level `README`, updates to this brief with implementation notes, and entries in `docs/rust-structs-glossary.md` for each public struct or enum we introduce.
+
+10. **Plan follow-on integration work**
+    - *Inputs:* Roadmap dependencies on PGN importer normalization, scheduling pipelines, and adapter expansion.
+    - *Outputs:* Backlog items or ADR references describing how `quiz-core` will integrate with upstream PGN ingestion, emit telemetry for the scheduler, and expose API/wasm adapters when supporting workstreams mature.
+
+Together, these tasks provide a step-by-step recipe for realizing the quiz engine while honoring our TDD discipline and documentation commitments.
+
