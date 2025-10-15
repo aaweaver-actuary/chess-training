@@ -1,8 +1,4 @@
-import type {
-  CardSummary,
-  ReviewGrade,
-  SessionStats,
-} from '../../types/gateway';
+import type { CardSummary, ReviewGrade, SessionStats } from '../../types/gateway';
 
 export type SessionStatus =
   | 'idle'

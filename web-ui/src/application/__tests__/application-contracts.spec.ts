@@ -1,9 +1,5 @@
 import { describe, expect, it, expectTypeOf } from 'vitest';
-import {
-  applicationControllers,
-  applicationServices,
-  applicationViewModels,
-} from '../index.js';
+import { applicationControllers, applicationServices, applicationViewModels } from '../index.js';
 import type {
   CommandPaletteService,
   DashboardViewModel,
@@ -35,9 +31,7 @@ describe('application layer scaffolding', () => {
 
   it('exposes planned view model contracts', () => {
     expect(applicationViewModels).toBeDefined();
-    expect(Object.keys(applicationViewModels)).toEqual(
-      expect.arrayContaining(['dashboard']),
-    );
+    expect(Object.keys(applicationViewModels)).toEqual(expect.arrayContaining(['dashboard']));
     expectTypeOf<DashboardViewModel>().toBeObject();
   });
 });

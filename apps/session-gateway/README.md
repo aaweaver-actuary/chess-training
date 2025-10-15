@@ -18,11 +18,11 @@ The session gateway is a lightweight Express + WebSocket service that proxies re
 
 ## Features
 
-* REST endpoints for starting sessions, grading cards, fetching stats, and ending sessions (`src/server.ts`).
-* WebSocket fan-out so clients receive the next card and refreshed statistics in real time (`src/broadcaster.ts`).
-* Configurable scheduler client that forwards requests to the scheduler HTTP surface (`src/clients/httpSchedulerClient.ts`).
-* In-memory session store for development and automated tests (`src/stores/inMemoryStore.ts`).
-* Structured logging via Pino with log level controlled by environment variables.
+- REST endpoints for starting sessions, grading cards, fetching stats, and ending sessions (`src/server.ts`).
+- WebSocket fan-out so clients receive the next card and refreshed statistics in real time (`src/broadcaster.ts`).
+- Configurable scheduler client that forwards requests to the scheduler HTTP surface (`src/clients/httpSchedulerClient.ts`).
+- In-memory session store for development and automated tests (`src/stores/inMemoryStore.ts`).
+- Structured logging via Pino with log level controlled by environment variables.
 
 ## Getting Started
 
@@ -33,11 +33,11 @@ npm run dev      # or `npm run build && npm start` for production-style runs
 
 Environment variables are loaded directly from `process.env`:
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `PORT` | HTTP port to listen on. | `3000` |
-| `SCHEDULER_URL` | Base URL for the scheduler service. | `http://localhost:4000` |
-| `LOG_LEVEL` | Pino log level (`info`, `debug`, etc.). | `info` |
+| Variable        | Description                             | Default                 |
+| --------------- | --------------------------------------- | ----------------------- |
+| `PORT`          | HTTP port to listen on.                 | `3000`                  |
+| `SCHEDULER_URL` | Base URL for the scheduler service.     | `http://localhost:4000` |
+| `LOG_LEVEL`     | Pino log level (`info`, `debug`, etc.). | `info`                  |
 
 ## Testing
 

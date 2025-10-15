@@ -26,10 +26,7 @@ export type CommandPaletteService = {
   register: (command: CommandRegistration, handler: CommandHandler) => void;
   unregister: (commandId: string) => void;
   list: () => CommandRegistration[];
-  execute: (
-    commandId: string,
-    context?: Partial<CommandContext>,
-  ) => Promise<CommandExecution>;
+  execute: (commandId: string, context?: Partial<CommandContext>) => Promise<CommandExecution>;
   subscribe: (listener: (execution: CommandExecution) => void) => () => void;
   reset: () => void;
 };

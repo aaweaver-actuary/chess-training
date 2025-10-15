@@ -1,7 +1,4 @@
-import type {
-  DetectedOpeningLine,
-  ScheduledOpeningLine,
-} from '../../types/repertoire';
+import type { DetectedOpeningLine, ScheduledOpeningLine } from '../../types/repertoire';
 
 export type ImportPlan = {
   line: ScheduledOpeningLine;
