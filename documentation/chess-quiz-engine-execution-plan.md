@@ -4,7 +4,7 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 
 ## 1. Finalise acceptance criteria and red tests ✅
 - **Inputs:** `documentation/chess-quiz-engine.md` solution overview, repository TDD policy, existing PGN parsing behaviors in `crates/chess-training-pgn-import`.
-- **Outputs:** A living checklist of acceptance criteria (single-line PGN scope, retry policy, feedback messaging, adapter isolation) plus an ordered backlog of failing tests to write first (parser errors, retry exhaustion, summary math). Published in `documentation/chess-quiz-engine.md` under “Acceptance Criteria Checklist” and “Initial Red Test Backlog”.
+- **Outputs:** A living checklist of acceptance criteria labelled AC1–AC4 (single-line PGN scope, retry policy, feedback messaging, adapter isolation) plus an ordered backlog of failing tests RT1–RT5 that map one-to-one to those behaviors (parser errors, retry exhaustion, summary math, feedback messaging coverage, adapter isolation guardrails). Published in `documentation/chess-quiz-engine.md` under “Acceptance Criteria Checklist” and “Initial Red Test Backlog”.
 
 ## 2. Scaffold the `quiz-core` crate and workspace wiring
 - **Inputs:** Workspace `Cargo.toml`, Makefile conventions, design decision to host adapters behind feature flags.
