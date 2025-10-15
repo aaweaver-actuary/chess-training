@@ -5,7 +5,7 @@ version="0.1.0"
 
 [dependencies]
 chrono   ="0.4"
-review-domain={ path="../review-domain" }
+review-domain={ path="../review-domain", features=["serde"] }
 thiserror="1"
 uuid     ={ version="1", features=["v4"] }
 num-traits="0.2"

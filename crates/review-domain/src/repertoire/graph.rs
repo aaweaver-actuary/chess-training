@@ -33,7 +33,7 @@ impl OpeningGraph {
     ///
     /// # Examples
     /// ```rust
-    /// use review_domain::ids::{EdgeId, PositionId};
+    /// use review_domain::{EdgeId, PositionId};
     /// use review_domain::repertoire::{OpeningGraph, RepertoireMove};
     ///
     /// let (e1, e2) = (EdgeId::new(1), EdgeId::new(2));
@@ -66,7 +66,7 @@ impl OpeningGraph {
     ///
     /// # Examples
     /// ```rust
-    /// use review_domain::ids::{EdgeId, PositionId};
+    /// use review_domain::{EdgeId, PositionId};
     /// use review_domain::repertoire::{OpeningGraph, RepertoireMove};
     ///
     /// let mut graph = OpeningGraph::new();
@@ -98,7 +98,7 @@ impl OpeningGraph {
     ///
     /// # Examples
     /// ```rust
-    /// use review_domain::ids::{EdgeId, PositionId};
+    /// use review_domain::{EdgeId, PositionId};
     /// use review_domain::repertoire::{OpeningGraph, RepertoireMove};
     ///
     /// let mut graph = OpeningGraph::new();

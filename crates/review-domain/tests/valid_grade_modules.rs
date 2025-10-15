@@ -30,5 +30,5 @@ fn conversions_helpers_cover_all_entry_points() {
 fn accuracy_and_interval_modules_share_responsibilities() {
     assert!(Grade::Four.is_correct());
     assert_eq!(Grade::Three.to_interval_increment(), 2);
-    assert_is_close!(Grade::One.to_interval_increment(), 0.15, TEST_EPSILON);
+    assert_is_close!(Grade::One.to_grade_delta(), -0.15, TEST_EPSILON);
 }

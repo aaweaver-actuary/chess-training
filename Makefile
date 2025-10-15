@@ -21,6 +21,7 @@ rust-lint:
 
 .PHONY: test \
 test-steps \
+test-review-domain \
 test-card-store \
 test-chess-training-pgn-import \
 test-scheduler-core \
@@ -38,7 +39,15 @@ test-steps:
 	make rust-lint
 	cargo test
 	mkdir -p target/llvm-cov
-	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
+	cargo llvm-cov --package chess-training $(CARGO_LLVM_COV_FLAGS)
+
+test-review-domain:
+	cd $(PROJECT_ROOT)/crates/review-domain && \
+	cargo fmt --manifest-path $(PROJECT_ROOT)/Cargo.toml --package review-domain && \
+	cargo clippy --manifest-path $(PROJECT_ROOT)/Cargo.toml -p review-domain --all-targets --all-features -- -D clippy::all -D clippy::pedantic && \
+	cargo test && \
+	mkdir -p target/llvm-cov && \
+	cargo llvm-cov --manifest-path $(PROJECT_ROOT)/Cargo.toml --package review-domain $(CARGO_LLVM_COV_FLAGS)
 
 test-card-store:
 	cd $(PROJECT_ROOT)/crates/card-store && \
@@ -46,7 +55,7 @@ test-card-store:
 	cargo clippy --manifest-path $(PROJECT_ROOT)/Cargo.toml -p card-store --all-targets --all-features -- -D clippy::all -D clippy::pedantic && \
 	cargo test && \
 	mkdir -p target/llvm-cov && \
-	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
+	cargo llvm-cov --manifest-path $(PROJECT_ROOT)/Cargo.toml --package card-store --ignore-filename-regex "crates/(review-domain|scheduler-core)/" $(CARGO_LLVM_COV_FLAGS)
 
 test-chess-training-pgn-import:
 	cd $(PROJECT_ROOT)/crates/chess-training-pgn-import && \
@@ -62,7 +71,7 @@ test-scheduler-core:
 	cargo clippy --manifest-path $(PROJECT_ROOT)/Cargo.toml -p scheduler-core --all-targets --all-features -- -D clippy::all -D clippy::pedantic && \
 	cargo test && \
 	mkdir -p target/llvm-cov && \
-	cargo llvm-cov $(CARGO_LLVM_COV_FLAGS)
+	cargo llvm-cov --manifest-path $(PROJECT_ROOT)/Cargo.toml --package scheduler-core --ignore-filename-regex "crates/review-domain/" $(CARGO_LLVM_COV_FLAGS)
 
 test-web-ui:
 	cd $(PROJECT_ROOT)/web-ui && \

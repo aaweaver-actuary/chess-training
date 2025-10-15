@@ -21,7 +21,7 @@ pub use card::{Card, CardKind, StoredCardState};
 /// Validated review grades and related errors.
 pub use grade::{Grade, GradeError};
 /// Strongly typed identifier wrappers used across the crate.
-pub use ids::{CardId, EdgeId, IdConversionError, LearnerId, MoveId, TacticId};
+pub use ids::{CardId, EdgeId, IdConversionError, IdKind, LearnerId, MoveId, TacticId};
 /// Opening-focused request and payload types.
 pub use opening::{EdgeInput, OpeningCard, OpeningEdge, OpeningEdgeHandle};
 /// Normalized chess position representation and related errors.
