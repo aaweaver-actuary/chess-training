@@ -71,6 +71,19 @@ impl QuizSession {
     }
 
     /// Returns `true` when all steps have been attempted.
+    ///
+    /// This is used to determine if the quiz has been completed.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quiz_core::{QuizSession, QuizStep};
+    /// let steps = vec![
+    ///     QuizStep::new("fen1", "e4", "e4", 1),
+    ///     QuizStep::new("fen2", "e5", "e5", 1),
+    /// ];
+    /// let mut session = QuizSession::new(steps);
+    /// assert!(!session.is_complete());
+    /// ```
     #[must_use]
     pub fn is_complete(&self) -> bool {
         self.current_index >= self.steps.len()
