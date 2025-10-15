@@ -1093,8 +1093,10 @@ _Source:_ `crates/quiz-core/src/state.rs`
 **Usage in this repository:**
 - `QuizSession::new` initialises sessions with summaries sized to the provided steps, ensuring the
   engine can report totals without recomputing counts mid-run.
-- Tests in `crates/quiz-core/src/state.rs` validate that new sessions start at index `0` and expose
-  the expected summary totals.
+- `QuizSession::from_source` and `QuizSession::from_pgn` hydrate ordered `QuizStep` entries from a
+  validated PGN source, wiring in retry allowances and legal-board FEN snapshots for each move.
+- Tests in `crates/quiz-core/src/state.rs` validate session hydration, summary initialisation, and
+  error propagation for unsupported PGN features.
 
 ### `QuizSource`
 
@@ -1114,8 +1116,8 @@ _Source:_ `crates/quiz-core/src/source.rs`
 **Usage in this repository:**
 - `QuizSource::from_pgn` validates quiz inputs, rejecting comments, variations, or multiple games
   before returning a normalised move list.
-- Upcoming engine tasks will hydrate `QuizSession` state from the stored SAN moves without
-  re-parsing PGN text.
+- `QuizSession::from_source` consumes `QuizSource` data to build quiz steps without re-parsing PGN
+  text, keeping hydration logic deterministic.
 
 ### `QuizStep`
 
@@ -1138,7 +1140,10 @@ _Source:_ `crates/quiz-core/src/state.rs`
 **Usage in this repository:**
 - Constructed via `QuizStep::new`, which seeds the embedded `AttemptState` with the configured retry
   allowance and keeps annotation storage empty until feedback is attached.
-- Unit tests assert that a new step starts with a pending attempt and no retries consumed.
+- Session hydration uses `QuizStep::new` to attach SAN prompts and FEN snapshots derived from
+  validated PGN moves.
+- Unit tests assert that a new step starts with a pending attempt, no retries consumed, and correct
+  board state serialisation.
 
 ### `AttemptState`
 

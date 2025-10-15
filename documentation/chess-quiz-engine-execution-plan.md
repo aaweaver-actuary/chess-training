@@ -22,9 +22,9 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** `shakmaty` APIs, existing PGN normalisation strategies documented in `documentation/chess-quiz-engine.md`, parser error taxonomy requirement.
 - **Outputs:** `source::QuizSource::from_pgn` normalises a single-game PGN string into SAN moves and a starting `Chess` position, backed by a richer `QuizError` enum (`UnreadablePgn`, `MultipleGames`, `VariationsUnsupported`, `WrongFormat`, `NoMoves`). Unit tests assert rejection of comments, variations, multiple games, and empty inputs while confirming successful parsing of well-formed PGN samples.
 
-## 6. Wire quiz state initialisation and step hydration
+## 6. Wire quiz state initialisation and step hydration ✅
 - **Inputs:** Outputs from Tasks 4 and 5.
-- **Outputs:** Logic that consumes parsed PGN data to populate the session state sequence (initial board plus per-move prompts). Includes tests ensuring correct SAN/FEN generation and that unsupported features (variations, comments) surface explicit errors.
+- **Outputs:** `QuizSession::from_source` and `QuizSession::from_pgn` hydrate the session from parsed PGN data, producing ordered `QuizStep` entries with legal-board FEN snapshots and SAN prompts. Unit tests confirm FEN/SAN alignment for multi-move sequences and verify that unsupported features (variations, comments) surface the explicit parsing errors introduced earlier.
 
 ## 7. Define interaction ports and reference terminal adapter
 - **Inputs:** Port trait sketch in the design brief, repository feature-flagging conventions.

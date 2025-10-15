@@ -77,6 +77,9 @@ The `state` module now codifies the data exchanged between the engine and adapte
   outcome so retry policies remain enforceable without leaking implementation details to adapters.
 - `QuizSummary` tallies correct, incorrect, and retry counts, giving the orchestration layer a
   single structure to update as the session advances.
+- `QuizSession::from_source` and `QuizSession::from_pgn` hydrate session steps from a validated
+  PGN source, ensuring each `QuizStep` carries the legal-board FEN snapshot and canonical SAN
+  prompt while bubbling up any parsing errors for adapters to display.
 
 ## Implementation Roadmap
 The roadmap breaks implementation into four atomic streams. Each subsection describes candidate approaches, the trade-offs we e

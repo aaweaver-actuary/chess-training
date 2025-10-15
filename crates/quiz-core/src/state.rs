@@ -2,6 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::errors::QuizError;
+use crate::source::QuizSource;
+use shakmaty::fen::Fen;
+use shakmaty::{EnPassantMode, Position};
+
 /// Immutable snapshot of a learner's progress through a chess quiz.
 ///
 /// The session keeps track of each `QuizStep`, the active index the engine is
@@ -29,6 +34,26 @@ impl QuizSession {
             current_index: 0,
             summary,
         }
+    }
+
+    /// Hydrates a new session from a parsed [`QuizSource`].
+    ///
+    /// # Parameters
+    /// - `max_retries`: The maximum number of retries allowed per step. Must be greater than zero.
+    ///
+    /// # Panics
+    /// Panics if `max_retries` is zero.
+    #[must_use]
+    pub fn from_source(source: &QuizSource, max_retries: u8) -> Self {
+        assert!(max_retries > 0, "max_retries must be greater than zero");
+        let steps = hydrate_steps(source, max_retries);
+        Self::new(steps)
+    }
+
+    /// Parses PGN text directly into a [`QuizSession`].
+    pub fn from_pgn(pgn: &str, max_retries: u8) -> Result<Self, QuizError> {
+        let source = QuizSource::from_pgn(pgn)?;
+        Ok(Self::from_source(&source, max_retries))
     }
 
     /// Returns `true` when all steps have been attempted.
@@ -164,6 +189,8 @@ pub enum AttemptResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::QuizError;
+    use crate::source::QuizSource;
 
     fn sample_step(max_retries: u8) -> QuizStep {
         QuizStep::new(
@@ -213,4 +240,68 @@ mod tests {
         assert_eq!(summary.incorrect_answers, 0);
         assert_eq!(summary.retries_consumed, 0);
     }
+
+    #[test]
+    fn hydration_generates_board_snapshots_and_prompts() {
+        let source = QuizSource::from_pgn("1. e4 e5 2. Nf3 Nc6 *").expect("valid PGN");
+        let session = QuizSession::from_source(&source, 1);
+
+        assert_eq!(session.steps.len(), 4);
+
+        let first = &session.steps[0];
+        assert_eq!(
+            first.board_fen,
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        );
+        assert_eq!(first.prompt_san, "e4");
+        assert_eq!(first.solution_san, "e4");
+        assert_eq!(first.attempt.retries_allowed, 1);
+
+        let second = &session.steps[1];
+        assert_eq!(
+            second.board_fen,
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+        );
+        assert_eq!(second.prompt_san, "e5");
+        assert_eq!(second.solution_san, "e5");
+
+        let third = &session.steps[2];
+        assert_eq!(
+            third.board_fen,
+            "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
+        );
+        assert_eq!(third.prompt_san, "Nf3");
+
+        let fourth = &session.steps[3];
+        assert_eq!(
+            fourth.board_fen,
+            "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
+        );
+        assert_eq!(fourth.prompt_san, "Nc6");
+    }
+
+    #[test]
+    fn hydration_from_pgn_propagates_parsing_errors() {
+        let err = QuizSession::from_pgn("1. e4 e5 (1... c5) 2. Nf3 Nc6 *", 1).unwrap_err();
+
+        assert!(matches!(err, QuizError::VariationsUnsupported));
+    }
+}
+
+fn hydrate_steps(source: &QuizSource, max_retries: u8) -> Vec<QuizStep> {
+    let mut board = source.initial_position.clone();
+    let mut steps = Vec::with_capacity(source.san_moves.len());
+
+    for san in &source.san_moves {
+        let fen = Fen::from_position(&board, EnPassantMode::Legal).to_string();
+        let san_text = san.to_string();
+        steps.push(QuizStep::new(fen, san_text.clone(), san_text, max_retries));
+
+        let mv = san
+            .to_move(&board)
+            .expect("SAN moves stored in QuizSource must remain legal");
+        board.play_unchecked(mv);
+    }
+
+    steps
 }
