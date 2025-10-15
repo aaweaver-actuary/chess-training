@@ -788,6 +788,8 @@ name = "quiz-core"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "shakmaty",
+ "thiserror",
 ]
 
 [[package]]

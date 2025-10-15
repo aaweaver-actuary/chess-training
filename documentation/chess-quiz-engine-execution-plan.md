@@ -18,9 +18,9 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** Design brief architecture section, existing domain patterns for immutable state.
 - **Outputs:** Data structures such as `QuizSession`, `QuizStep`, `AttemptState`, and `QuizSummary` with documented fields for FEN snapshots, SAN prompts, retry counters, and cumulative scoring. Include serde derives where useful and unit tests that assert default/constructor invariants (failing first per TDD).
 
-## 5. Implement PGN parsing and validation primitives
+## 5. Implement PGN parsing and validation primitives ✅
 - **Inputs:** `shakmaty` APIs, existing PGN normalisation strategies documented in `documentation/chess-quiz-engine.md`, parser error taxonomy requirement.
-- **Outputs:** Modules/functions (e.g., `QuizSource::from_pgn`) that convert a single-game PGN string into an ordered move list with initial board state, returning descriptive `QuizError` variants (`UnreadablePgn`, `MultipleGames`, etc.). Tests cover malformed PGN samples and verify error mapping.
+- **Outputs:** `source::QuizSource::from_pgn` normalises a single-game PGN string into SAN moves and a starting `Chess` position, backed by a richer `QuizError` enum (`UnreadablePgn`, `MultipleGames`, `VariationsUnsupported`, `WrongFormat`, `NoMoves`). Unit tests assert rejection of comments, variations, multiple games, and empty inputs while confirming successful parsing of well-formed PGN samples.
 
 ## 6. Wire quiz state initialisation and step hydration
 - **Inputs:** Outputs from Tasks 4 and 5.

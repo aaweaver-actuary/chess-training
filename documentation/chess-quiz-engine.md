@@ -191,7 +191,7 @@ arate task or by providing a second trait if needed. The CLI adapter remains opt
 // src/errors.rs
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum QuizError {
     #[error("failed to parse PGN: {0}")]
     UnreadablePgn(String),
@@ -201,6 +201,8 @@ pub enum QuizError {
     VariationsUnsupported,
     #[error("expected a single main line of moves")]
     WrongFormat,
+    #[error("PGN did not contain any moves")]
+    NoMoves,
     #[error("I/O error")] // used by adapters
     Io,
 }
@@ -215,6 +217,12 @@ pub enum QuizError {
 
 **Decision:** Wrap `shakmaty` errors in our own enum. This maintains human-friendly language while letting the engine branch on
 specific cases. Unit tests will construct representative PGN snippets to ensure each variant is reachable.
+
+To consume those errors, `QuizSource::from_pgn` has been implemented as the sole entry point for parsing quiz content. The helper
+strips move numbers, results, and annotation glyphs, rejects comments or nested variations outright, and converts each SAN token
+into a `shakmaty::san::San` while advancing a `shakmaty::Chess` board. The function returns the starting position together with
+the canonical move list so later tasks can hydrate `QuizSession` state without re-parsing PGN. Dedicated unit tests cover
+malformed strings (empty inputs, embedded comments, multiple games) to assert that the correct `QuizError` variant surfaces.
 
 ### 4. Build Red–Green Test Suite and Documentation
 **Objective:** Follow strict TDD to grow the engine, and document every public-facing type and behavior.

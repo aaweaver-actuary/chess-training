@@ -1096,6 +1096,27 @@ _Source:_ `crates/quiz-core/src/state.rs`
 - Tests in `crates/quiz-core/src/state.rs` validate that new sessions start at index `0` and expose
   the expected summary totals.
 
+### `QuizSource`
+
+**Overview:** Represents the parsed form of a single PGN quiz, capturing the starting board state and
+the SAN moves that make up the training prompts.
+
+**Definition:**
+```rust
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuizSource {
+    pub initial_position: Chess,
+    pub san_moves: Vec<San>,
+}
+```
+_Source:_ `crates/quiz-core/src/source.rs`
+
+**Usage in this repository:**
+- `QuizSource::from_pgn` validates quiz inputs, rejecting comments, variations, or multiple games
+  before returning a normalised move list.
+- Upcoming engine tasks will hydrate `QuizSession` state from the stored SAN moves without
+  re-parsing PGN text.
+
 ### `QuizStep`
 
 **Overview:** Encapsulates the board context and SAN prompt for a single quiz move, tracking the
