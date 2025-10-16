@@ -4,6 +4,18 @@ use quiz_core::{
     AttemptResult, FeedbackMessage, PromptContext, QuizEngine, QuizError, QuizPort, QuizSummary,
 };
 
+/// Test harness that simulates a [`QuizPort`] by replaying a fixed
+/// sequence of learner responses.
+///
+/// The engine under test interacts with this port exactly as it would with a
+/// real UI adapter: prompts are handed to [`QuizPort::present_prompt`],
+/// feedback is delivered via [`QuizPort::publish_feedback`], and the run
+/// concludes with [`QuizPort::present_summary`].
+///
+/// Each interaction is recorded so that the integration tests in this module
+/// can assert on the engine's behaviour without relying on I/O. When the
+/// predetermined responses are exhausted the port surfaces [`QuizError::Io`],
+/// mimicking a disconnected or unresponsive client.
 struct DeterministicPort {
     responses: VecDeque<String>,
     pub prompts: Vec<PromptContext>,
@@ -12,6 +24,8 @@ struct DeterministicPort {
 }
 
 impl DeterministicPort {
+    /// Constructs a [`DeterministicPort`] that will yield the provided
+    /// `responses` in order before signalling [`QuizError::Io`].
     fn new<I, S>(responses: I) -> Self
     where
         I: IntoIterator<Item = S>,
