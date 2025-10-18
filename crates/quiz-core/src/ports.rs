@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::errors::AdapterResult;
-use crate::state::{AttemptResult, QuizSummary};
+use crate::state::{AttemptResult, QuizSummary, StepMetadata};
 
 /// Trait describing how adapters interact with the quiz engine.
 pub trait QuizPort {
@@ -45,6 +45,8 @@ pub struct PromptContext {
     pub previous_move_san: Option<String>,
     /// Number of retries remaining for the current step.
     pub remaining_retries: u8,
+    /// Metadata describing how this prompt maps back to repertoire records.
+    pub metadata: StepMetadata,
 }
 
 impl PromptContext {
@@ -70,6 +72,8 @@ pub struct FeedbackMessage {
     pub annotations: Vec<String>,
     /// Remaining retries after processing the attempt.
     pub remaining_retries: u8,
+    /// Metadata associated with the reported step for downstream correlation.
+    pub metadata: StepMetadata,
 }
 
 impl FeedbackMessage {
@@ -79,6 +83,7 @@ impl FeedbackMessage {
         step_index: usize,
         learner_response: impl Into<String>,
         annotations: Vec<String>,
+        metadata: StepMetadata,
     ) -> Self {
         Self {
             step_index,
@@ -87,6 +92,7 @@ impl FeedbackMessage {
             solution_san: String::new(),
             annotations,
             remaining_retries: 0,
+            metadata,
         }
     }
 
@@ -96,6 +102,7 @@ impl FeedbackMessage {
         step_index: usize,
         learner_response: impl Into<String>,
         remaining_retries: u8,
+        metadata: StepMetadata,
     ) -> Self {
         Self {
             step_index,
@@ -104,6 +111,7 @@ impl FeedbackMessage {
             solution_san: String::new(),
             annotations: Vec::new(),
             remaining_retries,
+            metadata,
         }
     }
 
@@ -114,6 +122,7 @@ impl FeedbackMessage {
         learner_response: Option<String>,
         solution_san: impl Into<String>,
         annotations: Vec<String>,
+        metadata: StepMetadata,
     ) -> Self {
         Self {
             step_index,
@@ -122,6 +131,7 @@ impl FeedbackMessage {
             solution_san: solution_san.into(),
             annotations,
             remaining_retries: 0,
+            metadata,
         }
     }
 }
@@ -129,7 +139,7 @@ impl FeedbackMessage {
 #[cfg(all(test, feature = "cli"))]
 mod tests {
     use super::*;
-    use crate::state::QuizSummary;
+    use crate::state::{QuizSummary, StepMetadata};
     use std::io::Cursor;
     use std::io::{self, Write};
 
@@ -144,6 +154,7 @@ mod tests {
             prompt_san: "Qh5+".into(),
             previous_move_san: Some("Nc6".into()),
             remaining_retries: 1,
+            metadata: StepMetadata::default(),
         }
     }
 
@@ -181,24 +192,45 @@ mod tests {
 
     #[test]
     fn feedback_message_constructors_cover_all_variants() {
-        let success = FeedbackMessage::success(0, "Qh5+", vec!["mate".into()]);
+        let success =
+            FeedbackMessage::success(0, "Qh5+", vec!["mate".into()], StepMetadata::default());
         assert_eq!(success.result, AttemptResult::Correct);
         assert_eq!(success.learner_response.as_deref(), Some("Qh5+"));
         assert_eq!(success.annotations, vec!["mate".to_string()]);
         assert_eq!(success.remaining_retries, 0);
+        assert!(success.metadata.theme_tags.is_empty());
 
-        let retry = FeedbackMessage::retry(1, "Qh4", 2);
+        let retry = FeedbackMessage::retry(
+            1,
+            "Qh4",
+            2,
+            StepMetadata {
+                step_id: Some("s1".into()),
+                ..StepMetadata::default()
+            },
+        );
         assert_eq!(retry.result, AttemptResult::Pending);
         assert_eq!(retry.learner_response.as_deref(), Some("Qh4"));
         assert_eq!(retry.remaining_retries, 2);
         assert!(retry.annotations.is_empty());
+        assert_eq!(retry.metadata.step_id.as_deref(), Some("s1"));
 
-        let failure = FeedbackMessage::failure(2, None, "Qh5+", vec!["skewer".into()]);
+        let failure = FeedbackMessage::failure(
+            2,
+            None,
+            "Qh5+",
+            vec!["skewer".into()],
+            StepMetadata {
+                card_ids: vec!["card-42".into()],
+                ..StepMetadata::default()
+            },
+        );
         assert_eq!(failure.result, AttemptResult::Incorrect);
         assert_eq!(failure.learner_response, None);
         assert_eq!(failure.solution_san, "Qh5+");
         assert_eq!(failure.annotations, vec!["skewer".to_string()]);
         assert_eq!(failure.remaining_retries, 0);
+        assert_eq!(failure.metadata.card_ids, vec!["card-42".to_string()]);
     }
 
     #[test]
@@ -254,6 +286,7 @@ mod tests {
             solution_san: "Qh5+".into(),
             annotations: vec!["Classic Scholar's Mate pattern".into()],
             remaining_retries: 1,
+            metadata: StepMetadata::default(),
         };
 
         port.publish_feedback(message)
@@ -271,7 +304,7 @@ mod tests {
         let writer = Vec::new();
         let mut port = TerminalPort::with_io(input, writer);
 
-        let message = FeedbackMessage::retry(0, "Qh5", 1);
+        let message = FeedbackMessage::retry(0, "Qh5", 1, StepMetadata::default());
 
         port.publish_feedback(message)
             .expect("feedback output should succeed");
@@ -296,6 +329,7 @@ mod tests {
             solution_san: "Qh5+".into(),
             annotations: vec![],
             remaining_retries: 0,
+            metadata: StepMetadata::default(),
         };
 
         port.publish_feedback(message)
@@ -313,8 +347,13 @@ mod tests {
         let writer = Vec::new();
         let mut port = TerminalPort::with_io(input, writer);
 
-        let message =
-            FeedbackMessage::failure(0, Some("Qh4".into()), "Qh5+", vec!["Fork the king".into()]);
+        let message = FeedbackMessage::failure(
+            0,
+            Some("Qh4".into()),
+            "Qh5+",
+            vec!["Fork the king".into()],
+            StepMetadata::default(),
+        );
 
         port.publish_feedback(message)
             .expect("feedback output should succeed");
@@ -348,5 +387,29 @@ mod tests {
         assert!(output.contains("Correct: 1"));
         assert!(output.contains("Incorrect: 1"));
         assert!(output.contains("Retries used: 1"));
+    }
+
+    #[test]
+    fn terminal_port_displays_metadata_when_available() {
+        let input = Cursor::new("e4\n");
+        let writer = Vec::new();
+        let mut port = TerminalPort::with_io(input, writer);
+
+        let mut ctx = context();
+        ctx.metadata = StepMetadata {
+            step_id: Some("step-42".into()),
+            theme_tags: vec!["mate".into(), "sacrifice".into()],
+            card_ids: vec!["card-1".into()],
+        };
+
+        let _ = port
+            .present_prompt(ctx)
+            .expect("metadata prompt should succeed");
+
+        let (_, writer) = port.into_inner();
+        let output = String::from_utf8(writer).expect("utf8");
+        assert!(output.contains("Step ID: step-42"));
+        assert!(output.contains("Themes: mate, sacrifice"));
+        assert!(output.contains("Card references: card-1"));
     }
 }

@@ -52,12 +52,13 @@ impl QuizEngine {
                 Some(self.session.steps[step_index - 1].solution_san.clone())
             };
 
-            let (board_fen, prompt_san, remaining_retries) = {
+            let (board_fen, prompt_san, remaining_retries, metadata) = {
                 let step = &self.session.steps[step_index];
                 (
                     step.board_fen.clone(),
                     step.prompt_san.clone(),
                     step.attempt.remaining_retries(),
+                    step.metadata.clone(),
                 )
             };
 
@@ -68,6 +69,7 @@ impl QuizEngine {
                 prompt_san,
                 previous_move_san: previous_move,
                 remaining_retries,
+                metadata,
             };
 
             let response = port.present_prompt(context)?;
@@ -114,7 +116,12 @@ impl QuizEngine {
         if san_matches(&trimmed, &step.solution_san) {
             step.attempt.result = AttemptResult::Correct;
             return GradeOutcome {
-                feedback: FeedbackMessage::success(step_index, trimmed, step.annotations.clone()),
+                feedback: FeedbackMessage::success(
+                    step_index,
+                    trimmed,
+                    step.annotations.clone(),
+                    step.metadata.clone(),
+                ),
                 final_result: Some(AttemptResult::Correct),
             };
         }
@@ -123,7 +130,12 @@ impl QuizEngine {
         if remaining > 0 {
             step.attempt.retries_used += 1;
             return GradeOutcome {
-                feedback: FeedbackMessage::retry(step_index, trimmed, remaining),
+                feedback: FeedbackMessage::retry(
+                    step_index,
+                    trimmed,
+                    remaining,
+                    step.metadata.clone(),
+                ),
                 final_result: None,
             };
         }
@@ -135,6 +147,7 @@ impl QuizEngine {
                 (!trimmed.is_empty()).then_some(trimmed),
                 step.solution_san.clone(),
                 step.annotations.clone(),
+                step.metadata.clone(),
             ),
             final_result: Some(AttemptResult::Incorrect),
         }
@@ -349,5 +362,35 @@ mod tests {
         assert_eq!(summary.correct_answers, 1);
         let attempt = &engine.session().steps[0].attempt;
         assert_eq!(attempt.responses, vec!["d4".to_string(), "E4".to_string()]);
+    }
+
+    #[test]
+    fn engine_propagates_step_metadata_into_prompts_and_feedback() {
+        let mut step = QuizStep::new("fen", "e4", "e4", 1);
+        step.metadata.step_id = Some("step-1".into());
+        step.metadata.theme_tags = vec!["mate".into()];
+        step.metadata.card_ids = vec!["card-99".into()];
+
+        let session = QuizSession::new(vec![step]);
+        let mut engine = QuizEngine::new(session);
+        let mut port = FakePort::with_responses(vec!["e4"]);
+
+        let summary = engine.run(&mut port).expect("engine should complete");
+        assert_eq!(summary.correct_answers, 1);
+
+        let prompt = port
+            .prompts
+            .first()
+            .expect("prompt should be captured by fake port");
+        assert_eq!(prompt.metadata.step_id.as_deref(), Some("step-1"));
+        assert_eq!(prompt.metadata.theme_tags, vec!["mate".to_string()]);
+        assert_eq!(prompt.metadata.card_ids, vec!["card-99".to_string()]);
+
+        let feedback = port
+            .feedback
+            .first()
+            .expect("feedback should be captured by fake port");
+        assert_eq!(feedback.metadata.step_id.as_deref(), Some("step-1"));
+        assert_eq!(feedback.metadata.card_ids, vec!["card-99".to_string()]);
     }
 }

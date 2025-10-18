@@ -114,6 +114,8 @@ pub struct QuizStep {
     pub attempt: AttemptState,
     /// Optional annotations that accompany the step once graded.
     pub annotations: Vec<String>,
+    /// Optional metadata used to correlate steps with external schedulers.
+    pub metadata: StepMetadata,
 }
 
 impl QuizStep {
@@ -134,8 +136,20 @@ impl QuizStep {
             solution_san: solution_san.into(),
             attempt: AttemptState::new(max_retries),
             annotations: Vec::new(),
+            metadata: StepMetadata::default(),
         }
     }
+}
+
+/// Stable metadata describing how a quiz step maps back to the learner's repertoire.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct StepMetadata {
+    /// Durable identifier for the step when persisted outside the engine.
+    pub step_id: Option<String>,
+    /// Semantic tags that describe the tactical or strategic theme of the prompt.
+    pub theme_tags: Vec<String>,
+    /// External card identifiers that reference spaced-repetition records.
+    pub card_ids: Vec<String>,
 }
 
 /// Represents the current attempt status for a single quiz step.
@@ -273,6 +287,15 @@ mod tests {
         assert_eq!(step.attempt.retries_allowed, 2);
         assert_eq!(step.attempt.retries_used, 0);
         assert_eq!(step.attempt.result, AttemptResult::Pending);
+    }
+
+    #[test]
+    fn quiz_step_initialises_metadata_as_empty() {
+        let step = sample_step(1);
+
+        assert_eq!(step.metadata.step_id, None);
+        assert!(step.metadata.theme_tags.is_empty());
+        assert!(step.metadata.card_ids.is_empty());
     }
 
     #[test]

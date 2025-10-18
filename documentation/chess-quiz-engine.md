@@ -11,6 +11,9 @@ single source of truth for how the quiz workflow operates.
 - `QuizEngine::run` drives each step through `process_current_step`, constructing a `PromptContext`, capturing SAN responses, grading them with `grade_attempt`, and publishing a terminal summary via the injected port.【F:crates/quiz-core/src/engine.rs†L32-L147】
 - Session hydration comes from `QuizSource::from_pgn`, producing `QuizStep` entries whose FEN boards and SAN prompts remain aligned with the legal move sequence while initialising retry allowances inside `QuizSession::from_source`.【F:crates/quiz-core/src/source.rs†L19-L86】【F:crates/quiz-core/src/state.rs†L16-L121】
 - Adapter boundaries stay encapsulated by serialisable `PromptContext` and `FeedbackMessage` types, and the terminal adapter exercises every branch of the prompt/feedback/summary loop using buffered handles under the `cli` feature flag.【F:crates/quiz-core/src/ports.rs†L7-L115】【F:crates/quiz-core/src/cli.rs†L41-L134】
+- Each `QuizStep` carries `StepMetadata` so schedulers receive stable step IDs,
+  theme tags, and card IDs through `PromptContext` and `FeedbackMessage`, and
+  the terminal adapter renders the metadata lines.【F:crates/quiz-core/src/state.rs†L70-L110】【F:crates/quiz-core/src/engine.rs†L53-L155】【F:crates/quiz-core/src/cli.rs†L41-L110】
 - Error handling is centralised in `QuizError` with ready-made conversions so adapters operate purely on `QuizResult` aliases instead of wiring their own plumbing.【F:crates/quiz-core/src/errors.rs†L1-L88】
 
 ### 2. Work effort still required for an mvp
@@ -23,8 +26,6 @@ the gaps each task closes:
   the terminal adapter to overstate remaining allowances.【F:crates/quiz-core/src/engine.rs†L76-L120】【F:crates/quiz-core/src/cli.rs†L72-L118】
 - **[T2] SAN equivalence.** `san_matches` treats `Nf3+` and `Nf3` as different
   moves, penalising learners for optional suffixes or glyphs.【F:crates/quiz-core/src/engine.rs†L130-L167】
-- **[T3] Stable metadata.** `QuizStep` and `PromptContext` expose no identifiers
-  or thematic tags, limiting downstream schedulers to positional heuristics.【F:crates/quiz-core/src/state.rs†L49-L116】【F:crates/quiz-core/src/ports.rs†L7-L61】
 - **[T4] Annotation hydration.** `QuizStep::annotations` always remains empty
   because PGN parsing strips comments and glyphs during normalisation.【F:crates/quiz-core/src/state.rs†L53-L90】【F:crates/quiz-core/src/source.rs†L59-L103】
 - **[T5] CLI runner.** `cli::run` still prints a placeholder message instead of
@@ -46,9 +47,9 @@ them methodically:
 - **SAN suffix handling ([T2]).** `san_matches` ignores case but still requires
   exact SAN tokens, rejecting equivalent moves when learners include suffixes or
   glyphs.【F:crates/quiz-core/src/engine.rs†L155-L167】
-- **Missing metadata ([T3]).** `QuizStep` and `PromptContext` lack stable
-  identifiers, preventing schedulers from linking attempts to repertoire
-  records.【F:crates/quiz-core/src/state.rs†L53-L103】【F:crates/quiz-core/src/ports.rs†L25-L61】
+- **Resolved metadata gap ([T3]).** `StepMetadata` tracks step IDs, theme tags,
+  and card IDs on every `QuizStep`, and the engine now carries it through
+  prompts and feedback for adapter consumption.【F:crates/quiz-core/src/state.rs†L70-L110】【F:crates/quiz-core/src/engine.rs†L53-L155】【F:crates/quiz-core/src/ports.rs†L19-L119】
 
 ### 4. Any suggestions for adjustments based on those issues?
 - **[T1] Retry messaging.** Increment retries before constructing
@@ -57,9 +58,9 @@ them methodically:
 - **[T2] SAN normalisation.** Extend `san_matches` (or its callers) to strip
   optional suffix markers or parse via `shakmaty::San` so equivalent notation is
   accepted.【F:crates/quiz-core/src/engine.rs†L155-L167】
-- **[T3] Metadata surface.** Add durable identifiers and repertoire metadata to
-  `QuizStep`/`PromptContext` so schedulers and adapters can correlate attempts
-  without heuristics.【F:crates/quiz-core/src/state.rs†L53-L103】【F:crates/quiz-core/src/ports.rs†L25-L61】
+- **[T3] Metadata surface.** Durable identifiers, theme tags, and card IDs flow
+  through `StepMetadata`, allowing schedulers and adapters to correlate
+  attempts without heuristics.【F:crates/quiz-core/src/state.rs†L70-L110】【F:crates/quiz-core/src/ports.rs†L19-L119】
 
 ## Integration Backlog and Coordination Guidelines
 
@@ -145,6 +146,8 @@ The `state` module now codifies the data exchanged between the engine and adapte
   `QuizSummary` totals so adapters can serialise a complete snapshot at any point.
 - `QuizStep` pairs a FEN board snapshot with the SAN prompt and solution, embedding an
   `AttemptState` that records retries and learner responses alongside optional annotations.
+- `StepMetadata` stores the durable step ID, theme tags, and associated card IDs so adapters
+  and schedulers can correlate attempts with repertoire entries.
 - `AttemptState` and its `AttemptResult` enum capture retry allowances, responses, and the final
   outcome so retry policies remain enforceable without leaking implementation details to adapters.
 - `QuizSummary` tallies correct, incorrect, and retry counts, giving the orchestration layer a
@@ -243,6 +246,7 @@ pub struct PromptContext {
     pub prompt_san: String,
     pub previous_move_san: Option<String>,
     pub remaining_retries: u8,
+    pub metadata: StepMetadata,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -253,6 +257,7 @@ pub struct FeedbackMessage {
     pub solution_san: String,
     pub annotations: Vec<String>,
     pub remaining_retries: u8,
+    pub metadata: StepMetadata,
 }
 ```
 

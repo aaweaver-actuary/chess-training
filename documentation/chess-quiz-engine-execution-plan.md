@@ -36,19 +36,17 @@ before they are considered complete.
 
 ## Expand session context and fidelity
 
-### [T3] Introduce durable step identifiers and metadata
-- **Objective:** Provide stable identifiers, themes, and card references so
-  schedulers and adapters can correlate quiz progress with stored repertoire
-  entries.
-- **Primary inputs:** `crates/quiz-core/src/state.rs` (`QuizStep`, `PromptContext`),
-  `crates/quiz-core/src/ports.rs`.
-- **Deliverables:** Extend state structs with optional identifier/metadata
-  fields, hydrate them during session creation, and ensure serialisation traits
-  remain valid. Update adapter prompt rendering and fake ports/tests to assert
-  the new fields are preserved end-to-end.
-- **Verification:** Unit tests in `state` and `engine` modules plus integration
-  tests verifying the metadata flows through the fake port fixtures. No
-  dependency on other tasks.
+### [T3] Introduce durable step identifiers and metadata ✅
+- **Status:** Completed via `feat(quiz-core): add durable step metadata surfaces`.
+- **Outcome:** `QuizStep` exposes a `StepMetadata` payload (step IDs, theme tags,
+  spaced-repetition card IDs) that now propagates into `PromptContext` and
+  `FeedbackMessage`. The terminal adapter renders the metadata and tests assert
+  fake ports capture it.
+- **Primary inputs:** `crates/quiz-core/src/state.rs` (`QuizStep`, `StepMetadata`),
+  `crates/quiz-core/src/ports.rs`, `crates/quiz-core/src/engine.rs`,
+  `crates/quiz-core/src/cli.rs`.
+- **Verification:** Unit tests in `state`, `engine`, and `ports` modules confirm
+  metadata hydration, propagation, and adapter output.
 
 ### [T4] Preserve PGN annotations and surface them in feedback
 - **Objective:** Carry commentary and move-level annotations from the source PGN
