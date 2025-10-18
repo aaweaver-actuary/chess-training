@@ -1,25 +1,30 @@
 # Chess Quiz Engine Design Brief
 
+This brief captures the design intent, implementation decisions, and current
+status of the `quiz-core` crate. It now reflects the concrete behavior that
+landed during the initial engine build so downstream teams can treat it as a
+single source of truth for how the quiz workflow operates.
+
 ## Current State
 
 ### 1. Current state of our most basic quiz engine
-- `QuizEngine::run` now drives fully hydrated `QuizSession` instances, looping until each `QuizStep` is graded and publishing a `QuizSummary` through the active `QuizPort`.【F:crates/quiz-core/src/engine.rs†L1-L117】
-- Session hydration is sourced from PGN input via `QuizSource::from_pgn`, guaranteeing single-game main lines and producing SAN prompts with matching FEN board snapshots for every move.【F:crates/quiz-core/src/source.rs†L1-L81】【F:crates/quiz-core/src/state.rs†L1-L121】
-- Adapter communication is mediated entirely through serialisable `PromptContext` and `FeedbackMessage` structures, and the terminal adapter implements the full prompt/feedback/summary contract behind the `cli` feature flag.【F:crates/quiz-core/src/ports.rs†L1-L108】【F:crates/quiz-core/src/cli.rs†L1-L114】
-- Error handling is centralised in `QuizError`, with conversions from PGN parsing and I/O failures so adapter code can rely on `QuizResult` aliases without bespoke plumbing.【F:crates/quiz-core/src/errors.rs†L1-L72】
+- `QuizEngine::run` delegates interaction through `process_current_step`, which builds a `PromptContext`, collects SAN responses, grades them via `grade_attempt`, and advances the session before emitting the final `QuizSummary` through the injected port.【F:crates/quiz-core/src/engine.rs†L24-L117】
+- Session hydration is sourced from PGN input via `QuizSource::from_pgn`, guaranteeing single-game main lines and producing SAN prompts with matching FEN board snapshots for every move.【F:crates/quiz-core/src/source.rs†L19-L86】【F:crates/quiz-core/src/state.rs†L11-L121】
+- Adapter communication is mediated entirely through serialisable `PromptContext` and `FeedbackMessage` structures, and the terminal adapter implements the full prompt/feedback/summary contract behind the `cli` feature flag with buffered I/O handles for deterministic testing.【F:crates/quiz-core/src/ports.rs†L1-L114】【F:crates/quiz-core/src/cli.rs†L1-L114】
+- Error handling is centralised in `QuizError`, with conversions from PGN parsing and I/O failures so adapter code can rely on `QuizResult` aliases without bespoke plumbing.【F:crates/quiz-core/src/errors.rs†L1-L88】
 
 ### 2. Work effort still required for an mvp
-- Integrate annotations into hydration—`QuizStep::annotations` is currently empty because `QuizSource` normalises SAN but does not preserve instructional commentary; we need a data source for move-level notes.【F:crates/quiz-core/src/state.rs†L60-L78】【F:crates/quiz-core/src/source.rs†L47-L81】
-- Replace the placeholder `cli::run` stub with wiring that loads PGN input, constructs a `QuizEngine`, and streams interaction through `TerminalPort` for manual playtesting.【F:crates/quiz-core/src/cli.rs†L116-L118】
-- Deliver non-CLI adapters (API, WASM) or remove their feature flags until implementations land, and provide integration hooks for downstream scheduling/card systems (captured in Task 12 of the execution plan).【F:documentation/chess-quiz-engine-execution-plan.md†L63-L95】
+- Integrate annotations into hydration—`QuizStep::annotations` stays empty because `QuizSource` normalises SAN but does not preserve instructional commentary; we need a data source for move-level notes before adapters can surface coaching tips.【F:crates/quiz-core/src/state.rs†L58-L82】【F:crates/quiz-core/src/source.rs†L59-L86】
+- Replace the placeholder `cli::run` stub with wiring that loads PGN input, constructs a `QuizEngine`, and streams interaction through `TerminalPort` for manual playtesting and demos.【F:crates/quiz-core/src/cli.rs†L116-L119】
+- Deliver non-CLI adapters (API, WASM) or remove their feature flags until implementations land, and provide integration hooks for downstream scheduling/card systems (captured in Task 12 of the execution plan).【F:documentation/chess-quiz-engine-execution-plan.md†L65-L99】
 
 ### 3. Issues surfacing during implementation that do not appear to have been considered during planning
-- Retry feedback currently reports the pre-attempt allowance because `grade_attempt` captures `remaining_retries` before incrementing `retries_used`, leading the terminal adapter to overstate how many chances remain; we need to revise the helper to reflect the post-attempt state.【F:crates/quiz-core/src/engine.rs†L80-L105】【F:crates/quiz-core/src/cli.rs†L69-L99】
-- `san_matches` performs a case-insensitive comparison but otherwise expects exact SAN tokens, so equivalent notations that differ by suffixes (e.g., `Nf3+` vs `Nf3`) are graded as incorrect; we should revisit normalisation rules if annotations or PGN cleaning add symbols back in.【F:crates/quiz-core/src/engine.rs†L131-L160】
+- Retry feedback currently reports the pre-attempt allowance because `grade_attempt` captures `remaining_retries` before incrementing `retries_used`, leading the terminal adapter to overstate how many chances remain; we need to revise the helper to reflect the post-attempt state.【F:crates/quiz-core/src/engine.rs†L83-L109】【F:crates/quiz-core/src/cli.rs†L64-L100】
+- `san_matches` performs a case-insensitive comparison but otherwise expects exact SAN tokens, so equivalent notations that differ by suffixes (e.g., `Nf3+` vs `Nf3`) are graded as incorrect; we should revisit normalisation rules if annotations or PGN cleaning add symbols back in.【F:crates/quiz-core/src/engine.rs†L135-L163】
 
 ### 4. Any suggestions for adjustments based on those issues?
-- Amend `FeedbackMessage::retry` or the call site to compute remaining retries after incrementing `retries_used`, ensuring adapters communicate accurate expectations before a learner's second attempt.【F:crates/quiz-core/src/engine.rs†L80-L105】
-- Extend `san_matches` to tolerate optional suffix markers (e.g., strip trailing `+`, `#`, or match via `San::from_ascii`) so learners are not penalised for including check indicators that were pruned during PGN normalisation.【F:crates/quiz-core/src/engine.rs†L131-L160】
+- Amend `FeedbackMessage::retry` or the `grade_attempt` call site to compute remaining retries after incrementing `retries_used`, ensuring adapters communicate accurate expectations before a learner's second attempt.【F:crates/quiz-core/src/engine.rs†L83-L109】
+- Extend `san_matches` to tolerate optional suffix markers (e.g., strip trailing `+`, `#`, or match via `San::from_ascii`) so learners are not penalised for including check indicators that were pruned during PGN normalisation.【F:crates/quiz-core/src/engine.rs†L135-L163】
 ## Role We Are Supporting
 We are acting as the core infrastructure team for the chess-training workspace. Our responsibility is to design a reusable quiz
 engine that other product surfaces—CLI tools, web experiences, mobile apps, or background services—can embed without depending o
