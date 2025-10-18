@@ -9,19 +9,14 @@ before they are considered complete.
 
 ## Stabilise the core feedback loop
 
-### [T1] Align retry messaging with consumed allowances
-- **Objective:** Ensure `FeedbackMessage::retry` and terminal output report the
-  number of retries remaining *after* the current miss so learners receive
-  accurate guidance.
-- **Primary inputs:** `crates/quiz-core/src/engine.rs`
-  (`grade_attempt`), `crates/quiz-core/src/cli.rs` (`TerminalPort::publish_feedback`).
-- **Deliverables:** Update retry bookkeeping so the attempt state increments
-  before generating retry feedback. Adjust `FeedbackMessage` constructors if
-  required and extend unit tests to assert the new count. Confirm the terminal
-  adapter prints the corrected allowance.
-- **Verification:** Red tests in `engine` module covering exhausted retries and
-  terminal adapter tests confirming the displayed counts. No dependencies on
-  other tasks.
+### [T1] Align retry messaging with consumed allowances — ✅ Completed (`fix(engine): align retry feedback with consumed allowances`)
+- **Outcome:** `grade_attempt` now increments `retries_used` before building
+  retry feedback so `FeedbackMessage::retry` reflects the true allowance after a
+  miss. Terminal feedback mirrors the updated count, preventing learners from
+  seeing stale retry totals.【F:crates/quiz-core/src/engine.rs†L110-L141】【F:crates/quiz-core/src/ports.rs†L274-L283】
+- **Verification:** Extended engine, integration, and terminal adapter tests
+  assert the consumed retry budget and printed allowance all read as zero after
+  the first failed attempt.【F:crates/quiz-core/tests/end_to_end.rs†L90-L115】【F:crates/quiz-core/src/ports.rs†L274-L283】
 
 ### [T2] Accept equivalent SAN notations during grading
 - **Status:** ✅ Completed – feat: normalise SAN suffix handling in quiz grading

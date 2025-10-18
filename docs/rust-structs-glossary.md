@@ -19,7 +19,7 @@ _Source:_ `crates/quiz-core/src/engine.rs`
 **Usage in this repository:**
 - `crates/quiz-core/src/engine.rs` drives quiz execution via `QuizEngine::run`, which loops with `process_current_step` and grades answers through `grade_attempt` before advancing the session summary.
 - `crates/quiz-core/tests/end_to_end.rs` instantiates `QuizEngine::from_pgn` to validate perfect runs, retry saves, exhausted attempts, and adapter error propagation end-to-end.
-- `grade_attempt` leans on the `san_matches` helper to strip trailing check/mate markers and annotation glyphs so equivalent SAN inputs (e.g., `Nf3+`, `axb8=Q+!!`) resolve correctly while rejecting genuinely different moves.【F:crates/quiz-core/src/engine.rs†L150-L188】【F:crates/quiz-core/src/engine.rs†L318-L340】
+- `grade_attempt` leans on the `san_matches` helper to strip trailing check/mate markers and annotation glyphs so equivalent SAN inputs (e.g., `Nf3+`, `axb8=Q+!!`) resolve correctly while rejecting genuinely different moves.【F:crates/quiz-core/src/engine.rs†L150-L188】【F:crates/quiz-core/src/engine.rs†L380-L393】
 
 ### `QuizSession`
 
@@ -76,7 +76,7 @@ _Source:_ `crates/quiz-core/src/state.rs`
 
 **Usage in this repository:**
 - `AttemptState::new` initialises retry budgets for each step during session hydration.
-- `AttemptState::remaining_retries` informs prompt contexts and feedback messaging about available retries and is used in retry bookkeeping tests.
+- `AttemptState::remaining_retries` informs prompt contexts and, after the retry bookkeeping fix, always reflects the allowance remaining once the most recent attempt has been accounted for.【F:crates/quiz-core/src/engine.rs†L122-L128】
 
 ### `AttemptResult`
 
@@ -173,7 +173,7 @@ _Source:_ `crates/quiz-core/src/ports.rs`
 
 **Usage in this repository:**
 - Created by `FeedbackMessage::success`, `retry`, and `failure` helpers invoked from `QuizEngine::grade_attempt`.
-- Rendered in the terminal adapter to communicate success, retry prompts, and final reveals to learners; tests assert each constructor's semantics.
+- Rendered in the terminal adapter to communicate success, retry prompts, and final reveals to learners; after the retry messaging fix the `remaining_retries` field now reports the post-attempt allowance so adapters display accurate guidance.【F:crates/quiz-core/src/engine.rs†L122-L128】【F:crates/quiz-core/src/ports.rs†L274-L283】
 
 ### `QuizError`
 

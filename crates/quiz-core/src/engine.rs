@@ -119,11 +119,12 @@ impl QuizEngine {
             };
         }
 
-        let remaining = step.attempt.remaining_retries();
-        if remaining > 0 {
+        let remaining_before = step.attempt.remaining_retries();
+        if remaining_before > 0 {
             step.attempt.retries_used += 1;
+            let remaining_after = step.attempt.remaining_retries();
             return GradeOutcome {
-                feedback: FeedbackMessage::retry(step_index, trimmed, remaining),
+                feedback: FeedbackMessage::retry(step_index, trimmed, remaining_after),
                 final_result: None,
             };
         }
@@ -292,7 +293,7 @@ mod tests {
         assert_eq!(summary.retries_consumed, 1);
         assert_eq!(port.feedback.len(), 2);
         assert_eq!(port.feedback[0].result, AttemptResult::Pending);
-        assert_eq!(port.feedback[0].remaining_retries, 1);
+        assert_eq!(port.feedback[0].remaining_retries, 0);
         assert_eq!(port.feedback[1].result, AttemptResult::Correct);
         assert_eq!(port.prompts.len(), 2);
         assert_eq!(port.prompts[0].remaining_retries, 1);
