@@ -50,6 +50,7 @@ pub struct QuizStep {
     pub solution_san: String,
     pub attempt: AttemptState,
     pub annotations: Vec<String>,
+    pub metadata: StepMetadata,
 }
 ```
 _Source:_ `crates/quiz-core/src/state.rs`
@@ -57,6 +58,25 @@ _Source:_ `crates/quiz-core/src/state.rs`
 **Usage in this repository:**
 - Hydrated by `hydrate_steps` when building sessions from PGN input, ensuring every SAN move is paired with a legal board position.
 - Mutated by `QuizEngine::grade_attempt` to push learner responses and record outcomes, and consumed by adapters when rendering prompts and reveals.
+- Provides `StepMetadata` so adapters and schedulers can correlate prompts and feedback with external card IDs and themes.
+
+### `StepMetadata`
+
+**Overview:** Encapsulates optional identifiers and tags that connect quiz steps to spaced-repetition records.
+
+**Definition:**
+```rust
+pub struct StepMetadata {
+    pub step_id: Option<String>,
+    pub theme_tags: Vec<String>,
+    pub card_ids: Vec<String>,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- Initialised empty by `QuizStep::new` and populated by callers that want durable identifiers.
+- Propagated into `PromptContext` and `FeedbackMessage` so adapters can render metadata and log card correlations.
 
 ### `AttemptState`
 
@@ -134,7 +154,7 @@ _Source:_ `crates/quiz-core/src/source.rs`
 
 ### `PromptContext`
 
-**Overview:** Adapter-facing DTO describing the move being attempted, including board FEN, SAN prompt, prior move, and retries remaining.
+**Overview:** Adapter-facing DTO describing the move being attempted, including board FEN, SAN prompt, prior move, retries remaining, and optional metadata for schedulers.
 
 **Definition:**
 ```rust
@@ -145,17 +165,18 @@ pub struct PromptContext {
     pub prompt_san: String,
     pub previous_move_san: Option<String>,
     pub remaining_retries: u8,
+    pub metadata: StepMetadata,
 }
 ```
 _Source:_ `crates/quiz-core/src/ports.rs`
 
 **Usage in this repository:**
-- Constructed by `QuizEngine::process_current_step` before every prompt to supply adapters with rendering context.
-- Terminal and fake adapters display the board snapshot and retry counts derived from this struct, and the CLI module exposes helpers that rely on its `display_index` method.
+- Constructed by `QuizEngine::process_current_step` before every prompt to supply adapters with rendering context and metadata.
+- Terminal and fake adapters display the board snapshot, retry counts, and metadata derived from this struct, and the CLI module exposes helpers that rely on its `display_index` method.
 
 ### `FeedbackMessage`
 
-**Overview:** Captures grading results for a step, including the learner's response, correctness, canonical solution, annotations, and retries left.
+**Overview:** Captures grading results for a step, including the learner's response, correctness, canonical solution, annotations, retries left, and metadata for downstream correlation.
 
 **Definition:**
 ```rust
@@ -166,13 +187,14 @@ pub struct FeedbackMessage {
     pub solution_san: String,
     pub annotations: Vec<String>,
     pub remaining_retries: u8,
+    pub metadata: StepMetadata,
 }
 ```
 _Source:_ `crates/quiz-core/src/ports.rs`
 
 **Usage in this repository:**
-- Created by `FeedbackMessage::success`, `retry`, and `failure` helpers invoked from `QuizEngine::grade_attempt`.
-- Rendered in the terminal adapter to communicate success, retry prompts, and final reveals to learners; tests assert each constructor's semantics.
+- Created by `FeedbackMessage::success`, `retry`, and `failure` helpers invoked from `QuizEngine::grade_attempt`, each cloning the originating step's metadata.
+- Rendered in the terminal adapter to communicate success, retry prompts, final reveals, and metadata to learners; tests assert each constructor's semantics.
 
 ### `QuizError`
 

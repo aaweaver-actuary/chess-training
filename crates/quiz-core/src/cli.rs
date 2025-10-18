@@ -56,6 +56,26 @@ where
             writeln!(self.writer, "Previous move: {previous}")?;
         }
 
+        if let Some(step_id) = context.metadata.step_id.as_deref() {
+            writeln!(self.writer, "Step ID: {step_id}")?;
+        }
+
+        if !context.metadata.theme_tags.is_empty() {
+            writeln!(
+                self.writer,
+                "Themes: {}",
+                context.metadata.theme_tags.join(", ")
+            )?;
+        }
+
+        if !context.metadata.card_ids.is_empty() {
+            writeln!(
+                self.writer,
+                "Card references: {}",
+                context.metadata.card_ids.join(", ")
+            )?;
+        }
+
         writeln!(self.writer, "Your move (SAN): {}", context.prompt_san)?;
 
         if context.remaining_retries > 0 {
