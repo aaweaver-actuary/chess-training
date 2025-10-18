@@ -10,6 +10,8 @@ pub mod importer;
 pub mod model;
 /// Shared PGN normalisation utilities used across crates.
 pub mod normalization;
+/// Token-level PGN parsing utilities.
+pub mod pgn;
 /// Storage abstractions used by the importer.
 pub mod storage;
 

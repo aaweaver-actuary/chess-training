@@ -1,35 +1,11 @@
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct NormalizedLine {
-    pub tokens: Vec<String>,
-    pub saw_variation_markers: bool,
-    pub saw_comment_markers: bool,
-    pub saw_result_token: bool,
-    pub tokens_after_result: bool,
-}
+pub mod normalized_line;
+pub mod raw_game;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct RawGame {
-    pub tags: Vec<(String, String)>,
-    pub moves: Vec<String>,
-    pub saw_variation_markers: bool,
-    pub saw_comment_markers: bool,
-    pub saw_result_token: bool,
-    pub tokens_after_result: bool,
-}
+pub use normalized_line::NormalizedLine;
+pub use raw_game::RawGame;
 
-impl RawGame {
-    pub fn tag(&self, name: &str) -> Option<&str> {
-        self.tags
-            .iter()
-            .find(|(key, _)| key.eq_ignore_ascii_case(name))
-            .map(|(_, value)| value.as_str())
-    }
-
-    pub fn has_content(&self) -> bool {
-        !self.tags.is_empty() || !self.moves.is_empty()
-    }
-}
-
+/// Parses the input PGN string into a vector of `RawGame` instances.
+/// Each `RawGame` contains the tags and moves extracted from the PGN.
 pub fn parse_games(input: &str) -> Vec<RawGame> {
     let mut games = Vec::new();
     let mut current = RawGame::default();
@@ -183,6 +159,7 @@ fn is_result_token(token: &str) -> bool {
     matches!(token, "1-0" | "0-1" | "1/2-1/2" | "*")
 }
 
+#[must_use]
 pub fn parse_tag(line: &str) -> Option<(String, String)> {
     let trimmed = line.strip_prefix('[').and_then(|s| s.strip_suffix(']'))?;
     let (key, raw_value) = trimmed.split_once(' ')?;
