@@ -271,7 +271,7 @@ mod tests {
         let writer = Vec::new();
         let mut port = TerminalPort::with_io(input, writer);
 
-        let message = FeedbackMessage::retry(0, "Qh5", 1);
+        let message = FeedbackMessage::retry(0, "Qh5", 0);
 
         port.publish_feedback(message)
             .expect("feedback output should succeed");
@@ -279,7 +279,7 @@ mod tests {
         let (_, writer) = port.into_inner();
         let output = String::from_utf8(writer).expect("utf8");
         assert!(output.contains("Incorrect, try again."));
-        assert!(output.contains("Retries remaining: 1"));
+        assert!(output.contains("Retries remaining: 0"));
         assert!(output.contains("Your answer: Qh5"));
     }
 

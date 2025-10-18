@@ -9,18 +9,17 @@ single source of truth for how the quiz workflow operates.
 
 ### 1. Current state of our most basic quiz engine
 - `QuizEngine::run` drives each step through `process_current_step`, constructing a `PromptContext`, capturing SAN responses, grading them with `grade_attempt`, and publishing a terminal summary via the injected port.【F:crates/quiz-core/src/engine.rs†L32-L147】
+- `grade_attempt` increments `retries_used` before producing retry feedback so `FeedbackMessage::retry` and the terminal adapter both report the remaining allowance after a miss.【F:crates/quiz-core/src/engine.rs†L110-L141】【F:crates/quiz-core/src/cli.rs†L78-L119】
 - Session hydration comes from `QuizSource::from_pgn`, producing `QuizStep` entries whose FEN boards and SAN prompts remain aligned with the legal move sequence while initialising retry allowances inside `QuizSession::from_source`.【F:crates/quiz-core/src/source.rs†L19-L86】【F:crates/quiz-core/src/state.rs†L16-L121】
 - Adapter boundaries stay encapsulated by serialisable `PromptContext` and `FeedbackMessage` types, and the terminal adapter exercises every branch of the prompt/feedback/summary loop using buffered handles under the `cli` feature flag.【F:crates/quiz-core/src/ports.rs†L7-L115】【F:crates/quiz-core/src/cli.rs†L41-L134】
 - Error handling is centralised in `QuizError` with ready-made conversions so adapters operate purely on `QuizResult` aliases instead of wiring their own plumbing.【F:crates/quiz-core/src/errors.rs†L1-L88】
 
 ### 2. Work effort still required for an mvp
 The execution plan in `documentation/chess-quiz-engine-execution-plan.md` breaks
-the remaining work into atomic tasks [T1]–[T8]. The highlights below summarise
-the gaps each task closes:
+the remaining work into atomic tasks [T1]–[T8]. Task [T1] has now landed, and the
+highlights below summarise its impact alongside the outstanding work items:
 
-- **[T1] Retry messaging alignment.** `grade_attempt` emits retry feedback
-  before incrementing the attempt counter, causing `FeedbackMessage::retry` and
-  the terminal adapter to overstate remaining allowances.【F:crates/quiz-core/src/engine.rs†L76-L120】【F:crates/quiz-core/src/cli.rs†L72-L118】
+- **[T1] Retry messaging alignment.** ✅ Completed via `fix(engine): align retry feedback with consumed allowances`; retry feedback now reports the post-miss allowance and terminal messaging mirrors the updated count.【F:crates/quiz-core/src/engine.rs†L110-L141】【F:crates/quiz-core/tests/end_to_end.rs†L90-L115】
 - **[T2] SAN equivalence.** `san_matches` treats `Nf3+` and `Nf3` as different
   moves, penalising learners for optional suffixes or glyphs.【F:crates/quiz-core/src/engine.rs†L130-L167】
 - **[T3] Stable metadata.** `QuizStep` and `PromptContext` expose no identifiers
@@ -40,9 +39,7 @@ the gaps each task closes:
 The gaps identified above map directly to plan tasks so contributors can close
 them methodically:
 
-- **Retry allowances ([T1]).** `grade_attempt` captures `remaining_retries`
-  before incrementing `retries_used`, so adapters overstate how many chances
-  learners retain.【F:crates/quiz-core/src/engine.rs†L83-L133】【F:crates/quiz-core/src/cli.rs†L74-L113】
+- **Retry allowances ([T1]).** Addressed by incrementing `retries_used` ahead of building retry feedback so adapters surface the true remaining count.【F:crates/quiz-core/src/engine.rs†L110-L141】
 - **SAN suffix handling ([T2]).** `san_matches` ignores case but still requires
   exact SAN tokens, rejecting equivalent moves when learners include suffixes or
   glyphs.【F:crates/quiz-core/src/engine.rs†L155-L167】
@@ -51,9 +48,7 @@ them methodically:
   records.【F:crates/quiz-core/src/state.rs†L53-L103】【F:crates/quiz-core/src/ports.rs†L25-L61】
 
 ### 4. Any suggestions for adjustments based on those issues?
-- **[T1] Retry messaging.** Increment retries before constructing
-  `FeedbackMessage::retry` so adapters display accurate allowances and the
-  summary tallies remain consistent.【F:crates/quiz-core/src/engine.rs†L83-L133】
+- **[T1] Retry messaging.** ✅ Delivered: retry feedback now reflects the consumed allowance, keeping adapter copy and summary tallies aligned.【F:crates/quiz-core/src/engine.rs†L110-L141】【F:crates/quiz-core/src/ports.rs†L244-L305】
 - **[T2] SAN normalisation.** Extend `san_matches` (or its callers) to strip
   optional suffix markers or parse via `shakmaty::San` so equivalent notation is
   accepted.【F:crates/quiz-core/src/engine.rs†L155-L167】

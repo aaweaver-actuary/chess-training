@@ -108,7 +108,7 @@ fn retry_then_success_flow_consumes_single_retry() {
 
     assert_eq!(port.feedback.len(), 3);
     assert_eq!(port.feedback[0].result, AttemptResult::Pending);
-    assert_eq!(port.feedback[0].remaining_retries, 1);
+    assert_eq!(port.feedback[0].remaining_retries, 0);
     assert_eq!(port.feedback[1].result, AttemptResult::Correct);
     assert_eq!(port.feedback[2].result, AttemptResult::Correct);
     assert_eq!(port.summary.as_ref(), Some(summary));
