@@ -1,5 +1,25 @@
 # Chess Quiz Engine Design Brief
 
+## Current State
+
+### 1. Current state of our most basic quiz engine
+- `QuizEngine::run` now drives fully hydrated `QuizSession` instances, looping until each `QuizStep` is graded and publishing a `QuizSummary` through the active `QuizPort`.【F:crates/quiz-core/src/engine.rs†L1-L117】
+- Session hydration is sourced from PGN input via `QuizSource::from_pgn`, guaranteeing single-game main lines and producing SAN prompts with matching FEN board snapshots for every move.【F:crates/quiz-core/src/source.rs†L1-L81】【F:crates/quiz-core/src/state.rs†L1-L121】
+- Adapter communication is mediated entirely through serialisable `PromptContext` and `FeedbackMessage` structures, and the terminal adapter implements the full prompt/feedback/summary contract behind the `cli` feature flag.【F:crates/quiz-core/src/ports.rs†L1-L108】【F:crates/quiz-core/src/cli.rs†L1-L114】
+- Error handling is centralised in `QuizError`, with conversions from PGN parsing and I/O failures so adapter code can rely on `QuizResult` aliases without bespoke plumbing.【F:crates/quiz-core/src/errors.rs†L1-L72】
+
+### 2. Work effort still required for an mvp
+- Integrate annotations into hydration—`QuizStep::annotations` is currently empty because `QuizSource` normalises SAN but does not preserve instructional commentary; we need a data source for move-level notes.【F:crates/quiz-core/src/state.rs†L60-L78】【F:crates/quiz-core/src/source.rs†L47-L81】
+- Replace the placeholder `cli::run` stub with wiring that loads PGN input, constructs a `QuizEngine`, and streams interaction through `TerminalPort` for manual playtesting.【F:crates/quiz-core/src/cli.rs†L116-L118】
+- Deliver non-CLI adapters (API, WASM) or remove their feature flags until implementations land, and provide integration hooks for downstream scheduling/card systems (captured in Task 12 of the execution plan).【F:documentation/chess-quiz-engine-execution-plan.md†L63-L95】
+
+### 3. Issues surfacing during implementation that do not appear to have been considered during planning
+- Retry feedback currently reports the pre-attempt allowance because `grade_attempt` captures `remaining_retries` before incrementing `retries_used`, leading the terminal adapter to overstate how many chances remain; we need to revise the helper to reflect the post-attempt state.【F:crates/quiz-core/src/engine.rs†L80-L105】【F:crates/quiz-core/src/cli.rs†L69-L99】
+- `san_matches` performs a case-insensitive comparison but otherwise expects exact SAN tokens, so equivalent notations that differ by suffixes (e.g., `Nf3+` vs `Nf3`) are graded as incorrect; we should revisit normalisation rules if annotations or PGN cleaning add symbols back in.【F:crates/quiz-core/src/engine.rs†L131-L160】
+
+### 4. Any suggestions for adjustments based on those issues?
+- Amend `FeedbackMessage::retry` or the call site to compute remaining retries after incrementing `retries_used`, ensuring adapters communicate accurate expectations before a learner's second attempt.【F:crates/quiz-core/src/engine.rs†L80-L105】
+- Extend `san_matches` to tolerate optional suffix markers (e.g., strip trailing `+`, `#`, or match via `San::from_ascii`) so learners are not penalised for including check indicators that were pruned during PGN normalisation.【F:crates/quiz-core/src/engine.rs†L131-L160】
 ## Role We Are Supporting
 We are acting as the core infrastructure team for the chess-training workspace. Our responsibility is to design a reusable quiz
 engine that other product surfaces—CLI tools, web experiences, mobile apps, or background services—can embed without depending o
@@ -13,7 +33,7 @@ Key expectations for the role:
 - Document structures, flows, and error handling so downstream teams can integrate confidently.
 
 ## Solution Overview
-We will author a new workspace crate tentatively named `quiz-core`. The crate focuses on three responsibilities:
+The workspace now ships with the `quiz-core` crate. The implementation focuses on three responsibilities:
 
 1. **Parsing & validation** – Interpret a single PGN line, validate the format, and surface rich errors for misformatted data.
 2. **Quiz orchestration** – Drive the move-by-move loop (board snapshot, prior move, prompt, scoring, annotations, retries).
@@ -63,8 +83,7 @@ The architecture mirrors other workspace crates that separate pure logic from de
 - `errors` – Error types powered by `thiserror` to model parsing failures, illegal formats, and unsupported PGN features.
 - Feature-gated binaries under `src/bin/` that compile only when their respective feature flag is active.
 
-Adapters depend on the engine via the `ports` traits, while the engine never touches `std::io` directly. This inversion keeps t
-he code testable and future-proof for async or embedded environments.
+Adapters depend on the engine via the `ports` traits, while the engine never touches `std::io` directly. The reference `TerminalPort` demonstrates how buffered handles can be swapped during tests to keep the engine ergonomic for async or embedded environments.【F:crates/quiz-core/src/ports.rs†L1-L108】【F:crates/quiz-core/src/cli.rs†L1-L115】
 
 ### Session State Model
 The `state` module now codifies the data exchanged between the engine and adapters:
@@ -83,12 +102,7 @@ The `state` module now codifies the data exchanged between the engine and adapte
 
 ### Engine Run Loop
 
-`QuizEngine::run` iterates through each `QuizStep`, building a `PromptContext` for the active move
-and delegating user interaction to the injected `QuizPort`. Responses are graded through
-`grade_attempt`, which enforces the single-retry policy, records attempt history, and produces the
-appropriate `FeedbackMessage`. Once a step resolves as correct or incorrect the engine advances the
-session, updates `QuizSummary` totals (including retries consumed), and continues until every move
-is processed before presenting the final summary through the adapter.
+`QuizEngine::run` iterates through each `QuizStep`, building a `PromptContext` for the active move and delegating user interaction to the injected `QuizPort`. Responses are graded through `grade_attempt`, which enforces the single-retry policy, records attempt history, and produces the appropriate `FeedbackMessage`. Once a step resolves as correct or incorrect the engine advances the session, updates `QuizSummary` totals (including retries consumed), and continues until every move is processed before presenting the final summary through the adapter.【F:crates/quiz-core/src/engine.rs†L12-L117】
 
 ### Adapter Failure Handling
 
@@ -108,12 +122,7 @@ underlying `shakmaty` message so adapters can display actionable diagnostics.
 
 ### End-to-End Integration Tests
 
-Task 10 adds integration coverage in `crates/quiz-core/tests/end_to_end.rs`, pairing the engine with a
-deterministic fake port to drive complete quiz sessions. These tests exercise the full loop mandated
-by the acceptance criteria: a perfect run with zero retries, a single-retry recovery, retry
-exhaustion leading to a recorded miss, and PGN parsing rejection. The port fixture records prompts,
-feedback, and the delivered summary, giving confidence that adapter interactions and summary totals
-stay coherent across the entire session.
+Task 10 adds integration coverage in `crates/quiz-core/tests/end_to_end.rs`, pairing the engine with a deterministic fake port to drive complete quiz sessions. These tests exercise the full loop mandated by the acceptance criteria: a perfect run with zero retries, a single-retry recovery, retry exhaustion leading to a recorded miss, and PGN parsing rejection. The port fixture records prompts, feedback, and the delivered summary, giving confidence that adapter interactions and summary totals stay coherent across the entire session.【F:crates/quiz-core/tests/end_to_end.rs†L1-L213】
 
 ## Implementation Roadmap
 The roadmap breaks implementation into four atomic streams. Each subsection describes candidate approaches, the trade-offs we e
