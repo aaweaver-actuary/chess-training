@@ -129,3 +129,10 @@ fn pgn_variations_are_rejected_during_engine_construction() {
 
     assert!(matches!(result, Err(QuizError::VariationsUnsupported)));
 }
+
+#[test]
+fn empty_pgn_is_rejected_during_engine_construction() {
+    let result = QuizEngine::from_pgn("", 1);
+
+    assert!(matches!(result, Err(QuizError::NoMoves)));
+}
