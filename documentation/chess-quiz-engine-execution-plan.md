@@ -46,8 +46,21 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** Implemented API surface, glossary placeholders, documentation obligations described in the brief.
 - **Outputs:** Revised `documentation/chess-quiz-engine.md` capturing key decisions, current-state analysis, and implementation notes (see the "Current State" dashboard and refreshed architecture notes); updated glossary entries with full definitions and usage guidance; crate-level README tables illustrating adapter usage via the "Adapter quick reference"; changelog entry if the repository maintains one.
 
-## 12. Plan follow-on integration work and backlog items
+## 12. Plan follow-on integration work and backlog items ✅
 - **Inputs:** Engine deliverables, dependencies on PGN importer, scheduler, and UI adapters noted in repository docs.
-- **Outputs:** Documented backlog stories (e.g., CLI UX polish, API adapter, WASM embedding, telemetry hooks) captured in `docs/` or project management tooling. Include integration guidelines for the scheduler and card-store teams, highlighting any API contracts or data normalisation requirements identified during development.
+- **Outputs:** Documented backlog stories (CLI UX polish, API adapter, WASM embedding, telemetry hooks) and integration guidance captured in `documentation/chess-quiz-engine.md`. These notes align downstream teams on the adapter contracts exposed by `quiz-core` and the additional data the scheduler/card-store stacks require to consume quiz outcomes.
+
+### Backlog stories queued for follow-up delivery
+1. **CLI session runner.** Replace the placeholder `cli::run` entry point with PGN loading, engine construction, and terminal orchestration so product and pedagogy teams can perform manual smoke tests before other adapters land.
+2. **HTTP API adapter.** Stand up an `api` feature that exposes the quiz engine over HTTP (likely Axum), translating the `QuizPort` trait into request/response handlers and wiring structured errors for the gateway to consume.
+3. **WASM adapter for the web client.** Implement the `wasm` feature to surface quiz prompts, accept SAN submissions, and emit structured `FeedbackMessage` payloads that the existing web UI can render.
+4. **Telemetry and analytics hooks.** Instrument the engine to emit attempt/summary events so the scheduler and analytics pipelines can track retry utilisation, streaks, and completion rates without scraping adapter logs.
+5. **Card-store bridge.** Provide helpers that map `QuizStep` metadata into card-store DTOs, allowing curated openings to populate the scheduler queue with engine-authored quizzes instead of static flashcards.
+
+### Integration guidance for scheduler and card-store teams
+- **Scheduler expectations.** The scheduler requires quiz summaries that differentiate correct, incorrect, and retried attempts; downstream consumers should depend on `QuizSummary`'s `completed_steps`, `correct_answers`, `incorrect_answers`, and `retries_consumed` fields when computing unlock policies. Maintain stable field names so HTTP adapters can serialise them without ad hoc mapping.
+- **Card-store normalisation.** Persist FEN positions, SAN prompts, and revealed solutions exactly as emitted by `QuizStep`. When enriching card-store records, attach a canonical identifier (e.g., `card_id` or PGN hash) so subsequent quiz runs can correlate learner history with scheduler unlocks.
+- **Adapter contracts.** Any service embedding the engine must implement the `QuizPort` trait, honouring the prompt/feedback/summary flow and propagating `QuizError::Io` failures. Document how each adapter surface maps `PromptContext` and `FeedbackMessage` fields to its transport so new clients stay aligned.
+- **Telemetry shape.** Emit events capturing `step_index`, learner responses, and retry consumption so scheduling algorithms and review dashboards can model difficulty. Prefer structured logs (JSON) or dedicated channels rather than parsing terminal output.
 
 These tasks provide a clear pathway from design to a fully functioning `quiz-core` crate while keeping documentation, testing, and adapter isolation aligned with repository standards.

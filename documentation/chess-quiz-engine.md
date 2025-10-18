@@ -8,23 +8,41 @@ single source of truth for how the quiz workflow operates.
 ## Current State
 
 ### 1. Current state of our most basic quiz engine
-- `QuizEngine::run` delegates interaction through `process_current_step`, which builds a `PromptContext`, collects SAN responses, grades them via `grade_attempt`, and advances the session before emitting the final `QuizSummary` through the injected port.【F:crates/quiz-core/src/engine.rs†L24-L117】
-- Session hydration is sourced from PGN input via `QuizSource::from_pgn`, guaranteeing single-game main lines and producing SAN prompts with matching FEN board snapshots for every move.【F:crates/quiz-core/src/source.rs†L19-L86】【F:crates/quiz-core/src/state.rs†L11-L121】
-- Adapter communication is mediated entirely through serialisable `PromptContext` and `FeedbackMessage` structures, and the terminal adapter implements the full prompt/feedback/summary contract behind the `cli` feature flag with buffered I/O handles for deterministic testing.【F:crates/quiz-core/src/ports.rs†L1-L114】【F:crates/quiz-core/src/cli.rs†L1-L114】
-- Error handling is centralised in `QuizError`, with conversions from PGN parsing and I/O failures so adapter code can rely on `QuizResult` aliases without bespoke plumbing.【F:crates/quiz-core/src/errors.rs†L1-L88】
+- `QuizEngine::run` drives each step through `process_current_step`, constructing a `PromptContext`, capturing SAN responses, grading them with `grade_attempt`, and publishing a terminal summary via the injected port.【F:crates/quiz-core/src/engine.rs†L32-L147】
+- Session hydration comes from `QuizSource::from_pgn`, producing `QuizStep` entries whose FEN boards and SAN prompts remain aligned with the legal move sequence while initialising retry allowances inside `QuizSession::from_source`.【F:crates/quiz-core/src/source.rs†L19-L86】【F:crates/quiz-core/src/state.rs†L16-L121】
+- Adapter boundaries stay encapsulated by serialisable `PromptContext` and `FeedbackMessage` types, and the terminal adapter exercises every branch of the prompt/feedback/summary loop using buffered handles under the `cli` feature flag.【F:crates/quiz-core/src/ports.rs†L7-L115】【F:crates/quiz-core/src/cli.rs†L41-L134】
+- Error handling is centralised in `QuizError` with ready-made conversions so adapters operate purely on `QuizResult` aliases instead of wiring their own plumbing.【F:crates/quiz-core/src/errors.rs†L1-L88】
 
 ### 2. Work effort still required for an mvp
-- Integrate annotations into hydration—`QuizStep::annotations` stays empty because `QuizSource` normalises SAN but does not preserve instructional commentary; we need a data source for move-level notes before adapters can surface coaching tips.【F:crates/quiz-core/src/state.rs†L58-L82】【F:crates/quiz-core/src/source.rs†L59-L86】
-- Replace the placeholder `cli::run` stub with wiring that loads PGN input, constructs a `QuizEngine`, and streams interaction through `TerminalPort` for manual playtesting and demos.【F:crates/quiz-core/src/cli.rs†L116-L119】
-- Deliver non-CLI adapters (API, WASM) or remove their feature flags until implementations land, and provide integration hooks for downstream scheduling/card systems (captured in Task 12 of the execution plan).【F:documentation/chess-quiz-engine-execution-plan.md†L65-L99】
+- Integrate annotations into hydration—`QuizStep::annotations` remains empty because `QuizSource` currently normalises SAN without preserving commentary, so adapters cannot surface coaching notes yet.【F:crates/quiz-core/src/state.rs†L58-L82】【F:crates/quiz-core/src/source.rs†L59-L86】
+- Replace the placeholder `cli::run` stub with PGN ingestion, engine construction, and streaming through `TerminalPort` so stakeholders can run manual smoke tests.【F:crates/quiz-core/src/cli.rs†L136-L139】
+- Deliver the `api` and `wasm` feature-gated adapters that are declared in the crate manifest but have no implementation, ensuring non-terminal consumers can embed the engine.【F:crates/quiz-core/Cargo.toml†L9-L31】
+- Add telemetry hooks around the run loop so retry consumption and learner inputs emit structured events; the current orchestration only updates `QuizSummary` in memory before returning.【F:crates/quiz-core/src/engine.rs†L36-L101】
 
 ### 3. Issues surfacing during implementation that do not appear to have been considered during planning
-- Retry feedback currently reports the pre-attempt allowance because `grade_attempt` captures `remaining_retries` before incrementing `retries_used`, leading the terminal adapter to overstate how many chances remain; we need to revise the helper to reflect the post-attempt state.【F:crates/quiz-core/src/engine.rs†L83-L109】【F:crates/quiz-core/src/cli.rs†L64-L100】
-- `san_matches` performs a case-insensitive comparison but otherwise expects exact SAN tokens, so equivalent notations that differ by suffixes (e.g., `Nf3+` vs `Nf3`) are graded as incorrect; we should revisit normalisation rules if annotations or PGN cleaning add symbols back in.【F:crates/quiz-core/src/engine.rs†L135-L163】
+- Retry feedback currently reports the pre-attempt allowance because `grade_attempt` captures `remaining_retries` before incrementing `retries_used`, leading the terminal adapter to overstate how many chances remain.【F:crates/quiz-core/src/engine.rs†L83-L129】【F:crates/quiz-core/src/cli.rs†L86-L113】
+- `san_matches` performs a case-insensitive comparison but otherwise expects exact SAN tokens, so equivalent notations that differ by suffixes (e.g., `Nf3+` vs `Nf3`) are graded as incorrect.【F:crates/quiz-core/src/engine.rs†L155-L162】
+- `QuizStep` and `PromptContext` omit stable identifiers or metadata (card IDs, themes), leaving downstream schedulers without a key to correlate quiz attempts with stored repertoire entries.【F:crates/quiz-core/src/state.rs†L53-L88】【F:crates/quiz-core/src/ports.rs†L25-L61】
 
 ### 4. Any suggestions for adjustments based on those issues?
-- Amend `FeedbackMessage::retry` or the `grade_attempt` call site to compute remaining retries after incrementing `retries_used`, ensuring adapters communicate accurate expectations before a learner's second attempt.【F:crates/quiz-core/src/engine.rs†L83-L109】
-- Extend `san_matches` to tolerate optional suffix markers (e.g., strip trailing `+`, `#`, or match via `San::from_ascii`) so learners are not penalised for including check indicators that were pruned during PGN normalisation.【F:crates/quiz-core/src/engine.rs†L135-L163】
+- Amend `FeedbackMessage::retry` or the `grade_attempt` call site to compute remaining retries after incrementing `retries_used` so adapters display accurate retry allowances.【F:crates/quiz-core/src/engine.rs†L83-L133】
+- Extend `san_matches` to tolerate optional suffix markers (strip `+/#` or rely on `San::from_ascii`) so learners are not penalised when annotations reintroduce symbols.【F:crates/quiz-core/src/engine.rs†L155-L162】
+- Introduce durable identifiers and repertoire metadata on `QuizStep`/`PromptContext` so scheduler and card-store integrations can map attempts back to their source records without heuristic matching.【F:crates/quiz-core/src/state.rs†L53-L88】【F:crates/quiz-core/src/ports.rs†L25-L61】
+
+## Integration Backlog and Coordination Guidelines
+
+### Follow-on backlog informed by Task 12
+- **CLI session runner:** Implement PGN ingestion and engine orchestration inside `cli::run` to turn the terminal adapter into a usable smoke-test harness for stakeholders.【F:crates/quiz-core/src/cli.rs†L136-L139】
+- **HTTP API adapter:** Build the `api` feature to wrap `QuizPort` interactions behind HTTP handlers so services like the session gateway can invoke the engine remotely.【F:crates/quiz-core/Cargo.toml†L9-L27】【F:crates/quiz-core/src/ports.rs†L7-L33】
+- **WASM adapter:** Expose the run loop and messaging types through the `wasm` feature so the existing web UI can host the quiz without server round-trips.【F:crates/quiz-core/Cargo.toml†L9-L31】【F:crates/quiz-core/src/ports.rs†L7-L61】
+- **Telemetry instrumentation:** Add structured event emission around `process_current_step` to capture learner responses, retry usage, and summary transitions for analytics pipelines.【F:crates/quiz-core/src/engine.rs†L45-L101】
+- **Card-store bridge:** Provide conversion helpers that persist `QuizStep` board states, SAN prompts, and solutions into card-store DTOs, enabling scheduler queues to include engine-authored quizzes.【F:crates/quiz-core/src/state.rs†L53-L103】
+
+### Coordination guidelines for downstream teams
+- **Scheduler consumption:** Treat `QuizSummary`'s `completed_steps`, `correct_answers`, `incorrect_answers`, and `retries_consumed` fields as the canonical aggregates when computing unlock decisions or progress streaks.【F:crates/quiz-core/src/state.rs†L101-L142】
+- **Card-store normalisation:** Persist the emitted FEN snapshots, SAN prompts, and revealed solutions exactly as stored on `QuizStep` to avoid drift between quiz playback and review queues.【F:crates/quiz-core/src/state.rs†L53-L103】
+- **Adapter contracts:** Any embedding surface must fulfil the `QuizPort` trait, propagate `QuizError::Io`, and map `PromptContext`/`FeedbackMessage` fields transparently to its transport protocol.【F:crates/quiz-core/src/ports.rs†L7-L115】
+- **Telemetry shape:** When instrumentation lands, emit events containing the `step_index`, learner response, and retry consumption captured in `FeedbackMessage` so analytics and scheduling logic can model learner difficulty accurately.【F:crates/quiz-core/src/ports.rs†L37-L61】【F:crates/quiz-core/src/engine.rs†L83-L133】
 ## Role We Are Supporting
 We are acting as the core infrastructure team for the chess-training workspace. Our responsibility is to design a reusable quiz
 engine that other product surfaces—CLI tools, web experiences, mobile apps, or background services—can embed without depending o
