@@ -127,9 +127,10 @@ impl QuizEngine {
             };
         }
 
-        let remaining = step.attempt.remaining_retries();
-        if remaining > 0 {
+        let remaining_before = step.attempt.remaining_retries();
+        if remaining_before > 0 {
             step.attempt.retries_used += 1;
+            let remaining_after = step.attempt.remaining_retries();
             return GradeOutcome {
                 feedback: FeedbackMessage::retry(step_index, trimmed, remaining, metadata),
                 final_result: None,
@@ -162,12 +163,37 @@ struct GradeOutcome {
 }
 
 fn san_matches(input: &str, solution: &str) -> bool {
-    let normalised_input = input.trim();
-    if normalised_input.is_empty() {
+    let Some(normalised_input) = normalise_san(input) else {
         return false;
+    };
+    let Some(normalised_solution) = normalise_san(solution) else {
+        return false;
+    };
+
+    normalised_input.eq_ignore_ascii_case(&normalised_solution)
+}
+
+fn normalise_san(token: &str) -> Option<String> {
+    let trimmed = token.trim();
+    if trimmed.is_empty() {
+        return None;
     }
 
-    normalised_input.eq_ignore_ascii_case(solution.trim())
+    let mut end = trimmed.len();
+    while end > 0 {
+        let ch = trimmed[..end].chars().next_back()?;
+        if matches!(ch, '+' | '#' | '!' | '?') {
+            end -= ch.len_utf8();
+        } else {
+            break;
+        }
+    }
+
+    if end == 0 {
+        return None;
+    }
+
+    Some(trimmed[..end].to_string())
 }
 
 #[cfg(test)]
@@ -289,7 +315,7 @@ mod tests {
         assert_eq!(summary.retries_consumed, 1);
         assert_eq!(port.feedback.len(), 2);
         assert_eq!(port.feedback[0].result, AttemptResult::Pending);
-        assert_eq!(port.feedback[0].remaining_retries, 1);
+        assert_eq!(port.feedback[0].remaining_retries, 0);
         assert_eq!(port.feedback[1].result, AttemptResult::Correct);
         assert_eq!(port.prompts.len(), 2);
         assert_eq!(port.prompts[0].remaining_retries, 1);
@@ -383,5 +409,20 @@ mod tests {
         assert_eq!(summary.correct_answers, 1);
         let attempt = &engine.session().steps[0].attempt;
         assert_eq!(attempt.responses, vec!["d4".to_string(), "E4".to_string()]);
+    }
+
+    #[test]
+    fn san_matches_treats_equivalent_suffixes_as_identical_moves() {
+        assert!(san_matches("Nf3+", "Nf3"));
+        assert!(san_matches("Qxe5#", "Qxe5"));
+        assert!(san_matches("Bb5!!", "Bb5"));
+        assert!(san_matches("Rd1!?", "Rd1"));
+        assert!(san_matches("axb8=Q+!!", "axb8=Q"));
+    }
+
+    #[test]
+    fn san_matches_rejects_different_moves_after_normalisation() {
+        assert!(!san_matches("Nf3+", "Nc3"));
+        assert!(!san_matches("Bb5!!", "Bb4"));
     }
 }
