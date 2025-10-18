@@ -75,7 +75,7 @@ _Source:_ `crates/quiz-core/src/state.rs`
 
 **Usage in this repository:**
 - `AttemptState::new` initialises retry budgets for each step during session hydration.
-- `AttemptState::remaining_retries` informs prompt contexts and feedback messaging about available retries and is used in retry bookkeeping tests.
+- `AttemptState::remaining_retries` informs prompt contexts and, after the retry bookkeeping fix, always reflects the allowance remaining once the most recent attempt has been accounted for.
 
 ### `AttemptResult`
 
@@ -172,7 +172,7 @@ _Source:_ `crates/quiz-core/src/ports.rs`
 
 **Usage in this repository:**
 - Created by `FeedbackMessage::success`, `retry`, and `failure` helpers invoked from `QuizEngine::grade_attempt`.
-- Rendered in the terminal adapter to communicate success, retry prompts, and final reveals to learners; tests assert each constructor's semantics.
+- Rendered in the terminal adapter to communicate success, retry prompts, and final reveals to learners; after the retry messaging fix the `remaining_retries` field now reports the post-attempt allowance so adapters display accurate guidance.
 
 ### `QuizError`
 
