@@ -1,42 +1,55 @@
 # `quiz-core`
 
-The `quiz-core` crate owns the domain logic for running interactive chess quizzes. It is designed
-so the core engine can execute without being tied to any particular delivery mechanism. Adapters
-(such as terminal, HTTP API, or WASM front-ends) integrate through narrow port traits while feature
-flags ensure only the code relevant to a build target is compiled.
+The `quiz-core` crate owns the domain logic for running interactive chess quizzes. It hydrates
+single-game PGN sources into deterministic quiz sessions, drives prompts and grading through a
+pluggable port trait, and exposes summary data that downstream adapters can render or persist.
 
-## Architecture boundaries
+## Current capabilities
 
-The crate is organised around a small set of modules that mirror the execution plan:
+- **Session hydration:** `QuizSource::from_pgn` normalises SAN tokens, rejects comments or
+  variations, and pairs each move with a legal `shakmaty::Chess` position. `QuizSession::from_source`
+  converts that data into ordered `QuizStep` entries with retry budgets and FEN board snapshots.
+- **Execution engine:** `QuizEngine::run` loops until every step is graded, updating
+  `QuizSummary` totals and publishing feedback through the injected `QuizPort` implementation.
+- **Adapter isolation:** `PromptContext` and `FeedbackMessage` encapsulate all data presentation
+  layers need. The `cli` feature ships a `TerminalPort` adapter that operates on arbitrary
+  `BufRead`/`Write` handles so tests can capture prompts and feedback without touching `stdin` or
+  `stdout`.
 
-- `engine`: will house the orchestration loop that coordinates prompts, attempts, retries, and
-  session summaries.
-- `state`: will model immutable quiz session snapshots, including per-move prompts, attempt
-  tracking, and scoring details.
-- `ports`: will define the adapter-facing traits and message types used by the engine to exchange
-  prompts and feedback with external systems.
-- `errors`: will collect the error taxonomy shared across the engine, state builders, and adapters.
+## Module map
 
-Each module currently exposes placeholders and documentation so downstream contributors understand
-where future implementations belong. As functionality lands, this README should be updated with
-links to concrete types and diagrams that clarify responsibilities between modules.
+| Module | Purpose |
+| ------ | ------- |
+| `engine` | Orchestrates the quiz loop (`QuizEngine::run`, `grade_attempt`, retry bookkeeping). |
+| `state` | Defines `QuizSession`, `QuizStep`, `AttemptState`, and `QuizSummary` data models. |
+| `source` | Parses PGN text into `QuizSource` values that the state layer can hydrate. |
+| `ports` | Declares the `QuizPort` trait plus `PromptContext` and `FeedbackMessage` DTOs. |
+| `errors` | Hosts the `QuizError` enum and `QuizResult`/`AdapterResult` aliases. |
+| `cli` | Feature-gated terminal adapter implementing `QuizPort` with buffered I/O handles. |
 
-## Feature gating strategy
+```mermaid
+flowchart LR
+    Source[QuizSource::from_pgn] --> Session[QuizSession::from_source]
+    Session --> Engine[QuizEngine::run]
+    Engine -->|PromptContext| Port[QuizPort]
+    Port -->|FeedbackMessage| Engine
+    Engine --> Summary[QuizSummary]
+```
 
-The crate ships without default features enabled. Consumers explicitly opt into the adapters they
-need via the following feature flags:
+## Feature flags and binaries
 
-- `cli`: compiles the reference terminal adapter and its supporting binary at `src/bin/cli.rs`.
-- `api`: enables the HTTP/API adapter surface together with the `src/bin/api.rs` binary.
-- `wasm`: enables the WebAssembly adapter surface together with the `src/bin/wasm.rs` binary.
+| Feature flag | Included modules | Binary target |
+| ------------ | ---------------- | ------------- |
+| _default_    | `engine`, `state`, `source`, `ports`, `errors` | _none_ |
+| `cli`        | `cli` module (TerminalPort) | `src/bin/cli.rs` |
+| `api`        | `api` stub module | `src/bin/api.rs` |
+| `wasm`       | `wasm` stub module | `src/bin/wasm.rs` |
 
-This layout allows lightweight builds (e.g., for server-side batch processing) while keeping adapter
-code isolated. Additional features should follow the same pattern: guard adapter-specific code with
-a named feature flag and add a corresponding binary target only when the feature is enabled.
+Enable features with `cargo build --features "cli"` to compile the corresponding adapter and its
+binary entry point.
 
-## Documentation roadmap
+## Related documentation
 
-- Update this README with concrete examples once the engine APIs are implemented.
-- Cross-link the module documentation with the glossary entries in `docs/rust-structs-glossary.md`
-  so contributors can quickly discover type definitions and invariants.
-- Record adapter-specific considerations (I/O, threading, async boundaries) as those surfaces solidify.
+- [Chess Quiz Engine design brief](../../documentation/chess-quiz-engine.md)
+- [Execution plan and task checklist](../../documentation/chess-quiz-engine-execution-plan.md)
+- [Rust struct glossary entries](../../docs/rust-structs-glossary.md)

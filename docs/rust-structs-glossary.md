@@ -2,6 +2,199 @@
 
 This glossary documents the major Rust structs that appear across the chess-training repository. Each section highlights where the struct lives, the role it plays, its complete definition, and concrete examples that show how real subsystems rely on it. The goal is to make code review and onboarding faster by showing how the pieces fit together across crates.
 
+## Quiz Engine Core
+
+### `QuizEngine`
+
+**Overview:** Thin orchestration wrapper that owns a `QuizSession` and coordinates prompts, grading, and summaries through a `QuizPort` implementation.
+
+**Definition:**
+```rust
+pub struct QuizEngine {
+    session: QuizSession,
+}
+```
+_Source:_ `crates/quiz-core/src/engine.rs`
+
+**Usage in this repository:**
+- `crates/quiz-core/src/engine.rs` drives quiz execution via `QuizEngine::run`, calling `present_prompt`, `publish_feedback`, and `present_summary` on the injected adapter.
+- `crates/quiz-core/tests/end_to_end.rs` instantiates `QuizEngine::from_pgn` to validate perfect runs, retry saves, and exhausted attempts end-to-end.
+
+### `QuizSession`
+
+**Overview:** Immutable snapshot of the quiz state exposed to adapters and tests, including all steps, the active index, and aggregate scoring totals.
+
+**Definition:**
+```rust
+pub struct QuizSession {
+    pub steps: Vec<QuizStep>,
+    pub current_index: usize,
+    pub summary: QuizSummary,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- `QuizSession::from_source` hydrates state from a `QuizSource`, attaching FEN boards and retry budgets for each move.
+- The engine updates `QuizSession.summary` as each step is graded so adapters can display live progress.
+
+### `QuizStep`
+
+**Overview:** Represents a single move challenge, pairing the board snapshot, SAN prompt, canonical solution, attempt tracking, and optional annotations.
+
+**Definition:**
+```rust
+pub struct QuizStep {
+    pub board_fen: String,
+    pub prompt_san: String,
+    pub solution_san: String,
+    pub attempt: AttemptState,
+    pub annotations: Vec<String>,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- Hydrated by `hydrate_steps` when building sessions from PGN input, ensuring every SAN move is paired with a legal board position.
+- Mutated by `QuizEngine::grade_attempt` to push learner responses and record outcomes.
+
+### `AttemptState`
+
+**Overview:** Tracks retry allowances, attempts used, learner responses, and the final `AttemptResult` for a single quiz step.
+
+**Definition:**
+```rust
+pub struct AttemptState {
+    pub result: AttemptResult,
+    pub retries_allowed: u8,
+    pub retries_used: u8,
+    pub responses: Vec<String>,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- `AttemptState::new` initialises retry budgets for each step during session hydration.
+- `AttemptState::remaining_retries` informs prompt contexts and feedback messaging about available retries.
+
+### `AttemptResult`
+
+**Overview:** Enumerates the lifecycle of a quiz step—pending, correct, or incorrect after retries are exhausted.
+
+**Definition:**
+```rust
+pub enum AttemptResult {
+    Pending,
+    Correct,
+    Incorrect,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- Stored inside `AttemptState.result` to communicate grading outcomes to adapters.
+- Propagated through `FeedbackMessage` so presentation layers can branch on learner success.
+
+### `QuizSummary`
+
+**Overview:** Aggregates quiz-wide totals, including step counts, correct/incorrect answers, and retries consumed.
+
+**Definition:**
+```rust
+pub struct QuizSummary {
+    pub total_steps: usize,
+    pub completed_steps: usize,
+    pub correct_answers: usize,
+    pub incorrect_answers: usize,
+    pub retries_consumed: usize,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- `QuizSummary::new` seeds totals when a session is created, and the engine mutates counts as it advances through steps.
+- `TerminalPort::present_summary` renders these fields for learners at the end of a run.
+
+### `QuizSource`
+
+**Overview:** Parsed representation of a single PGN game's main line used to hydrate quiz sessions.
+
+**Definition:**
+```rust
+pub struct QuizSource {
+    pub initial_position: Chess,
+    pub san_moves: Vec<San>,
+}
+```
+_Source:_ `crates/quiz-core/src/source.rs`
+
+**Usage in this repository:**
+- `QuizSource::from_pgn` normalises SAN tokens, rejects comments or variations, and prepares the move list for session hydration.
+- `QuizEngine::from_source` consumes a `QuizSource` to construct a ready-to-run session with consistent FEN snapshots.
+
+### `PromptContext`
+
+**Overview:** Adapter-facing DTO describing the move being attempted, including board FEN, SAN prompt, prior move, and retries remaining.
+
+**Definition:**
+```rust
+pub struct PromptContext {
+    pub step_index: usize,
+    pub total_steps: usize,
+    pub board_fen: String,
+    pub prompt_san: String,
+    pub previous_move_san: Option<String>,
+    pub remaining_retries: u8,
+}
+```
+_Source:_ `crates/quiz-core/src/ports.rs`
+
+**Usage in this repository:**
+- Constructed by `QuizEngine::process_current_step` before every prompt to supply adapters with rendering context.
+- Terminal and fake adapters display the board snapshot and retry counts derived from this struct.
+
+### `FeedbackMessage`
+
+**Overview:** Captures grading results for a step, including the learner's response, correctness, canonical solution, annotations, and retries left.
+
+**Definition:**
+```rust
+pub struct FeedbackMessage {
+    pub step_index: usize,
+    pub result: AttemptResult,
+    pub learner_response: Option<String>,
+    pub solution_san: String,
+    pub annotations: Vec<String>,
+    pub remaining_retries: u8,
+}
+```
+_Source:_ `crates/quiz-core/src/ports.rs`
+
+**Usage in this repository:**
+- Created by `FeedbackMessage::success`, `retry`, and `failure` helpers invoked from `QuizEngine::grade_attempt`.
+- Rendered in the terminal adapter to communicate success, retry prompts, and final reveals to learners.
+
+### `QuizError`
+
+**Overview:** Unified error enumeration covering PGN parsing failures, format violations, and adapter I/O issues.
+
+**Definition:**
+```rust
+pub enum QuizError {
+    UnreadablePgn(String),
+    MultipleGames,
+    VariationsUnsupported,
+    WrongFormat,
+    NoMoves,
+    Io,
+}
+```
+_Source:_ `crates/quiz-core/src/errors.rs`
+
+**Usage in this repository:**
+- Returned by `QuizSource::from_pgn` when PGN input is malformed or unsupported.
+- Emitted by adapters via `AdapterResult` to signal I/O failures back to the engine loop.
+
 ## Review and Scheduling Core
 
 ### `Card<Id, Owner, Kind, State>`

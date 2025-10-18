@@ -42,9 +42,9 @@ This plan translates the chess quiz engine design brief and the surrounding repo
 - **Inputs:** Engine implementation, terminal adapter, acceptance criteria backlog from Task 1.
 - **Outputs:** Integration tests under `crates/quiz-core/tests/end_to_end.rs` orchestrate full quiz sessions with deterministic ports. Scenarios cover perfect runs, retries leading to success, failures after retries, and PGN parsing rejection, verifying adapter prompts, feedback, and summary delivery in one flow.
 
-## 11. Update documentation and knowledge artifacts
+## 11. Update documentation and knowledge artifacts ✅
 - **Inputs:** Implemented API surface, glossary placeholders, documentation obligations described in the brief.
-- **Outputs:** Revised `documentation/chess-quiz-engine.md` capturing key decisions and implementation notes; updated glossary entries with full definitions and code snippets; crate-level README diagrams or tables illustrating adapter usage; changelog entry if the repository maintains one.
+- **Outputs:** Revised `documentation/chess-quiz-engine.md` capturing key decisions, current-state analysis, and implementation notes; updated glossary entries with full definitions and code snippets; crate-level README tables illustrating adapter usage; changelog entry if the repository maintains one.
 
 ## 12. Plan follow-on integration work and backlog items
 - **Inputs:** Engine deliverables, dependencies on PGN importer, scheduler, and UI adapters noted in repository docs.
