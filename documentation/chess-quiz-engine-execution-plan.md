@@ -1,66 +1,141 @@
-# Atomic Chess Quiz Engine Execution Plan
+# Chess Quiz Engine MVP Execution Plan
 
-This plan translates the chess quiz engine design brief and the surrounding repository conventions into a concrete sequence of deliverables. Each task documents the primary inputs we depend upon and the tangible outputs that signal completion. The tasks are ordered to support strict red–green-refactor development and to keep parallel contributors coordinated.
+This plan converts the current implementation described in
+`documentation/chess-quiz-engine.md` into a concrete, test-first backlog that
+carries the crate to a fully usable MVP. Each task is intentionally atomic: it
+can be implemented, reviewed, and merged without blocking on the others. Tasks
+reference the modules that will change and call out the verifications required
+before they are considered complete.
 
-## 1. Finalise acceptance criteria and red tests ✅
-- **Inputs:** `documentation/chess-quiz-engine.md` solution overview, repository TDD policy, existing PGN parsing behaviors in `crates/chess-training-pgn-import`.
-- **Outputs:** A living checklist of acceptance criteria labelled AC1–AC4 (single-line PGN scope, retry policy, feedback messaging, adapter isolation) plus an ordered backlog of failing tests RT1–RT5 that map one-to-one to those behaviors (parser errors, retry exhaustion, summary math, feedback messaging coverage, adapter isolation guardrails). Published in `documentation/chess-quiz-engine.md` under “Acceptance Criteria Checklist” and “Initial Red Test Backlog”.
+## Stabilise the core feedback loop
 
-## 2. Scaffold the `quiz-core` crate and workspace wiring ✅
-- **Inputs:** Workspace `Cargo.toml`, Makefile conventions, design decision to host adapters behind feature flags.
-- **Outputs:** `crates/quiz-core` library with `engine`, `state`, `ports`, and `errors` modules stubbed; feature declarations for `cli`, `api`, and `wasm` with an empty default feature set; placeholder binaries under `src/bin/` compiled only when their feature is enabled via `#![cfg(feature = "...")]`; workspace manifests already glob `crates/*`, so no additional wiring was required.
+### [T1] Align retry messaging with consumed allowances
+- **Objective:** Ensure `FeedbackMessage::retry` and terminal output report the
+  number of retries remaining *after* the current miss so learners receive
+  accurate guidance.
+- **Primary inputs:** `crates/quiz-core/src/engine.rs`
+  (`grade_attempt`), `crates/quiz-core/src/cli.rs` (`TerminalPort::publish_feedback`).
+- **Deliverables:** Update retry bookkeeping so the attempt state increments
+  before generating retry feedback. Adjust `FeedbackMessage` constructors if
+  required and extend unit tests to assert the new count. Confirm the terminal
+  adapter prints the corrected allowance.
+- **Verification:** Red tests in `engine` module covering exhausted retries and
+  terminal adapter tests confirming the displayed counts. No dependencies on
+  other tasks.
 
-## 3. Establish crate-level documentation and glossary placeholders ✅
-- **Inputs:** Repository documentation standards (`README.md`, `docs/rust-structs-glossary.md`).
-- **Outputs:** Added `crates/quiz-core/README.md` to describe architecture boundaries and feature gating; appended placeholder glossary entries for forthcoming types (`QuizEngine`, `QuizSession`, `QuizError`, `FeedbackMessage`) in `docs/rust-structs-glossary.md`, each marked “implementation pending” so downstream writers know what to expect.
+### [T2] Accept equivalent SAN notations during grading
+- **Objective:** Prevent false negatives when learners include optional suffixes
+  like `+`, `#`, or annotation glyphs by normalising SAN comparison.
+- **Primary inputs:** `crates/quiz-core/src/engine.rs` (`san_matches` helper)
+  and associated tests.
+- **Deliverables:** Normalise learner responses using `shakmaty::San` parsing or
+  by stripping optional suffix markers prior to comparison. Document the
+  behaviour on `FeedbackMessage` or engine docs.
+- **Verification:** Unit tests that prove `Nf3+` and `Nf3` (and other annotated
+  variants) are treated as equivalent. Independent from other tasks.
 
-## 4. Model quiz session state structures ✅
-- **Inputs:** Design brief architecture section, existing domain patterns for immutable state.
-- **Outputs:** Data structures such as `QuizSession`, `QuizStep`, `AttemptState`, and `QuizSummary` with documented fields for FEN snapshots, SAN prompts, retry counters, and cumulative scoring. Include serde derives where useful and unit tests that assert default/constructor invariants (failing first per TDD).
+## Expand session context and fidelity
 
-## 5. Implement PGN parsing and validation primitives ✅
-- **Inputs:** `shakmaty` APIs, existing PGN normalisation strategies documented in `documentation/chess-quiz-engine.md`, parser error taxonomy requirement.
-- **Outputs:** `source::QuizSource::from_pgn` normalises a single-game PGN string into SAN moves and a starting `Chess` position, backed by a richer `QuizError` enum (`UnreadablePgn`, `MultipleGames`, `VariationsUnsupported`, `WrongFormat`, `NoMoves`). Unit tests assert rejection of comments, variations, multiple games, and empty inputs while confirming successful parsing of well-formed PGN samples.
+### [T3] Introduce durable step identifiers and metadata
+- **Objective:** Provide stable identifiers, themes, and card references so
+  schedulers and adapters can correlate quiz progress with stored repertoire
+  entries.
+- **Primary inputs:** `crates/quiz-core/src/state.rs` (`QuizStep`, `PromptContext`),
+  `crates/quiz-core/src/ports.rs`.
+- **Deliverables:** Extend state structs with optional identifier/metadata
+  fields, hydrate them during session creation, and ensure serialisation traits
+  remain valid. Update adapter prompt rendering and fake ports/tests to assert
+  the new fields are preserved end-to-end.
+- **Verification:** Unit tests in `state` and `engine` modules plus integration
+  tests verifying the metadata flows through the fake port fixtures. No
+  dependency on other tasks.
 
-## 6. Wire quiz state initialisation and step hydration ✅
-- **Inputs:** Outputs from Tasks 4 and 5.
-- **Outputs:** `QuizSession::from_source` and `QuizSession::from_pgn` hydrate the session from parsed PGN data, producing ordered `QuizStep` entries with legal-board FEN snapshots and SAN prompts. Unit tests confirm FEN/SAN alignment for multi-move sequences and verify that unsupported features (variations, comments) surface the explicit parsing errors introduced earlier.
+### [T4] Preserve PGN annotations and surface them in feedback
+- **Objective:** Carry commentary and move-level annotations from the source PGN
+  into `QuizStep::annotations` so adapters can display coaching notes alongside
+  feedback.
+- **Primary inputs:** `crates/quiz-core/src/source.rs`, `crates/quiz-core/src/state.rs`,
+  `crates/quiz-core/src/ports.rs`.
+- **Deliverables:** Enhance PGN parsing to capture supported annotations (e.g.,
+  `{}` comments or glyphs) without reintroducing unsupported variation lines.
+  Populate `QuizStep::annotations` during hydration and ensure `FeedbackMessage`
+  retains them. Update unit and integration tests to cover annotated PGN cases.
+- **Verification:** Red tests in `source` and `state` modules proving annotated
+  PGNs hydrate correctly, plus adapter tests asserting notes are displayed.
+  Independent of [T3] but complementary.
 
-## 7. Define interaction ports and reference terminal adapter ✅
-- **Inputs:** Port trait sketch in the design brief, repository feature-flagging conventions.
-- **Outputs:** `ports::QuizPort` trait with prompt, feedback, and summary hooks alongside serialisable `PromptContext` and `FeedbackMessage` structs; a generically testable `TerminalPort` adapter behind the `cli` feature that wraps arbitrary `BufRead`/`Write` handles; and adapter-focused unit tests capturing stdout to verify prompt rendering, feedback wording, summary formatting, and the helper constructors so every branch of the module is exercised.
+## Ship a runnable terminal MVP
 
-## 8. Build the quiz orchestration engine ✅
-- **Inputs:** Session state types, port trait, retry policy (single retry) from acceptance criteria.
-- **Outputs:** Implemented `QuizEngine` with constructors (`new`, `from_source`, `from_pgn`), the execution loop (`run`/`process_current_step`), and grading helpers that update attempts and summaries. Augmented unit tests with fake ports covering perfect runs, retry saves, exhausted retries, prompt context metadata, adapter summary publication, adapter failure propagation (prompt, feedback, summary), and attempt history capture for trimmed SAN submissions.
+### [T5] Replace the CLI stub with an interactive runner
+- **Objective:** Turn `cli::run` into a thin binary that reads PGN input,
+  constructs a `QuizEngine`, and streams prompts/feedback through the
+  `TerminalPort`.
+- **Primary inputs:** `crates/quiz-core/src/cli.rs`, `src/bin/` entry point if
+  required, and repository CLI conventions.
+- **Deliverables:** Implement argument parsing or stdin ingestion for PGN text,
+  wire `QuizEngine::from_pgn`, and expose an executable compiled behind the
+  `cli` feature. Include smoke tests using buffered handles to assert a full
+  session run succeeds.
+- **Verification:** Integration-style tests in `crates/quiz-core/tests` that run
+  the CLI harness with deterministic input/output transcripts. Task is
+  independent of [T1]–[T4].
 
-## 9. Harden error handling boundaries for adapters ✅
-- **Inputs:** `QuizError` enum, adapter isolation requirement, prior error-handling tests.
-- **Outputs:** Exhaustive conversions from lower-level errors (`shakmaty`, `std::io`) into `QuizError`; adapter-facing result aliases used across ports and the CLI implementation; regression tests for CLI I/O failures alongside existing retry-exhaustion and summary guard rails. Documentation updated to describe adapter-safe failure modes and the new error-conversion helpers.
+## Provide service adapters
 
-## 10. Assemble integration tests for end-to-end quiz runs ✅
-- **Inputs:** Engine implementation, terminal adapter, acceptance criteria backlog from Task 1.
-- **Outputs:** Integration tests under `crates/quiz-core/tests/end_to_end.rs` orchestrate full quiz sessions with deterministic ports. Scenarios cover perfect runs, retries leading to success, failures after retries, and PGN parsing rejection, verifying adapter prompts, feedback, and summary delivery in one flow.
+### [T6] Deliver the HTTP API adapter
+- **Objective:** Fulfil the promised `api` feature by exposing the quiz engine
+  over HTTP for other services to consume.
+- **Primary inputs:** `crates/quiz-core/src/api.rs`, `Cargo.toml` feature flags,
+  workspace API conventions (e.g., Axum or similar frameworks).
+- **Deliverables:** Implement request/response structs that wrap the
+  `QuizPort` contract, provide a reference Axum (or equivalent) router, and add
+  adapter-focused tests mocking the port to verify error propagation and JSON
+  payloads. Ensure the feature compiles cleanly when disabled.
+- **Verification:** Unit tests within the API module and, if applicable,
+  superstructure tests that spin up the router with in-memory state. Runs
+  independently once [T3]–[T4] have established the metadata it returns (no hard
+  dependency, but align payloads if those tasks are complete).
 
-## 11. Update documentation and knowledge artifacts ✅
-- **Inputs:** Implemented API surface, glossary placeholders, documentation obligations described in the brief.
-- **Outputs:** Revised `documentation/chess-quiz-engine.md` capturing key decisions, current-state analysis, and implementation notes (see the "Current State" dashboard and refreshed architecture notes); updated glossary entries with full definitions and usage guidance; crate-level README tables illustrating adapter usage via the "Adapter quick reference"; changelog entry if the repository maintains one.
+### [T7] Implement the WASM adapter for the web client
+- **Objective:** Provide a browser-friendly adapter under the `wasm` feature so
+  the existing web UI can embed the engine without server round-trips.
+- **Primary inputs:** `crates/quiz-core/src/wasm.rs`, WASM build tooling in the
+  repository.
+- **Deliverables:** Expose a minimal WASM API that feeds prompts, collects SAN
+  answers, and publishes feedback/summary messages as serialisable structs.
+  Include JS glue examples and WASM-targeted tests (wasm-bindgen test harness or
+  equivalent) to validate the bindings.
+- **Verification:** WASM tests/build checks executed via the repository's
+  toolchain. Task operates independently of [T6].
 
-## 12. Plan follow-on integration work and backlog items ✅
-- **Inputs:** Engine deliverables, dependencies on PGN importer, scheduler, and UI adapters noted in repository docs.
-- **Outputs:** Documented backlog stories (CLI UX polish, API adapter, WASM embedding, telemetry hooks) and integration guidance captured in `documentation/chess-quiz-engine.md`. These notes align downstream teams on the adapter contracts exposed by `quiz-core` and the additional data the scheduler/card-store stacks require to consume quiz outcomes.
+## Add operational instrumentation
 
-### Backlog stories queued for follow-up delivery
-1. **CLI session runner.** Replace the placeholder `cli::run` entry point with PGN loading, engine construction, and terminal orchestration so product and pedagogy teams can perform manual smoke tests before other adapters land.
-2. **HTTP API adapter.** Stand up an `api` feature that exposes the quiz engine over HTTP (likely Axum), translating the `QuizPort` trait into request/response handlers and wiring structured errors for the gateway to consume.
-3. **WASM adapter for the web client.** Implement the `wasm` feature to surface quiz prompts, accept SAN submissions, and emit structured `FeedbackMessage` payloads that the existing web UI can render.
-4. **Telemetry and analytics hooks.** Instrument the engine to emit attempt/summary events so the scheduler and analytics pipelines can track retry utilisation, streaks, and completion rates without scraping adapter logs.
-5. **Card-store bridge.** Provide helpers that map `QuizStep` metadata into card-store DTOs, allowing curated openings to populate the scheduler queue with engine-authored quizzes instead of static flashcards.
+### [T8] Emit structured telemetry from the engine
+- **Objective:** Capture learner attempts, retry consumption, and summary events
+  so downstream analytics can consume them without scraping adapter logs.
+- **Primary inputs:** `crates/quiz-core/src/engine.rs`, potential telemetry sink
+  traits in `crates/quiz-core/src/ports.rs` or a new module.
+- **Deliverables:** Introduce a lightweight telemetry trait or callback invoked
+  during `process_current_step`, emit structured events for prompt, attempt, and
+  summary transitions, and provide default no-op implementations for adapters
+  that opt out. Extend tests to assert events fire in the expected order.
+- **Verification:** Unit tests around the engine and fake telemetry sink plus
+  documentation of the event schema. Task can proceed in parallel with adapter
+  work.
 
-### Integration guidance for scheduler and card-store teams
-- **Scheduler expectations.** The scheduler requires quiz summaries that differentiate correct, incorrect, and retried attempts; downstream consumers should depend on `QuizSummary`'s `completed_steps`, `correct_answers`, `incorrect_answers`, and `retries_consumed` fields when computing unlock policies. Maintain stable field names so HTTP adapters can serialise them without ad hoc mapping.
-- **Card-store normalisation.** Persist FEN positions, SAN prompts, and revealed solutions exactly as emitted by `QuizStep`. When enriching card-store records, attach a canonical identifier (e.g., `card_id` or PGN hash) so subsequent quiz runs can correlate learner history with scheduler unlocks.
-- **Adapter contracts.** Any service embedding the engine must implement the `QuizPort` trait, honouring the prompt/feedback/summary flow and propagating `QuizError::Io` failures. Document how each adapter surface maps `PromptContext` and `FeedbackMessage` fields to its transport so new clients stay aligned.
-- **Telemetry shape.** Emit events capturing `step_index`, learner responses, and retry consumption so scheduling algorithms and review dashboards can model difficulty. Prefer structured logs (JSON) or dedicated channels rather than parsing terminal output.
+## Documentation and enablement
 
-These tasks provide a clear pathway from design to a fully functioning `quiz-core` crate while keeping documentation, testing, and adapter isolation aligned with repository standards.
+### [T9] Update documentation and glossary as features land
+- **Objective:** Keep reference materials aligned with the MVP feature set so
+  downstream teams have accurate integration guidance.
+- **Primary inputs:** `documentation/chess-quiz-engine.md`, `crates/quiz-core/README.md`,
+  `docs/rust-structs-glossary.md`.
+- **Deliverables:** For each completed task above, refresh the design brief,
+  adapter README sections, and glossary entries to reflect new fields, adapters,
+  and telemetry. Capture CLI/API usage examples as they stabilise.
+- **Verification:** Documentation diffs reviewed alongside feature PRs; no code
+  dependencies.
+
+These tasks collectively bridge the gap from the current crate capabilities to a
+fully featured MVP while preserving the repository's red–green–refactor cadence
+and adapter isolation guarantees.

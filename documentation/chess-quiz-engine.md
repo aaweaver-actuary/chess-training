@@ -14,28 +14,58 @@ single source of truth for how the quiz workflow operates.
 - Error handling is centralised in `QuizError` with ready-made conversions so adapters operate purely on `QuizResult` aliases instead of wiring their own plumbing.【F:crates/quiz-core/src/errors.rs†L1-L88】
 
 ### 2. Work effort still required for an mvp
-- Integrate annotations into hydration—`QuizStep::annotations` remains empty because `QuizSource` currently normalises SAN without preserving commentary, so adapters cannot surface coaching notes yet.【F:crates/quiz-core/src/state.rs†L58-L82】【F:crates/quiz-core/src/source.rs†L59-L86】
-- Replace the placeholder `cli::run` stub with PGN ingestion, engine construction, and streaming through `TerminalPort` so stakeholders can run manual smoke tests.【F:crates/quiz-core/src/cli.rs†L136-L139】
-- Deliver the `api` and `wasm` feature-gated adapters that are declared in the crate manifest but have no implementation, ensuring non-terminal consumers can embed the engine.【F:crates/quiz-core/Cargo.toml†L9-L31】
-- Add telemetry hooks around the run loop so retry consumption and learner inputs emit structured events; the current orchestration only updates `QuizSummary` in memory before returning.【F:crates/quiz-core/src/engine.rs†L36-L101】
+The execution plan in `documentation/chess-quiz-engine-execution-plan.md` breaks
+the remaining work into atomic tasks [T1]–[T8]. The highlights below summarise
+the gaps each task closes:
+
+- **[T1] Retry messaging alignment.** `grade_attempt` emits retry feedback
+  before incrementing the attempt counter, causing `FeedbackMessage::retry` and
+  the terminal adapter to overstate remaining allowances.【F:crates/quiz-core/src/engine.rs†L76-L120】【F:crates/quiz-core/src/cli.rs†L72-L118】
+- **[T2] SAN equivalence.** `san_matches` treats `Nf3+` and `Nf3` as different
+  moves, penalising learners for optional suffixes or glyphs.【F:crates/quiz-core/src/engine.rs†L130-L167】
+- **[T3] Stable metadata.** `QuizStep` and `PromptContext` expose no identifiers
+  or thematic tags, limiting downstream schedulers to positional heuristics.【F:crates/quiz-core/src/state.rs†L49-L116】【F:crates/quiz-core/src/ports.rs†L7-L61】
+- **[T4] Annotation hydration.** `QuizStep::annotations` always remains empty
+  because PGN parsing strips comments and glyphs during normalisation.【F:crates/quiz-core/src/state.rs†L53-L90】【F:crates/quiz-core/src/source.rs†L59-L103】
+- **[T5] CLI runner.** `cli::run` still prints a placeholder message instead of
+  orchestrating a quiz session through `TerminalPort` for smoke testing.【F:crates/quiz-core/src/cli.rs†L114-L147】
+- **[T6] HTTP adapter.** The `api` feature flag is declared but lacks any
+  request/response handlers or router wiring.【F:crates/quiz-core/Cargo.toml†L9-L31】【F:crates/quiz-core/src/api.rs†L1-L4】
+- **[T7] WASM adapter.** The `wasm` module is an empty shell, so the web client
+  cannot embed the engine yet.【F:crates/quiz-core/src/wasm.rs†L1-L4】
+- **[T8] Telemetry instrumentation.** The engine mutates `QuizSummary` in memory
+  but emits no events for analytics or scheduler consumers.【F:crates/quiz-core/src/engine.rs†L32-L117】
 
 ### 3. Issues surfacing during implementation that do not appear to have been considered during planning
-- Retry feedback currently reports the pre-attempt allowance because `grade_attempt` captures `remaining_retries` before incrementing `retries_used`, leading the terminal adapter to overstate how many chances remain.【F:crates/quiz-core/src/engine.rs†L83-L129】【F:crates/quiz-core/src/cli.rs†L86-L113】
-- `san_matches` performs a case-insensitive comparison but otherwise expects exact SAN tokens, so equivalent notations that differ by suffixes (e.g., `Nf3+` vs `Nf3`) are graded as incorrect.【F:crates/quiz-core/src/engine.rs†L155-L162】
-- `QuizStep` and `PromptContext` omit stable identifiers or metadata (card IDs, themes), leaving downstream schedulers without a key to correlate quiz attempts with stored repertoire entries.【F:crates/quiz-core/src/state.rs†L53-L88】【F:crates/quiz-core/src/ports.rs†L25-L61】
+The gaps identified above map directly to plan tasks so contributors can close
+them methodically:
+
+- **Retry allowances ([T1]).** `grade_attempt` captures `remaining_retries`
+  before incrementing `retries_used`, so adapters overstate how many chances
+  learners retain.【F:crates/quiz-core/src/engine.rs†L83-L133】【F:crates/quiz-core/src/cli.rs†L74-L113】
+- **SAN suffix handling ([T2]).** `san_matches` ignores case but still requires
+  exact SAN tokens, rejecting equivalent moves when learners include suffixes or
+  glyphs.【F:crates/quiz-core/src/engine.rs†L155-L167】
+- **Missing metadata ([T3]).** `QuizStep` and `PromptContext` lack stable
+  identifiers, preventing schedulers from linking attempts to repertoire
+  records.【F:crates/quiz-core/src/state.rs†L53-L103】【F:crates/quiz-core/src/ports.rs†L25-L61】
 
 ### 4. Any suggestions for adjustments based on those issues?
-- Amend `FeedbackMessage::retry` or the `grade_attempt` call site to compute remaining retries after incrementing `retries_used` so adapters display accurate retry allowances.【F:crates/quiz-core/src/engine.rs†L83-L133】
-- Extend `san_matches` to tolerate optional suffix markers (strip `+/#` or rely on `San::from_ascii`) so learners are not penalised when annotations reintroduce symbols.【F:crates/quiz-core/src/engine.rs†L155-L162】
-- Introduce durable identifiers and repertoire metadata on `QuizStep`/`PromptContext` so scheduler and card-store integrations can map attempts back to their source records without heuristic matching.【F:crates/quiz-core/src/state.rs†L53-L88】【F:crates/quiz-core/src/ports.rs†L25-L61】
+- **[T1] Retry messaging.** Increment retries before constructing
+  `FeedbackMessage::retry` so adapters display accurate allowances and the
+  summary tallies remain consistent.【F:crates/quiz-core/src/engine.rs†L83-L133】
+- **[T2] SAN normalisation.** Extend `san_matches` (or its callers) to strip
+  optional suffix markers or parse via `shakmaty::San` so equivalent notation is
+  accepted.【F:crates/quiz-core/src/engine.rs†L155-L167】
+- **[T3] Metadata surface.** Add durable identifiers and repertoire metadata to
+  `QuizStep`/`PromptContext` so schedulers and adapters can correlate attempts
+  without heuristics.【F:crates/quiz-core/src/state.rs†L53-L103】【F:crates/quiz-core/src/ports.rs†L25-L61】
 
 ## Integration Backlog and Coordination Guidelines
 
-### Follow-on backlog informed by Task 12
-- **CLI session runner:** Implement PGN ingestion and engine orchestration inside `cli::run` to turn the terminal adapter into a usable smoke-test harness for stakeholders.【F:crates/quiz-core/src/cli.rs†L136-L139】
-- **HTTP API adapter:** Build the `api` feature to wrap `QuizPort` interactions behind HTTP handlers so services like the session gateway can invoke the engine remotely.【F:crates/quiz-core/Cargo.toml†L9-L27】【F:crates/quiz-core/src/ports.rs†L7-L33】
-- **WASM adapter:** Expose the run loop and messaging types through the `wasm` feature so the existing web UI can host the quiz without server round-trips.【F:crates/quiz-core/Cargo.toml†L9-L31】【F:crates/quiz-core/src/ports.rs†L7-L61】
-- **Telemetry instrumentation:** Add structured event emission around `process_current_step` to capture learner responses, retry usage, and summary transitions for analytics pipelines.【F:crates/quiz-core/src/engine.rs†L45-L101】
+### Follow-on backlog beyond the MVP scope
+With plan tasks [T5]–[T8] targeting the CLI, API, WASM, and telemetry gaps,
+only the longer-horizon integrations remain queued here:
 - **Card-store bridge:** Provide conversion helpers that persist `QuizStep` board states, SAN prompts, and solutions into card-store DTOs, enabling scheduler queues to include engine-authored quizzes.【F:crates/quiz-core/src/state.rs†L53-L103】
 
 ### Coordination guidelines for downstream teams
@@ -136,16 +166,23 @@ consistent position (e.g., completed steps remain counted even if summary presen
 Additional assertions cover attempt history capture, ensuring trimmed SAN responses are recorded in
 order even when learners take a retry before submitting the correct move.
 
-Task 9 extends this surface by giving adapters dedicated result aliases (`QuizResult` and
-`AdapterResult`) and `From` conversions from `std::io::Error`, `shakmaty::san::ParseSanError`, and
-`shakmaty::san::SanError`. The CLI adapter now leans on these conversions directly via the `?`
-operator, with tests that inject failing writers to prove `QuizError::Io` is surfaced without
-advancing quiz state. Parsing helpers annotate PGN failures with both the offending SAN token and the
+Earlier hardening work introduced dedicated result aliases (`QuizResult` and
+`AdapterResult`) and `From` conversions from `std::io::Error`,
+`shakmaty::san::ParseSanError`, and `shakmaty::san::SanError`. The CLI adapter
+leans on these conversions via the `?` operator, with tests that inject failing
+writers to prove `QuizError::Io` is surfaced without advancing quiz state.
+Parsing helpers annotate PGN failures with both the offending SAN token and the
 underlying `shakmaty` message so adapters can display actionable diagnostics.
 
 ### End-to-End Integration Tests
 
-Task 10 adds integration coverage in `crates/quiz-core/tests/end_to_end.rs`, pairing the engine with a deterministic fake port to drive complete quiz sessions. These tests exercise the full loop mandated by the acceptance criteria: a perfect run with zero retries, a single-retry recovery, retry exhaustion leading to a recorded miss, and PGN parsing rejection. The port fixture records prompts, feedback, and the delivered summary, giving confidence that adapter interactions and summary totals stay coherent across the entire session.【F:crates/quiz-core/tests/end_to_end.rs†L1-L213】
+Integration coverage in `crates/quiz-core/tests/end_to_end.rs` pairs the engine
+with a deterministic fake port to drive complete quiz sessions. These tests
+exercise the full loop mandated by the acceptance criteria: a perfect run with
+zero retries, a single-retry recovery, retry exhaustion leading to a recorded
+miss, and PGN parsing rejection. The port fixture records prompts, feedback, and
+the delivered summary, giving confidence that adapter interactions and summary
+totals stay coherent across the entire session.【F:crates/quiz-core/tests/end_to_end.rs†L1-L213】
 
 ## Implementation Roadmap
 The roadmap breaks implementation into four atomic streams. Each subsection describes candidate approaches, the trade-offs we e
