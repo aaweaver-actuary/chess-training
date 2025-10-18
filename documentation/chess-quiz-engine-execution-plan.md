@@ -49,6 +49,13 @@ before they are considered complete.
 - **Verification:** Unit tests in `state` and `engine` modules plus integration
   tests verifying the metadata flows through the fake port fixtures. No
   dependency on other tasks.
+- **Status:** ✅ Completed – `feat: add durable quiz step metadata surfaces`
+  - `QuizStep` now carries a `StepMetadata` payload with canonical step IDs,
+    optional repertoire references, and deduplicated theme tags hydrated from
+    `QuizSource` or generated from the step index.
+  - `PromptContext` and `FeedbackMessage` mirror the metadata to adapters, and
+    the terminal port renders the new fields; unit and integration tests assert
+    metadata fidelity across hydration, grading, and CLI presentation.
 
 ### [T4] Preserve PGN annotations and surface them in feedback
 - **Objective:** Carry commentary and move-level annotations from the source PGN

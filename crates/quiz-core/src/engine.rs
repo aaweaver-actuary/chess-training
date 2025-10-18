@@ -52,12 +52,13 @@ impl QuizEngine {
                 Some(self.session.steps[step_index - 1].solution_san.clone())
             };
 
-            let (board_fen, prompt_san, remaining_retries) = {
+            let (board_fen, prompt_san, remaining_retries, metadata) = {
                 let step = &self.session.steps[step_index];
                 (
                     step.board_fen.clone(),
                     step.prompt_san.clone(),
                     step.attempt.remaining_retries(),
+                    step.metadata.clone(),
                 )
             };
 
@@ -68,6 +69,7 @@ impl QuizEngine {
                 prompt_san,
                 previous_move_san: previous_move,
                 remaining_retries,
+                metadata,
             };
 
             let response = port.present_prompt(context)?;
@@ -110,11 +112,17 @@ impl QuizEngine {
     fn grade_attempt(step_index: usize, step: &mut QuizStep, response: &str) -> GradeOutcome {
         let trimmed = response.trim().to_string();
         step.attempt.responses.push(trimmed.clone());
+        let metadata = step.metadata.clone();
 
         if san_matches(&trimmed, &step.solution_san) {
             step.attempt.result = AttemptResult::Correct;
             return GradeOutcome {
-                feedback: FeedbackMessage::success(step_index, trimmed, step.annotations.clone()),
+                feedback: FeedbackMessage::success(
+                    step_index,
+                    trimmed,
+                    step.annotations.clone(),
+                    metadata,
+                ),
                 final_result: Some(AttemptResult::Correct),
             };
         }
@@ -123,7 +131,7 @@ impl QuizEngine {
         if remaining > 0 {
             step.attempt.retries_used += 1;
             return GradeOutcome {
-                feedback: FeedbackMessage::retry(step_index, trimmed, remaining),
+                feedback: FeedbackMessage::retry(step_index, trimmed, remaining, metadata),
                 final_result: None,
             };
         }
@@ -135,6 +143,7 @@ impl QuizEngine {
                 (!trimmed.is_empty()).then_some(trimmed),
                 step.solution_san.clone(),
                 step.annotations.clone(),
+                metadata,
             ),
             final_result: Some(AttemptResult::Incorrect),
         }
@@ -254,6 +263,19 @@ mod tests {
         assert_eq!(port.prompts.len(), 2);
         assert!(port.prompts[0].previous_move_san.is_none());
         assert_eq!(port.prompts[1].previous_move_san.as_deref(), Some("e4"));
+        assert_eq!(
+            port.prompts[0].metadata.step_id.as_deref(),
+            Some("quiz-step-1")
+        );
+        assert_eq!(
+            port.prompts[1].metadata.step_id.as_deref(),
+            Some("quiz-step-2")
+        );
+        assert!(
+            port.feedback
+                .iter()
+                .all(|msg| msg.metadata.step_id.is_some())
+        );
     }
 
     #[test]
@@ -272,6 +294,14 @@ mod tests {
         assert_eq!(port.prompts.len(), 2);
         assert_eq!(port.prompts[0].remaining_retries, 1);
         assert_eq!(port.prompts[1].remaining_retries, 0);
+        assert_eq!(
+            port.feedback[0].metadata.step_id.as_deref(),
+            Some("quiz-step-1")
+        );
+        assert_eq!(
+            port.feedback[1].metadata.step_id.as_deref(),
+            Some("quiz-step-1")
+        );
     }
 
     #[test]
@@ -288,6 +318,10 @@ mod tests {
         assert_eq!(port.feedback[1].result, AttemptResult::Incorrect);
         assert_eq!(port.feedback[1].solution_san, "e4");
         assert_eq!(port.prompts[1].remaining_retries, 0);
+        assert_eq!(
+            port.feedback[1].metadata.step_id.as_deref(),
+            Some("quiz-step-1")
+        );
     }
 
     #[test]

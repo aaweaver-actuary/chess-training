@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::errors::AdapterResult;
-use crate::state::{AttemptResult, QuizSummary};
+use crate::state::{AttemptResult, QuizSummary, StepMetadata};
 
 /// Trait describing how adapters interact with the quiz engine.
 pub trait QuizPort {
@@ -45,6 +45,8 @@ pub struct PromptContext {
     pub previous_move_san: Option<String>,
     /// Number of retries remaining for the current step.
     pub remaining_retries: u8,
+    /// Metadata describing the repertoire linkage and theme for the step.
+    pub metadata: StepMetadata,
 }
 
 impl PromptContext {
@@ -70,6 +72,8 @@ pub struct FeedbackMessage {
     pub annotations: Vec<String>,
     /// Remaining retries after processing the attempt.
     pub remaining_retries: u8,
+    /// Metadata describing the repertoire linkage and theme for the step.
+    pub metadata: StepMetadata,
 }
 
 impl FeedbackMessage {
@@ -79,6 +83,7 @@ impl FeedbackMessage {
         step_index: usize,
         learner_response: impl Into<String>,
         annotations: Vec<String>,
+        metadata: StepMetadata,
     ) -> Self {
         Self {
             step_index,
@@ -87,6 +92,7 @@ impl FeedbackMessage {
             solution_san: String::new(),
             annotations,
             remaining_retries: 0,
+            metadata,
         }
     }
 
@@ -96,6 +102,7 @@ impl FeedbackMessage {
         step_index: usize,
         learner_response: impl Into<String>,
         remaining_retries: u8,
+        metadata: StepMetadata,
     ) -> Self {
         Self {
             step_index,
@@ -104,6 +111,7 @@ impl FeedbackMessage {
             solution_san: String::new(),
             annotations: Vec::new(),
             remaining_retries,
+            metadata,
         }
     }
 
@@ -114,6 +122,7 @@ impl FeedbackMessage {
         learner_response: Option<String>,
         solution_san: impl Into<String>,
         annotations: Vec<String>,
+        metadata: StepMetadata,
     ) -> Self {
         Self {
             step_index,
@@ -122,6 +131,7 @@ impl FeedbackMessage {
             solution_san: solution_san.into(),
             annotations,
             remaining_retries: 0,
+            metadata,
         }
     }
 }
@@ -144,6 +154,11 @@ mod tests {
             prompt_san: "Qh5+".into(),
             previous_move_san: Some("Nc6".into()),
             remaining_retries: 1,
+            metadata: StepMetadata {
+                step_id: Some("quiz-step-1".into()),
+                card_ref: Some("card-123".into()),
+                themes: vec!["attack".into(), "mate".into()],
+            },
         }
     }
 
@@ -181,24 +196,28 @@ mod tests {
 
     #[test]
     fn feedback_message_constructors_cover_all_variants() {
-        let success = FeedbackMessage::success(0, "Qh5+", vec!["mate".into()]);
+        let metadata = StepMetadata::canonical_for_index(0);
+        let success = FeedbackMessage::success(0, "Qh5+", vec!["mate".into()], metadata.clone());
         assert_eq!(success.result, AttemptResult::Correct);
         assert_eq!(success.learner_response.as_deref(), Some("Qh5+"));
         assert_eq!(success.annotations, vec!["mate".to_string()]);
         assert_eq!(success.remaining_retries, 0);
+        assert_eq!(success.metadata.step_id.as_deref(), Some("quiz-step-1"));
 
-        let retry = FeedbackMessage::retry(1, "Qh4", 2);
+        let retry = FeedbackMessage::retry(1, "Qh4", 2, metadata.clone());
         assert_eq!(retry.result, AttemptResult::Pending);
         assert_eq!(retry.learner_response.as_deref(), Some("Qh4"));
         assert_eq!(retry.remaining_retries, 2);
         assert!(retry.annotations.is_empty());
+        assert_eq!(retry.metadata.step_id.as_deref(), Some("quiz-step-1"));
 
-        let failure = FeedbackMessage::failure(2, None, "Qh5+", vec!["skewer".into()]);
+        let failure = FeedbackMessage::failure(2, None, "Qh5+", vec!["skewer".into()], metadata);
         assert_eq!(failure.result, AttemptResult::Incorrect);
         assert_eq!(failure.learner_response, None);
         assert_eq!(failure.solution_san, "Qh5+");
         assert_eq!(failure.annotations, vec!["skewer".to_string()]);
         assert_eq!(failure.remaining_retries, 0);
+        assert_eq!(failure.metadata.step_id.as_deref(), Some("quiz-step-1"));
     }
 
     #[test]
@@ -217,6 +236,9 @@ mod tests {
         assert!(output.contains("Move 1/2"));
         assert!(output.contains("Qh5+"));
         assert!(output.contains("Previous move: Nc6"));
+        assert!(output.contains("Step ID: quiz-step-1"));
+        assert!(output.contains("Card ref: card-123"));
+        assert!(output.contains("Themes: attack, mate"));
     }
 
     #[test]
