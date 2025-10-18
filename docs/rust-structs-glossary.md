@@ -19,6 +19,7 @@ _Source:_ `crates/quiz-core/src/engine.rs`
 **Usage in this repository:**
 - `crates/quiz-core/src/engine.rs` drives quiz execution via `QuizEngine::run`, which loops with `process_current_step` and grades answers through `grade_attempt` before advancing the session summary.
 - `crates/quiz-core/tests/end_to_end.rs` instantiates `QuizEngine::from_pgn` to validate perfect runs, retry saves, exhausted attempts, and adapter error propagation end-to-end.
+- `grade_attempt` leans on the `san_matches` helper to strip trailing check/mate markers and annotation glyphs so equivalent SAN inputs (e.g., `Nf3+`, `axb8=Q+!!`) resolve correctly while rejecting genuinely different moves.【F:crates/quiz-core/src/engine.rs†L150-L188】【F:crates/quiz-core/src/engine.rs†L318-L340】
 
 ### `QuizSession`
 
