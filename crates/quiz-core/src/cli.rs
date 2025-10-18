@@ -52,6 +52,22 @@ where
         )?;
         writeln!(self.writer, "Board FEN: {}", context.board_fen)?;
 
+        if let Some(step_id) = context.metadata.step_id.as_deref() {
+            writeln!(self.writer, "Step ID: {step_id}")?;
+        }
+
+        if let Some(card_ref) = context.metadata.card_ref.as_deref() {
+            writeln!(self.writer, "Card ref: {card_ref}")?;
+        }
+
+        if !context.metadata.themes.is_empty() {
+            writeln!(
+                self.writer,
+                "Themes: {}",
+                context.metadata.themes.join(", ")
+            )?;
+        }
+
         if let Some(previous) = context.previous_move_san.as_deref() {
             writeln!(self.writer, "Previous move: {previous}")?;
         }
@@ -79,6 +95,12 @@ where
         match feedback.result {
             AttemptResult::Correct => {
                 writeln!(self.writer, "Correct!")?;
+                if let Some(step_id) = feedback.metadata.step_id.as_deref() {
+                    writeln!(self.writer, "Step ID: {step_id}")?;
+                }
+                if let Some(card_ref) = feedback.metadata.card_ref.as_deref() {
+                    writeln!(self.writer, "Card ref: {card_ref}")?;
+                }
                 for note in &feedback.annotations {
                     writeln!(self.writer, "Note: {note}")?;
                 }
@@ -93,6 +115,9 @@ where
 
                 if let Some(response) = &feedback.learner_response {
                     writeln!(self.writer, "Your answer: {response}")?;
+                }
+                if let Some(step_id) = feedback.metadata.step_id.as_deref() {
+                    writeln!(self.writer, "Step ID: {step_id}")?;
                 }
             }
             AttemptResult::Incorrect => {
@@ -111,6 +136,13 @@ where
                     for note in &feedback.annotations {
                         writeln!(self.writer, "- {note}")?;
                     }
+                }
+
+                if let Some(step_id) = feedback.metadata.step_id.as_deref() {
+                    writeln!(self.writer, "Step ID: {step_id}")?;
+                }
+                if let Some(card_ref) = feedback.metadata.card_ref.as_deref() {
+                    writeln!(self.writer, "Card ref: {card_ref}")?;
                 }
             }
         }

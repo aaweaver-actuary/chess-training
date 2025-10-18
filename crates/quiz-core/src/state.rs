@@ -12,6 +12,35 @@ use shakmaty::{EnPassantMode, Position};
 /// The session keeps track of each `QuizStep`, the active index the engine is
 /// presenting, and the running [`QuizSummary`] totals that adapters can render
 /// after completion.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct StepMetadata {
+    /// Durable identifier for the step so schedulers can correlate attempts.
+    pub step_id: Option<String>,
+    /// Optional reference to a repertoire card or external record backing the step.
+    pub card_ref: Option<String>,
+    /// Thematic tags that describe the tactical or strategic focus of the step.
+    pub themes: Vec<String>,
+}
+
+impl StepMetadata {
+    /// Generates a canonical identifier derived from the zero-based step index.
+    #[must_use]
+    pub fn canonical_for_index(index: usize) -> Self {
+        Self {
+            step_id: Some(format!("quiz-step-{}", index + 1)),
+            ..Self::default()
+        }
+    }
+
+    /// Returns a copy of the metadata with theme tags sorted and deduplicated.
+    #[must_use]
+    pub fn normalised(mut self) -> Self {
+        self.themes.sort();
+        self.themes.dedup();
+        self
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct QuizSession {
     /// Ordered collection of prompts and attempts that make up the quiz.
@@ -114,6 +143,8 @@ pub struct QuizStep {
     pub attempt: AttemptState,
     /// Optional annotations that accompany the step once graded.
     pub annotations: Vec<String>,
+    /// Metadata that links the step back to repertoire records or themes.
+    pub metadata: StepMetadata,
 }
 
 impl QuizStep {
@@ -134,7 +165,15 @@ impl QuizStep {
             solution_san: solution_san.into(),
             attempt: AttemptState::new(max_retries),
             annotations: Vec::new(),
+            metadata: StepMetadata::default(),
         }
+    }
+
+    /// Assigns metadata for the step, returning the updated instance.
+    #[must_use]
+    pub fn with_metadata(mut self, metadata: StepMetadata) -> Self {
+        self.metadata = metadata;
+        self
     }
 }
 
@@ -217,10 +256,19 @@ fn hydrate_steps(source: &QuizSource, max_retries: u8) -> Vec<QuizStep> {
     let mut board = source.initial_position.clone();
     let mut steps = Vec::with_capacity(source.san_moves.len());
 
-    for san in &source.san_moves {
+    for (index, san) in source.san_moves.iter().enumerate() {
         let fen = Fen::from_position(&board, EnPassantMode::Legal).to_string();
         let san_text = san.to_string();
-        steps.push(QuizStep::new(fen, san_text.clone(), san_text, max_retries));
+        let metadata = source
+            .step_metadata
+            .get(index)
+            .cloned()
+            .unwrap_or_else(|| StepMetadata::canonical_for_index(index))
+            .normalised();
+
+        let step =
+            QuizStep::new(fen, san_text.clone(), san_text, max_retries).with_metadata(metadata);
+        steps.push(step);
 
         let mv = san
             .to_move(&board)
@@ -273,6 +321,9 @@ mod tests {
         assert_eq!(step.attempt.retries_allowed, 2);
         assert_eq!(step.attempt.retries_used, 0);
         assert_eq!(step.attempt.result, AttemptResult::Pending);
+        assert!(step.metadata.step_id.is_none());
+        assert!(step.metadata.card_ref.is_none());
+        assert!(step.metadata.themes.is_empty());
     }
 
     #[test]
@@ -301,6 +352,7 @@ mod tests {
         assert_eq!(first.prompt_san, "e4");
         assert_eq!(first.solution_san, "e4");
         assert_eq!(first.attempt.retries_allowed, 1);
+        assert_eq!(first.metadata.step_id.as_deref(), Some("quiz-step-1"));
 
         let second = &session.steps[1];
         assert_eq!(
@@ -309,6 +361,7 @@ mod tests {
         );
         assert_eq!(second.prompt_san, "e5");
         assert_eq!(second.solution_san, "e5");
+        assert_eq!(second.metadata.step_id.as_deref(), Some("quiz-step-2"));
 
         let third = &session.steps[2];
         assert_eq!(
@@ -316,6 +369,7 @@ mod tests {
             "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
         );
         assert_eq!(third.prompt_san, "Nf3");
+        assert_eq!(third.metadata.step_id.as_deref(), Some("quiz-step-3"));
 
         let fourth = &session.steps[3];
         assert_eq!(
@@ -323,6 +377,7 @@ mod tests {
             "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
         );
         assert_eq!(fourth.prompt_san, "Nc6");
+        assert_eq!(fourth.metadata.step_id.as_deref(), Some("quiz-step-4"));
     }
 
     #[test]
@@ -330,5 +385,25 @@ mod tests {
         let err = QuizSession::from_pgn("1. e4 e5 (1... c5) 2. Nf3 Nc6 *", 1).unwrap_err();
 
         assert!(matches!(err, QuizError::VariationsUnsupported));
+    }
+
+    #[test]
+    fn hydration_applies_source_metadata() {
+        let source = QuizSource::from_pgn("1. e4 *").expect("valid PGN");
+        let enriched = source.with_step_metadata(vec![StepMetadata {
+            step_id: Some("custom-id".into()),
+            card_ref: Some("card-007".into()),
+            themes: vec!["fork".into(), "attack".into(), "fork".into()],
+        }]);
+
+        let session = QuizSession::from_source(&enriched, 1);
+        let metadata = &session.steps[0].metadata;
+
+        assert_eq!(metadata.step_id.as_deref(), Some("custom-id"));
+        assert_eq!(metadata.card_ref.as_deref(), Some("card-007"));
+        assert_eq!(
+            metadata.themes,
+            vec!["attack".to_string(), "fork".to_string()]
+        );
     }
 }

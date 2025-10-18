@@ -12,7 +12,7 @@ single source of truth for how the quiz workflow operates.
 - `grade_attempt` increments `retries_used` before producing retry feedback so `FeedbackMessage::retry` and the terminal adapter both report the remaining allowance after a miss.【F:crates/quiz-core/src/engine.rs†L110-L141】【F:crates/quiz-core/src/cli.rs†L78-L119】
 - Session hydration comes from `QuizSource::from_pgn`, producing `QuizStep` entries whose FEN boards and SAN prompts remain aligned with the legal move sequence while initialising retry allowances inside `QuizSession::from_source`.【F:crates/quiz-core/src/source.rs†L19-L86】【F:crates/quiz-core/src/state.rs†L16-L121】
 - Adapter boundaries stay encapsulated by serialisable `PromptContext` and `FeedbackMessage` types, and the terminal adapter exercises every branch of the prompt/feedback/summary loop using buffered handles under the `cli` feature flag.【F:crates/quiz-core/src/ports.rs†L7-L115】【F:crates/quiz-core/src/cli.rs†L41-L134】
-- `san_matches` now strips trailing check/mate markers and annotation glyphs before comparing learner responses, so answers like `Nf3+` or `axb8=Q+!!` resolve as correct when the canonical SAN omits those suffixes.【F:crates/quiz-core/src/engine.rs†L150-L188】【F:crates/quiz-core/src/engine.rs†L380-L393】
+- Hydration now assigns canonical `StepMetadata` to each `QuizStep`, mirrors the payload through `PromptContext`/`FeedbackMessage`, and renders identifiers, repertoire references, and theme tags in the terminal adapter so schedulers can map attempts back to stored cards.【F:crates/quiz-core/src/state.rs†L15-L214】【F:crates/quiz-core/src/ports.rs†L7-L176】【F:crates/quiz-core/src/cli.rs†L41-L130】
 - Error handling is centralised in `QuizError` with ready-made conversions so adapters operate purely on `QuizResult` aliases instead of wiring their own plumbing.【F:crates/quiz-core/src/errors.rs†L1-L88】
 
 ### 2. Work effort still required for an mvp
@@ -23,8 +23,6 @@ highlights below summarise its impact alongside the outstanding work items:
 - **[T1] Retry messaging alignment.** ✅ Completed via `fix(engine): align retry feedback with consumed allowances`; retry feedback now reports the post-miss allowance and terminal messaging mirrors the updated count.【F:crates/quiz-core/src/engine.rs†L110-L141】【F:crates/quiz-core/tests/end_to_end.rs†L90-L115】
 - **[T2] SAN equivalence.** `san_matches` treats `Nf3+` and `Nf3` as different
   moves, penalising learners for optional suffixes or glyphs.【F:crates/quiz-core/src/engine.rs†L130-L167】
-- **[T3] Stable metadata.** `QuizStep` and `PromptContext` expose no identifiers
-  or thematic tags, limiting downstream schedulers to positional heuristics.【F:crates/quiz-core/src/state.rs†L49-L116】【F:crates/quiz-core/src/ports.rs†L7-L61】
 - **[T4] Annotation hydration.** `QuizStep::annotations` always remains empty
   because PGN parsing strips comments and glyphs during normalisation.【F:crates/quiz-core/src/state.rs†L53-L90】【F:crates/quiz-core/src/source.rs†L59-L103】
 - **[T5] CLI runner.** `cli::run` still prints a placeholder message instead of
@@ -44,9 +42,6 @@ them methodically:
 - **SAN suffix handling ([T2]).** `san_matches` ignores case but still requires
   exact SAN tokens, rejecting equivalent moves when learners include suffixes or
   glyphs.【F:crates/quiz-core/src/engine.rs†L155-L167】
-- **Missing metadata ([T3]).** `QuizStep` and `PromptContext` lack stable
-  identifiers, preventing schedulers from linking attempts to repertoire
-  records.【F:crates/quiz-core/src/state.rs†L53-L103】【F:crates/quiz-core/src/ports.rs†L25-L61】
 
 ### 4. Any suggestions for adjustments based on those issues?
 - **[T1] Retry messaging.** ✅ Delivered: retry feedback now reflects the consumed allowance, keeping adapter copy and summary tallies aligned.【F:crates/quiz-core/src/engine.rs†L110-L141】【F:crates/quiz-core/src/ports.rs†L244-L305】
@@ -61,11 +56,12 @@ them methodically:
 ### Follow-on backlog beyond the MVP scope
 With plan tasks [T5]–[T8] targeting the CLI, API, WASM, and telemetry gaps,
 only the longer-horizon integrations remain queued here:
-- **Card-store bridge:** Provide conversion helpers that persist `QuizStep` board states, SAN prompts, and solutions into card-store DTOs, enabling scheduler queues to include engine-authored quizzes.【F:crates/quiz-core/src/state.rs†L53-L103】
+- **Card-store bridge:** Provide conversion helpers that persist `QuizStep` board states, SAN prompts, solutions, and `StepMetadata` identifiers into card-store DTOs, enabling scheduler queues to include engine-authored quizzes with durable references.【F:crates/quiz-core/src/state.rs†L15-L214】
 
 ### Coordination guidelines for downstream teams
 - **Scheduler consumption:** Treat `QuizSummary`'s `completed_steps`, `correct_answers`, `incorrect_answers`, and `retries_consumed` fields as the canonical aggregates when computing unlock decisions or progress streaks.【F:crates/quiz-core/src/state.rs†L101-L142】
-- **Card-store normalisation:** Persist the emitted FEN snapshots, SAN prompts, and revealed solutions exactly as stored on `QuizStep` to avoid drift between quiz playback and review queues.【F:crates/quiz-core/src/state.rs†L53-L103】
+- **Card-store normalisation:** Persist the emitted FEN snapshots, SAN prompts, revealed solutions, and metadata exactly as stored on `QuizStep` to avoid drift between quiz playback and review queues.【F:crates/quiz-core/src/state.rs†L15-L214】
+- **Metadata correlation:** Treat `StepMetadata.step_id`, optional `card_ref`, and declared themes as the stable keys that tie quiz attempts to repertoire content, and propagate them through any adapter payloads or analytics events.【F:crates/quiz-core/src/state.rs†L15-L214】【F:crates/quiz-core/src/ports.rs†L7-L176】
 - **Adapter contracts:** Any embedding surface must fulfil the `QuizPort` trait, propagate `QuizError::Io`, and map `PromptContext`/`FeedbackMessage` fields transparently to its transport protocol.【F:crates/quiz-core/src/ports.rs†L7-L115】
 - **Telemetry shape:** When instrumentation lands, emit events containing the `step_index`, learner response, and retry consumption captured in `FeedbackMessage` so analytics and scheduling logic can model learner difficulty accurately.【F:crates/quiz-core/src/ports.rs†L37-L61】【F:crates/quiz-core/src/engine.rs†L83-L133】
 ## Role We Are Supporting

@@ -41,7 +41,7 @@ _Source:_ `crates/quiz-core/src/state.rs`
 
 ### `QuizStep`
 
-**Overview:** Represents a single move challenge, pairing the board snapshot, SAN prompt, canonical solution, attempt tracking, and optional annotations.
+**Overview:** Represents a single move challenge, pairing the board snapshot, SAN prompt, canonical solution, attempt tracking, optional annotations, and durable metadata for repertoire correlation.
 
 **Definition:**
 ```rust
@@ -51,13 +51,32 @@ pub struct QuizStep {
     pub solution_san: String,
     pub attempt: AttemptState,
     pub annotations: Vec<String>,
+    pub metadata: StepMetadata,
 }
 ```
 _Source:_ `crates/quiz-core/src/state.rs`
 
 **Usage in this repository:**
-- Hydrated by `hydrate_steps` when building sessions from PGN input, ensuring every SAN move is paired with a legal board position.
-- Mutated by `QuizEngine::grade_attempt` to push learner responses and record outcomes, and consumed by adapters when rendering prompts and reveals.
+- Hydrated by `hydrate_steps` when building sessions from PGN input, ensuring every SAN move is paired with a legal board position and receives canonical `StepMetadata` when none is provided by the source.
+- Mutated by `QuizEngine::grade_attempt` to push learner responses, record outcomes, and surface metadata to adapters when rendering prompts and reveals.
+
+### `StepMetadata`
+
+**Overview:** Encapsulates durable identifiers, repertoire references, and theme tags attached to a quiz step so adapters and schedulers can map attempts back to stored content.
+
+**Definition:**
+```rust
+pub struct StepMetadata {
+    pub step_id: Option<String>,
+    pub card_ref: Option<String>,
+    pub themes: Vec<String>,
+}
+```
+_Source:_ `crates/quiz-core/src/state.rs`
+
+**Usage in this repository:**
+- Generated during hydration to provide canonical `quiz-step-{index}` identifiers when no external metadata is supplied.
+- Propagated through `PromptContext` and `FeedbackMessage` so adapters can persist identifiers, card references, and theme tags in their own transports.
 
 ### `AttemptState`
 
@@ -118,20 +137,21 @@ _Source:_ `crates/quiz-core/src/state.rs`
 
 ### `QuizSource`
 
-**Overview:** Parsed representation of a single PGN game's main line used to hydrate quiz sessions.
+**Overview:** Parsed representation of a single PGN game's main line used to hydrate quiz sessions, including optional metadata seeds for each move.
 
 **Definition:**
 ```rust
 pub struct QuizSource {
     pub initial_position: Chess,
     pub san_moves: Vec<San>,
+    pub step_metadata: Vec<StepMetadata>,
 }
 ```
 _Source:_ `crates/quiz-core/src/source.rs`
 
 **Usage in this repository:**
-- `QuizSource::from_pgn` normalises SAN tokens, rejects comments or variations, and prepares the move list for session hydration.
-- `QuizEngine::from_source` consumes a `QuizSource` to construct a ready-to-run session with consistent FEN snapshots, and unit tests assert the error variants for malformed PGN.
+- `QuizSource::from_pgn` normalises SAN tokens, rejects comments or variations, and prepares the move list for session hydration, initialising an empty metadata vector by default.
+- `QuizEngine::from_source` consumes a `QuizSource` to construct a ready-to-run session with consistent FEN snapshots and metadata propagation, and unit tests assert the error variants for malformed PGN.
 
 ### `PromptContext`
 
@@ -146,13 +166,14 @@ pub struct PromptContext {
     pub prompt_san: String,
     pub previous_move_san: Option<String>,
     pub remaining_retries: u8,
+    pub metadata: StepMetadata,
 }
 ```
 _Source:_ `crates/quiz-core/src/ports.rs`
 
 **Usage in this repository:**
-- Constructed by `QuizEngine::process_current_step` before every prompt to supply adapters with rendering context.
-- Terminal and fake adapters display the board snapshot and retry counts derived from this struct, and the CLI module exposes helpers that rely on its `display_index` method.
+- Constructed by `QuizEngine::process_current_step` before every prompt to supply adapters with rendering context and metadata for correlation.
+- Terminal and fake adapters display the board snapshot, retry counts, and metadata derived from this struct, and the CLI module exposes helpers that rely on its `display_index` method.
 
 ### `FeedbackMessage`
 
@@ -167,13 +188,14 @@ pub struct FeedbackMessage {
     pub solution_san: String,
     pub annotations: Vec<String>,
     pub remaining_retries: u8,
+    pub metadata: StepMetadata,
 }
 ```
 _Source:_ `crates/quiz-core/src/ports.rs`
 
 **Usage in this repository:**
 - Created by `FeedbackMessage::success`, `retry`, and `failure` helpers invoked from `QuizEngine::grade_attempt`.
-- Rendered in the terminal adapter to communicate success, retry prompts, and final reveals to learners; after the retry messaging fix the `remaining_retries` field now reports the post-attempt allowance so adapters display accurate guidance.【F:crates/quiz-core/src/engine.rs†L122-L128】【F:crates/quiz-core/src/ports.rs†L274-L283】
+- Rendered in the terminal adapter to communicate success, retry prompts, and final reveals to learners, including metadata required by downstream schedulers; tests assert each constructor's semantics.
 
 ### `QuizError`
 

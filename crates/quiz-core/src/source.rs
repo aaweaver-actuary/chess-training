@@ -5,6 +5,7 @@ use shakmaty::san::{ParseSanError, San, SanError};
 use shakmaty::{Chess, Position};
 
 use crate::errors::{QuizError, QuizResult};
+use crate::state::StepMetadata;
 
 /// Represents a parsed PGN quiz source comprised of a single game's main line.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,6 +14,8 @@ pub struct QuizSource {
     pub initial_position: Chess,
     /// Ordered SAN moves that make up the quiz prompts.
     pub san_moves: Vec<San>,
+    /// Optional metadata captured alongside each SAN move.
+    pub step_metadata: Vec<StepMetadata>,
 }
 
 impl QuizSource {
@@ -87,7 +90,15 @@ impl QuizSource {
         Ok(Self {
             initial_position,
             san_moves,
+            step_metadata: Vec::new(),
         })
+    }
+
+    /// Attaches metadata to each SAN move, returning the enriched source.
+    #[must_use]
+    pub fn with_step_metadata(mut self, metadata: Vec<StepMetadata>) -> Self {
+        self.step_metadata = metadata;
+        self
     }
 }
 
