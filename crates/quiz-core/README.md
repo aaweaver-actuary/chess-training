@@ -48,6 +48,14 @@ flowchart LR
 Enable features with `cargo build --features "cli"` to compile the corresponding adapter and its
 binary entry point.
 
+### Adapter quick reference
+
+| Adapter | Feature flag | Entry point | Typical usage |
+| ------- | ------------- | ----------- | -------------- |
+| TerminalPort | `cli` | `cargo run --features "cli" --bin cli` | Manual testing in a terminal using buffered stdin/stdout handles. |
+| API (stub) | `api` | `cargo run --features "api" --bin api` | Placeholder for future HTTP adapter; currently prints `todo!`. |
+| WASM (stub) | `wasm` | `cargo run --features "wasm" --bin wasm` | Placeholder for browser embedding experiments. |
+
 ## Related documentation
 
 - [Chess Quiz Engine design brief](../../documentation/chess-quiz-engine.md)

@@ -17,8 +17,8 @@ pub struct QuizEngine {
 _Source:_ `crates/quiz-core/src/engine.rs`
 
 **Usage in this repository:**
-- `crates/quiz-core/src/engine.rs` drives quiz execution via `QuizEngine::run`, calling `present_prompt`, `publish_feedback`, and `present_summary` on the injected adapter.
-- `crates/quiz-core/tests/end_to_end.rs` instantiates `QuizEngine::from_pgn` to validate perfect runs, retry saves, and exhausted attempts end-to-end.
+- `crates/quiz-core/src/engine.rs` drives quiz execution via `QuizEngine::run`, which loops with `process_current_step` and grades answers through `grade_attempt` before advancing the session summary.
+- `crates/quiz-core/tests/end_to_end.rs` instantiates `QuizEngine::from_pgn` to validate perfect runs, retry saves, exhausted attempts, and adapter error propagation end-to-end.
 
 ### `QuizSession`
 
@@ -36,7 +36,7 @@ _Source:_ `crates/quiz-core/src/state.rs`
 
 **Usage in this repository:**
 - `QuizSession::from_source` hydrates state from a `QuizSource`, attaching FEN boards and retry budgets for each move.
-- The engine updates `QuizSession.summary` as each step is graded so adapters can display live progress.
+- `QuizSession::is_complete` and `QuizSession::current_step` gate the engine loop, while the engine mutates `QuizSession.summary` so adapters can display live progress.
 
 ### `QuizStep`
 
@@ -56,7 +56,7 @@ _Source:_ `crates/quiz-core/src/state.rs`
 
 **Usage in this repository:**
 - Hydrated by `hydrate_steps` when building sessions from PGN input, ensuring every SAN move is paired with a legal board position.
-- Mutated by `QuizEngine::grade_attempt` to push learner responses and record outcomes.
+- Mutated by `QuizEngine::grade_attempt` to push learner responses and record outcomes, and consumed by adapters when rendering prompts and reveals.
 
 ### `AttemptState`
 
@@ -75,7 +75,7 @@ _Source:_ `crates/quiz-core/src/state.rs`
 
 **Usage in this repository:**
 - `AttemptState::new` initialises retry budgets for each step during session hydration.
-- `AttemptState::remaining_retries` informs prompt contexts and feedback messaging about available retries.
+- `AttemptState::remaining_retries` informs prompt contexts and feedback messaging about available retries and is used in retry bookkeeping tests.
 
 ### `AttemptResult`
 
@@ -93,7 +93,7 @@ _Source:_ `crates/quiz-core/src/state.rs`
 
 **Usage in this repository:**
 - Stored inside `AttemptState.result` to communicate grading outcomes to adapters.
-- Propagated through `FeedbackMessage` so presentation layers can branch on learner success.
+- Propagated through `FeedbackMessage` so presentation layers can branch on learner success or retry prompts.
 
 ### `QuizSummary`
 
@@ -113,7 +113,7 @@ _Source:_ `crates/quiz-core/src/state.rs`
 
 **Usage in this repository:**
 - `QuizSummary::new` seeds totals when a session is created, and the engine mutates counts as it advances through steps.
-- `TerminalPort::present_summary` renders these fields for learners at the end of a run.
+- `TerminalPort::present_summary` renders these fields for learners at the end of a run, while integration tests assert the totals for different retry scenarios.
 
 ### `QuizSource`
 
@@ -130,7 +130,7 @@ _Source:_ `crates/quiz-core/src/source.rs`
 
 **Usage in this repository:**
 - `QuizSource::from_pgn` normalises SAN tokens, rejects comments or variations, and prepares the move list for session hydration.
-- `QuizEngine::from_source` consumes a `QuizSource` to construct a ready-to-run session with consistent FEN snapshots.
+- `QuizEngine::from_source` consumes a `QuizSource` to construct a ready-to-run session with consistent FEN snapshots, and unit tests assert the error variants for malformed PGN.
 
 ### `PromptContext`
 
@@ -151,7 +151,7 @@ _Source:_ `crates/quiz-core/src/ports.rs`
 
 **Usage in this repository:**
 - Constructed by `QuizEngine::process_current_step` before every prompt to supply adapters with rendering context.
-- Terminal and fake adapters display the board snapshot and retry counts derived from this struct.
+- Terminal and fake adapters display the board snapshot and retry counts derived from this struct, and the CLI module exposes helpers that rely on its `display_index` method.
 
 ### `FeedbackMessage`
 
@@ -172,7 +172,7 @@ _Source:_ `crates/quiz-core/src/ports.rs`
 
 **Usage in this repository:**
 - Created by `FeedbackMessage::success`, `retry`, and `failure` helpers invoked from `QuizEngine::grade_attempt`.
-- Rendered in the terminal adapter to communicate success, retry prompts, and final reveals to learners.
+- Rendered in the terminal adapter to communicate success, retry prompts, and final reveals to learners; tests assert each constructor's semantics.
 
 ### `QuizError`
 
@@ -193,7 +193,7 @@ _Source:_ `crates/quiz-core/src/errors.rs`
 
 **Usage in this repository:**
 - Returned by `QuizSource::from_pgn` when PGN input is malformed or unsupported.
-- Emitted by adapters via `AdapterResult` to signal I/O failures back to the engine loop.
+- Emitted by adapters via `AdapterResult` to signal I/O failures back to the engine loop, and converted from `shakmaty`/`std::io` errors through `From` implementations.
 
 ## Review and Scheduling Core
 
