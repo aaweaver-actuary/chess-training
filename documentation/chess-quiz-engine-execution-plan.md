@@ -13,12 +13,17 @@ before they are considered complete.
 - **Outcome:** `grade_attempt` now increments `retries_used` before building
   retry feedback so `FeedbackMessage::retry` reflects the true allowance after a
   miss. Terminal feedback mirrors the updated count, preventing learners from
-  seeing stale retry totals.
+  seeing stale retry totals.【F:crates/quiz-core/src/engine.rs†L110-L141】【F:crates/quiz-core/src/ports.rs†L274-L283】
 - **Verification:** Extended engine, integration, and terminal adapter tests
   assert the consumed retry budget and printed allowance all read as zero after
-  the first failed attempt.
+  the first failed attempt.【F:crates/quiz-core/tests/end_to_end.rs†L90-L115】【F:crates/quiz-core/src/ports.rs†L274-L283】
 
 ### [T2] Accept equivalent SAN notations during grading
+- **Status:** ✅ Completed – feat: normalise SAN suffix handling in quiz grading
+  - Strips trailing check/mate markers and annotation glyphs before comparing
+    learner responses so optional SAN suffixes no longer cause false negatives.
+  - Added engine unit tests covering suffixed promotions, checkmates, and
+    negative cases to guard the new comparison logic.
 - **Objective:** Prevent false negatives when learners include optional suffixes
   like `+`, `#`, or annotation glyphs by normalising SAN comparison.
 - **Primary inputs:** `crates/quiz-core/src/engine.rs` (`san_matches` helper)

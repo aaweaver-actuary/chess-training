@@ -31,10 +31,7 @@ impl DeterministicPort {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        let responses = responses
-            .into_iter()
-            .map(Into::into)
-            .collect::<Vec<_>>();
+        let responses = responses.into_iter().map(Into::into).collect::<Vec<_>>();
 
         Self {
             responses: VecDeque::from(responses),
@@ -48,9 +45,7 @@ impl DeterministicPort {
 impl QuizPort for DeterministicPort {
     fn present_prompt(&mut self, context: PromptContext) -> Result<String, QuizError> {
         self.prompts.push(context);
-        self.responses
-            .pop_front()
-            .ok_or(QuizError::Io)
+        self.responses.pop_front().ok_or(QuizError::Io)
     }
 
     fn publish_feedback(&mut self, feedback: FeedbackMessage) -> Result<(), QuizError> {
@@ -77,13 +72,18 @@ fn perfect_run_records_summary_and_feedback() {
     assert_eq!(summary.incorrect_answers, 0);
     assert_eq!(summary.retries_consumed, 0);
     assert_eq!(port.feedback.len(), 4);
-    assert!(port
-        .feedback
-        .iter()
-        .all(|message| message.result == AttemptResult::Correct));
+    assert!(
+        port.feedback
+            .iter()
+            .all(|message| message.result == AttemptResult::Correct)
+    );
     assert_eq!(port.summary.as_ref(), Some(summary));
     assert_eq!(port.prompts.len(), 4);
-    assert!(port.prompts.iter().all(|prompt| prompt.remaining_retries == 1));
+    assert!(
+        port.prompts
+            .iter()
+            .all(|prompt| prompt.remaining_retries == 1)
+    );
 }
 
 #[test]
@@ -130,10 +130,7 @@ fn failure_after_retry_is_captured_in_summary_and_feedback() {
     assert_eq!(port.feedback[0].result, AttemptResult::Pending);
     assert_eq!(port.feedback[1].result, AttemptResult::Incorrect);
     assert_eq!(port.feedback[1].solution_san, "e4");
-    assert_eq!(
-        port.feedback[1].learner_response.as_deref(),
-        Some("Nc3")
-    );
+    assert_eq!(port.feedback[1].learner_response.as_deref(), Some("Nc3"));
     assert_eq!(port.summary.as_ref(), Some(summary));
 }
 

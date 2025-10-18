@@ -12,6 +12,7 @@ single source of truth for how the quiz workflow operates.
 - `grade_attempt` increments `retries_used` before producing retry feedback so `FeedbackMessage::retry` and the terminal adapter both report the remaining allowance after a miss.【F:crates/quiz-core/src/engine.rs†L110-L141】【F:crates/quiz-core/src/cli.rs†L78-L119】
 - Session hydration comes from `QuizSource::from_pgn`, producing `QuizStep` entries whose FEN boards and SAN prompts remain aligned with the legal move sequence while initialising retry allowances inside `QuizSession::from_source`.【F:crates/quiz-core/src/source.rs†L19-L86】【F:crates/quiz-core/src/state.rs†L16-L121】
 - Adapter boundaries stay encapsulated by serialisable `PromptContext` and `FeedbackMessage` types, and the terminal adapter exercises every branch of the prompt/feedback/summary loop using buffered handles under the `cli` feature flag.【F:crates/quiz-core/src/ports.rs†L7-L115】【F:crates/quiz-core/src/cli.rs†L41-L134】
+- `san_matches` now strips trailing check/mate markers and annotation glyphs before comparing learner responses, so answers like `Nf3+` or `axb8=Q+!!` resolve as correct when the canonical SAN omits those suffixes.【F:crates/quiz-core/src/engine.rs†L150-L188】【F:crates/quiz-core/src/engine.rs†L380-L393】
 - Error handling is centralised in `QuizError` with ready-made conversions so adapters operate purely on `QuizResult` aliases instead of wiring their own plumbing.【F:crates/quiz-core/src/errors.rs†L1-L88】
 
 ### 2. Work effort still required for an mvp
@@ -55,7 +56,6 @@ them methodically:
 - **[T3] Metadata surface.** Add durable identifiers and repertoire metadata to
   `QuizStep`/`PromptContext` so schedulers and adapters can correlate attempts
   without heuristics.【F:crates/quiz-core/src/state.rs†L53-L103】【F:crates/quiz-core/src/ports.rs†L25-L61】
-
 ## Integration Backlog and Coordination Guidelines
 
 ### Follow-on backlog beyond the MVP scope
