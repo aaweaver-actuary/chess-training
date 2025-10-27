@@ -62,13 +62,14 @@ describe('sessionGateway', () => {
       }),
     );
 
-    const result = await sessionGateway.grade('c1', 'Good', 4500);
+    const result = await sessionGateway.grade('session-123', 'c1', 'Good', 4500);
 
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:3000/api/session/grade',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
+          session_id: 'session-123',
           card_id: 'c1',
           grade: 'Good',
           latency_ms: 4500,
@@ -101,10 +102,10 @@ describe('sessionGateway', () => {
       }),
     );
 
-    const result = await sessionGateway.stats();
+    const result = await sessionGateway.stats('session-123');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3000/api/session/stats',
+      'http://localhost:3000/api/session/stats?session_id=session-123',
       expect.objectContaining({ method: 'GET' }),
     );
     expect(result).toEqual(responseBody);
@@ -113,6 +114,8 @@ describe('sessionGateway', () => {
   it('throws when stats fails', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 404 }));
 
-    await expect(sessionGateway.stats()).rejects.toThrow('/api/session/stats failed: 404');
+    await expect(sessionGateway.stats('session-123')).rejects.toThrow(
+      '/api/session/stats?session_id=session-123 failed: 404',
+    );
   });
 });
