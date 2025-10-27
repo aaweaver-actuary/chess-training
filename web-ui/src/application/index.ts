@@ -1,6 +1,7 @@
 export * from './services/PgnImportService.js';
 export * from './services/CommandPaletteService.js';
 export * from './services/ImportPlanner.js';
+export * from './services/DefaultImportPlanner.js';
 export * from './controllers/OpeningReviewController.js';
 export * from './controllers/SessionController.js';
 export * from './viewModels/DashboardViewModel.js';
